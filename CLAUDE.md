@@ -1,6 +1,10 @@
-# mykin — app
+# ourkin — app
 
-React frontend for the mykin family archive.
+React frontend for the ourkin family archive.
+
+## GitHub
+
+https://github.com/OurKinFamily/app
 
 ## Running
 
