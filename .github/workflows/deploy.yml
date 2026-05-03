@@ -37,7 +37,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/ourKinFamily/app:${{ steps.tag.outputs.tag }}
+          tags: ghcr.io/ourkinfamily/app:${{ steps.tag.outputs.tag }}
 
       - name: Install cloudflared
         run: |
