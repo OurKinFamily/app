@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-App available at http://localhost:3000.
+App available at http://localhost:5173 (port 3000 is reserved for the prod Docker container).
 
 The dev server proxies `/api/*` to `http://localhost:8000` (see `vite.config.js`), so you need the API running locally too. See `../api/README.md`.
 
