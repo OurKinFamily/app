@@ -21,7 +21,15 @@ npm test
 
 Tests cover the API client functions in `src/lib/api.js` using mocked fetch.
 
-## CI/CD
+## CI/CD & Branch Flow
 
-Push to `staging` → runs tests → builds `ghcr.io/ourkinfamily/app:staging` → deploys to staging.ourkin.family  
-Push to `main` → runs tests → builds `ghcr.io/ourkinfamily/app:latest` → deploys to www.ourkin.family
+```
+feature/* → PR → staging → PR → main
+```
+
+- PRs target `staging` by default
+- Merging to `staging` → tests → builds `ghcr.io/ourkinfamily/app:staging` → deploys to staging.ourkin.family
+- Merging to `main` → tests → builds `ghcr.io/ourkinfamily/app:latest` → deploys to www.ourkin.family
+- PRs to `main` are blocked unless the source branch is `staging`
+
+Both branches are protected — no direct pushes. `staging` allows admin bypass for emergencies.
