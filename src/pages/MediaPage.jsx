@@ -76,12 +76,16 @@ export function MediaPage() {
     return () => observerRef.current?.disconnect()
   }, [loadMore])
 
-  // Open viewer from ?photo= param once photos are loaded
+  // Open viewer from ?photo= param — keep loading pages until the photo is found
   useEffect(() => {
     const param = searchParams.get('photo')
     if (!param || viewerIndex !== null) return
     const idx = photos.findIndex(p => p.path === param)
-    if (idx >= 0) setViewerIndex(idx)
+    if (idx >= 0) {
+      setViewerIndex(idx)
+    } else if (hasMoreRef.current) {
+      loadMore()
+    }
   }, [photos.length])
 
   const openViewer = useCallback((index) => {
