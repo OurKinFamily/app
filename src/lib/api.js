@@ -34,6 +34,27 @@ export async function createPerson(data) {
   return res.json()
 }
 
+export async function getFaces(id) {
+  const res = await fetch(`${BASE}/people/${id}/faces`)
+  if (!res.ok) throw new Error('Failed to fetch faces')
+  return res.json()
+}
+
+export async function getPhotos(id) {
+  const res = await fetch(`${BASE}/people/${id}/photos`)
+  if (!res.ok) throw new Error('Failed to fetch photos')
+  return res.json()
+}
+
+export async function setAvatar(personId, cropPath) {
+  const res = await fetch(`${BASE}/people/${personId}/avatar`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ crop_path: cropPath }),
+  })
+  if (!res.ok) throw new Error('Failed to set avatar')
+}
+
 export async function addRelationship(personId, data) {
   const res = await fetch(`${BASE}/people/${personId}/relationships`, {
     method: 'POST',
