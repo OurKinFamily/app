@@ -1,4 +1,36 @@
 import { useState, useEffect, useCallback } from 'react'
+import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+
+// Fix leaflet's broken default marker icon URLs under bundlers
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
+
+function MiniMap({ lat, lng }) {
+  return (
+    <div className="mt-2 rounded overflow-hidden" style={{ height: 140 }}>
+      <MapContainer
+        key={`${lat},${lng}`}
+        center={[lat, lng]}
+        zoom={13}
+        style={{ height: '100%', width: '100%' }}
+        zoomControl={false}
+        scrollWheelZoom={false}
+        dragging={false}
+        doubleClickZoom={false}
+        attributionControl={false}
+      >
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <Marker position={[lat, lng]} />
+      </MapContainer>
+    </div>
+  )
+}
 
 function formatDate(ts) {
   if (!ts) return null
@@ -14,7 +46,7 @@ function formatSize(bytes) {
 function Section({ title, children }) {
   return (
     <div className="border-t border-white/[0.07] pt-3 pb-1 mt-3 first:border-0 first:mt-0 first:pt-0">
-      <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-2">{title}</p>
+      <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-2 leading-snug">{title}</p>
       {children}
     </div>
   )
@@ -170,17 +202,19 @@ export function PhotoViewer({ photos, initialIndex, onClose, onNeedMore, onNavig
                   />
                 )}
                 {detail.location.latitude != null && (
-                  <Row
-                    label="GPS"
-                    value={`${detail.location.latitude.toFixed(5)}, ${detail.location.longitude.toFixed(5)}`}
-                  />
+                  <>
+                    <Row
+                      label="GPS"
+                      value={`${detail.location.latitude.toFixed(5)}, ${detail.location.longitude.toFixed(5)}`}
+                    />
+                    <MiniMap lat={detail.location.latitude} lng={detail.location.longitude} />
+                  </>
                 )}
               </Section>
             )}
 
             {cameraLabel && (
-              <Section title="Camera">
-                <p className="text-[13px] text-white/80 mb-2">{cameraLabel}</p>
+              <Section title={`Camera — ${cameraLabel}`}>
                 {!skipLens && <Row label="Lens" value={lensLabel} />}
               </Section>
             )}
