@@ -164,14 +164,9 @@ export function PhotoViewer({ photos, initialIndex, onClose, onNeedMore, onNavig
             {detail.location && (
               <Section title="Location">
                 {detail.location.city && (detail.location.city_confidence ?? 0) >= 0.5 && (
-                  <p className="text-[13px] text-white/80 mb-2">
-                    {detail.location.city}{detail.location.state ? `, ${detail.location.state}` : ''}
-                  </p>
-                )}
-                {detail.location.landmark && (
                   <Row
-                    label={detail.location.landmark_category || 'Landmark'}
-                    value={`${detail.location.landmark}${detail.location.landmark_distance_m ? ` (${Math.round(detail.location.landmark_distance_m)}m)` : ''}`}
+                    label="City"
+                    value={`${detail.location.city}${detail.location.state ? `, ${detail.location.state}` : ''}`}
                   />
                 )}
                 {detail.location.latitude != null && (
