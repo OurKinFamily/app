@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { PhotoViewer } from '../components/PhotoViewer'
 
 const LIMIT = 48
@@ -30,30 +31,29 @@ function PhotoTile({ photo, onClick }) {
 }
 
 export function MediaPage() {
-  const [photos, setPhotos]       = useState([])
-  const [offset, setOffset]       = useState(0)
-  const [hasMore, setHasMore]     = useState(true)
-  const [loading, setLoading]     = useState(false)
+  const [photos, setPhotos]           = useState([])
+  const [loading, setLoading]         = useState(false)
   const [viewerIndex, setViewerIndex] = useState(null)
-  const sentinelRef               = useRef(null)
-  const observerRef               = useRef(null)
-  const loadingRef                = useRef(false)
-  const hasMoreRef                = useRef(true)
-  const offsetRef                 = useRef(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const sentinelRef  = useRef(null)
+  const observerRef  = useRef(null)
+  const loadingRef   = useRef(false)
+  const hasMoreRef   = useRef(true)
+  const offsetRef    = useRef(0)
+  const photosRef    = useRef([])
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return
     loadingRef.current = true
     setLoading(true)
     try {
-      const res  = await fetch(`/api/gallery?limit=${LIMIT}&offset=${offsetRef.current}`)
-      const data = await res.json()
+      const res   = await fetch(`/api/gallery?limit=${LIMIT}&offset=${offsetRef.current}`)
+      const data  = await res.json()
       const batch = Array.isArray(data.photos) ? data.photos : []
-      setPhotos(prev => [...prev, ...batch])
-      offsetRef.current += batch.length
-      setOffset(offsetRef.current)
-      hasMoreRef.current = data.has_more
-      setHasMore(data.has_more)
+      photosRef.current = [...photosRef.current, ...batch]
+      setPhotos(photosRef.current)
+      offsetRef.current  += batch.length
+      hasMoreRef.current  = data.has_more
     } catch (e) {
       console.error('Failed to load media', e)
     } finally {
@@ -62,8 +62,10 @@ export function MediaPage() {
     }
   }, [])
 
+  // Initial load
   useEffect(() => { loadMore() }, [])
 
+  // Infinite scroll sentinel
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect()
     observerRef.current = new IntersectionObserver(
@@ -73,6 +75,28 @@ export function MediaPage() {
     if (sentinelRef.current) observerRef.current.observe(sentinelRef.current)
     return () => observerRef.current?.disconnect()
   }, [loadMore])
+
+  // Open viewer from ?photo= param once photos are loaded
+  useEffect(() => {
+    const param = searchParams.get('photo')
+    if (!param || viewerIndex !== null) return
+    const idx = photos.findIndex(p => p.path === param)
+    if (idx >= 0) setViewerIndex(idx)
+  }, [photos.length])
+
+  const openViewer = useCallback((index) => {
+    setViewerIndex(index)
+    setSearchParams({ photo: photosRef.current[index].path }, { replace: false })
+  }, [setSearchParams])
+
+  const handleNavigate = useCallback((photo) => {
+    setSearchParams({ photo: photo.path }, { replace: true })
+  }, [setSearchParams])
+
+  const handleClose = useCallback(() => {
+    setViewerIndex(null)
+    setSearchParams({}, { replace: true })
+  }, [setSearchParams])
 
   return (
     <>
@@ -86,7 +110,7 @@ export function MediaPage() {
 
         <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-1">
           {photos.map((photo, i) => (
-            <PhotoTile key={photo.path} photo={photo} onClick={() => setViewerIndex(i)} />
+            <PhotoTile key={photo.path} photo={photo} onClick={() => openViewer(i)} />
           ))}
         </div>
 
@@ -105,7 +129,8 @@ export function MediaPage() {
         <PhotoViewer
           photos={photos}
           initialIndex={viewerIndex}
-          onClose={() => setViewerIndex(null)}
+          onClose={handleClose}
+          onNavigate={handleNavigate}
           onNeedMore={loadMore}
         />
       )}

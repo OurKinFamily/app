@@ -41,7 +41,7 @@ function Swatch({ color, label }) {
   )
 }
 
-export function PhotoViewer({ photos, initialIndex, onClose, onNeedMore }) {
+export function PhotoViewer({ photos, initialIndex, onClose, onNeedMore, onNavigate }) {
   const [index, setIndex]       = useState(initialIndex)
   const [detail, setDetail]     = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -56,6 +56,10 @@ export function PhotoViewer({ photos, initialIndex, onClose, onNeedMore }) {
       return next
     })
   }, [photos.length, onNeedMore])
+
+  useEffect(() => {
+    if (photos[index]) onNavigate?.(photos[index])
+  }, [index])
 
   useEffect(() => {
     const handler = (e) => {
