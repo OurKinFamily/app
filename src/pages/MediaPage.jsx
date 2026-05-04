@@ -14,7 +14,7 @@ function PhotoTile({ photo, onClick }) {
       onClick={onClick}
     >
       <img
-        src={photo.url}
+        src={photo.thumbnail_url || photo.url}
         alt={photo.filename}
         loading="lazy"
         onLoad={() => setLoaded(true)}
