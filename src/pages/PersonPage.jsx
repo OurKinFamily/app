@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useParams, useNavigate, Link, Outlet } from 'react-router-dom'
+import { useParams, useNavigate, Outlet } from 'react-router-dom'
 import { getPerson, getRelatives } from '../lib/api'
-import { Sidebar, SidebarLink } from '../components/Sidebar'
+import { Sidebar, SidebarBack, SidebarLink } from '../components/Sidebar'
 import { AvatarPicker } from '../components/AvatarPicker'
 
 function initials(name) {
@@ -11,7 +11,7 @@ function initials(name) {
 export function PersonPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [person, setPerson] = useState(null)
+  const [person, setPerson]       = useState(null)
   const [relatives, setRelatives] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
 
@@ -33,13 +33,24 @@ export function PersonPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="p-8 pb-0">
-        <Link to="/manage/people" className="text-white/40 text-sm hover:text-white/70 inline-block mb-6">
-          ← People
-        </Link>
-        <div className="flex items-center gap-4">
-          {/* Avatar */}
+    <div className="min-h-screen flex">
+      {/* Sidebar */}
+      <div className="sticky top-12 self-start h-[calc(100vh-3rem)] pt-8 pb-8 pl-4 overflow-y-auto">
+        <Sidebar>
+          <SidebarBack to="/manage/people">People</SidebarBack>
+          <SidebarLink to="overview">Overview</SidebarLink>
+          <SidebarLink to="ancestry">Ancestry</SidebarLink>
+          <SidebarLink to="gallery">Gallery</SidebarLink>
+          <SidebarLink to="scrapbook">Scrapbook</SidebarLink>
+          <SidebarLink to="travel">Travel</SidebarLink>
+          <SidebarLink to="ai">AI</SidebarLink>
+        </Sidebar>
+      </div>
+
+      {/* Main */}
+      <div className="flex-1 min-w-0 p-8">
+        {/* Person header */}
+        <div className="flex items-center gap-4 mb-8">
           <div
             className="relative group w-16 h-16 shrink-0 cursor-pointer"
             onClick={() => setPickerOpen(true)}
@@ -61,7 +72,6 @@ export function PersonPage() {
               </svg>
             </div>
           </div>
-
           <div>
             <h1 className="text-3xl font-semibold text-white">{person.name}</h1>
             {person.known_as && person.known_as !== person.name && (
@@ -69,21 +79,8 @@ export function PersonPage() {
             )}
           </div>
         </div>
-      </div>
 
-      <div className="flex flex-1 mt-6">
-        <Sidebar>
-          <SidebarLink to="overview">Overview</SidebarLink>
-          <SidebarLink to="ancestry">Ancestry</SidebarLink>
-          <SidebarLink to="gallery">Gallery</SidebarLink>
-          <SidebarLink to="scrapbook">Scrapbook</SidebarLink>
-          <SidebarLink to="travel">Travel</SidebarLink>
-          <SidebarLink to="ai">AI</SidebarLink>
-        </Sidebar>
-
-        <main className="flex-1 px-8 pb-8">
-          <Outlet context={{ person, relatives, reloadRelatives }} />
-        </main>
+        <Outlet context={{ person, relatives, reloadRelatives }} />
       </div>
 
       {pickerOpen && (
