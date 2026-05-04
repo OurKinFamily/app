@@ -30,6 +30,14 @@ export function Sidebar({ children }) {
   )
 }
 
+export function SidebarSection({ children }) {
+  return (
+    <p className="px-3 py-1 text-xs font-semibold text-white/25 uppercase tracking-wider mt-4 first:mt-0">
+      {children}
+    </p>
+  )
+}
+
 export function SidebarLink({ to, children }) {
   return (
     <NavLink
