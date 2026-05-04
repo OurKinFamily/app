@@ -1,6 +1,30 @@
-import './index.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { PeoplePage } from './pages/PeoplePage'
+import { PersonPage } from './pages/PersonPage'
+import { PersonOverview } from './pages/PersonOverview'
+import { PersonAncestry } from './pages/PersonAncestry'
+import { PersonGallery } from './pages/PersonGallery'
+import { PersonScrapbook } from './pages/PersonScrapbook'
+import { PersonTravel } from './pages/PersonTravel'
+import { PersonAI } from './pages/PersonAI'
+import './index.css'
 
 export default function App() {
-  return <PeoplePage />
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/manage/people" replace />} />
+        <Route path="/manage/people" element={<PeoplePage />} />
+        <Route path="/manage/people/:id" element={<PersonPage />}>
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview"   element={<PersonOverview />} />
+          <Route path="ancestry"   element={<PersonAncestry />} />
+          <Route path="gallery"    element={<PersonGallery />} />
+          <Route path="scrapbook"  element={<PersonScrapbook />} />
+          <Route path="travel"     element={<PersonTravel />} />
+          <Route path="ai"         element={<PersonAI />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  )
 }
