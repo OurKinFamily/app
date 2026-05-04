@@ -1,4 +1,4 @@
-name: Protect main
+name: CI
 
 on:
   pull_request:
@@ -6,11 +6,18 @@ on:
       - main
 
 jobs:
-  check-source:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Require staging as source
-        if: github.head_ref != 'staging'
-        run: |
-          echo "PRs to main must come from the staging branch (got: ${{ github.head_ref }})"
-          exit 1
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
