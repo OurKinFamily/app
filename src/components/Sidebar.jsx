@@ -30,16 +30,37 @@ export function Sidebar({ children }) {
   )
 }
 
-export function SidebarLink({ to, children }) {
+export function SidebarBack({ to, children }) {
+  return (
+    <NavLink
+      to={to}
+      className="flex items-center gap-1.5 px-3 py-2 mb-2 text-[12px] text-white/25 hover:text-white/60 transition-colors rounded-lg hover:bg-white/5"
+    >
+      <span>←</span>
+      <span>{children}</span>
+    </NavLink>
+  )
+}
+
+export function SidebarSection({ children }) {
+  return (
+    <p className="px-3 py-1 text-xs font-semibold text-white/25 uppercase tracking-wider mt-4 first:mt-0">
+      {children}
+    </p>
+  )
+}
+
+export function SidebarLink({ to, children, indent = false, icon }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `block px-3 py-2 rounded-lg text-sm transition-colors ${
+        `flex items-center gap-2 py-1.5 rounded-lg text-sm transition-colors ${indent ? 'pl-6 pr-3' : 'px-3 py-2'} ${
           isActive ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/5'
         }`
       }
     >
+      {icon && <span className="flex-shrink-0 opacity-70">{icon}</span>}
       {children}
     </NavLink>
   )
