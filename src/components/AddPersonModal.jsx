@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { createPerson } from '../lib/api'
+import { useEscToClose } from '../lib/hooks'
 
 export function AddPersonModal({ onClose, onCreated }) {
+  useEscToClose(onClose)
   const [name, setName]         = useState('')
   const [knownAs, setKnownAs]   = useState('')
   const [birthDate, setBirthDate] = useState('')

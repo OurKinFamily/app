@@ -1,7 +1,7 @@
-import { useMemo, useCallback, useEffect, useState, startTransition } from 'react'
+import { useMemo, useCallback, useEffect, useState, startTransition, createContext, useContext } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import { ReactFlow, Handle, Position, Background } from '@xyflow/react'
-import { Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import '@xyflow/react/dist/base.css'
 import { getRelatives } from '../lib/api'
 import { AddRelativeModal } from '../components/AddRelativeModal'
@@ -49,6 +49,18 @@ function buildGraph(person, relatives, childRelatives) {
       id: 'e-p1', source: `p-${parents[1].id}`, target: 'self',
       sourceHandle: 'bottom', targetHandle: 'top', type: 'smoothstep',
       style: { stroke: 'rgba(255,255,255,0.2)', strokeDasharray: '4 3' },
+    })
+  }
+
+  // Add-parent button — only if fewer than 2 parents
+  if (parents.length < 2) {
+    const parentX = parents.length === 0
+      ? -ACT / 2                              // centered above self
+      : PARENT_GAP / 2 + (NODE_W - ACT) / 2  // where the second parent would go
+    nodes.push({
+      id: 'action-parent', type: 'action',
+      position: { x: parentX, y: Y_PARENTS + (NODE_H - ACT) / 2 },
+      data: { actionType: 'parent', label: 'Add parent' },
     })
   }
 
@@ -304,19 +316,31 @@ function buildGraph(person, relatives, childRelatives) {
   return { nodes, edges }
 }
 
+const REL_TYPE_MAP = { Parent: 'parent', Spouse: 'spouse', Child: 'child' }
+
 function PersonNode({ data }) {
+  const onRemove = useContext(RemoveCtx)
   const label = data.known_as || data.name
   const base = data.small ? 'w-24 h-16 text-xs' : 'w-32 h-24 text-sm'
   const style = data.isSelf
     ? 'border border-white/40 bg-white/10 text-white'
     : 'border border-white/25 bg-white/5 text-white/80 cursor-pointer hover:bg-white/10 hover:border-white/40 transition-colors'
+  const relType = REL_TYPE_MAP[data.relationship]
 
   return (
-    <div className={`${base} ${style} rounded-xl flex flex-col items-center justify-center px-2 text-center`}>
+    <div className={`${base} ${style} rounded-xl flex flex-col items-center justify-center px-2 text-center relative group/node`}>
       <Handle type="target" id="top"    position={Position.Top}    className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
       <Handle type="source" id="bottom" position={Position.Bottom} className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
       <Handle type="target" id="left"   position={Position.Left}   className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
       <Handle type="source" id="right"  position={Position.Right}  className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
+      {!data.isSelf && relType && onRemove && (
+        <button
+          onClick={e => { e.stopPropagation(); onRemove(data.personId, relType) }}
+          className="absolute top-1 right-1 opacity-0 group-hover/node:opacity-100 w-4 h-4 flex items-center justify-center rounded-full bg-white/10 hover:bg-red-500/30 text-white/30 hover:text-red-400 transition-all"
+        >
+          <X size={8} />
+        </button>
+      )}
       <span className="font-medium leading-tight">{label}</span>
       {data.birth_date && (
         <span className="text-white/30 text-xs mt-0.5">{data.birth_date.slice(0, 4)}</span>
@@ -340,6 +364,8 @@ function ActionNode({ data }) {
   )
 }
 
+const RemoveCtx = createContext(null)
+
 const nodeTypes = { person: PersonNode, action: ActionNode }
 
 export function PersonAncestry() {
@@ -348,6 +374,15 @@ export function PersonAncestry() {
   const [childRelatives, setChildRelatives] = useState({})
   const [rfInstance, setRfInstance] = useState(null)
   const [modalAction, setModalAction] = useState(null)
+
+  const handleRemove = useCallback(async (targetId, relType) => {
+    await fetch(`/api/people/${person.id}/relationships`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_id: targetId, rel_type: relType }),
+    })
+    reloadRelatives()
+  }, [person.id, reloadRelatives])
 
   useEffect(() => {
     setChildRelatives({})
@@ -379,6 +414,7 @@ export function PersonAncestry() {
         type: node.data.actionType,
         personId: person.id,
         parentIds: relatives?.parents?.map(p => p.id) || [],
+        spouses:   node.data.actionType === 'child' ? (relatives?.spouses || []) : [],
       })
       return
     }
@@ -390,6 +426,7 @@ export function PersonAncestry() {
   if (!relatives) return <div className="text-white/30 text-sm">Loading…</div>
 
   return (
+    <RemoveCtx.Provider value={handleRemove}>
     <>
       <div key={person.id} className="h-[640px] rounded-xl overflow-hidden border border-white/5">
         <ReactFlow
@@ -421,5 +458,6 @@ export function PersonAncestry() {
         />
       )}
     </>
+    </RemoveCtx.Provider>
   )
 }
