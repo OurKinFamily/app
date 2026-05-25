@@ -12,6 +12,7 @@ const TYPE_LABELS = {
   certificates:   'Certificates',
   letters:        'Letters',
   documents:      'Documents',
+  home_movies:    'Home Movies',
 }
 
 const TYPE_ICONS = {
@@ -24,6 +25,7 @@ const TYPE_ICONS = {
   certificates:   '🏅',
   letters:        '✉️',
   documents:      '📄',
+  home_movies:    '🎬',
 }
 
 export function PersonScrapbook() {
@@ -176,9 +178,15 @@ function CollectionViewer({ collection, onClose }) {
               {current && (
                 <>
                   <div className="relative inline-block">
-                    <img src={current.url} alt=""
-                      className="block max-w-full object-contain rounded-lg shadow-2xl"
-                      style={{ maxHeight: isSeries ? 'calc(100vh - 240px)' : 'calc(100vh - 192px)' }} />
+                    {current.is_video ? (
+                      <video src={current.url} poster={current.thumb_url} controls autoPlay
+                        className="block max-w-full object-contain rounded-lg shadow-2xl"
+                        style={{ maxHeight: isSeries ? 'calc(100vh - 240px)' : 'calc(100vh - 192px)' }} />
+                    ) : (
+                      <img src={current.url} alt=""
+                        className="block max-w-full object-contain rounded-lg shadow-2xl"
+                        style={{ maxHeight: isSeries ? 'calc(100vh - 240px)' : 'calc(100vh - 192px)' }} />
+                    )}
                     {current.audio_url && (
                       <button onClick={toggleAudio}
                         title={current.audio_description || 'Play audio'}
@@ -244,7 +252,10 @@ function CollectionViewer({ collection, onClose }) {
             {items.map((item, i) => (
               <button key={i} onClick={() => setSelected(i)}
                 className={`h-full aspect-square shrink-0 overflow-hidden relative transition-all ${selected === i ? 'ring-2 ring-inset ring-blue-400' : 'opacity-50 hover:opacity-80'}`}>
-                <img src={item.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                <img src={item.is_video ? item.thumb_url : item.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                {item.is_video && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white/80 text-lg pointer-events-none drop-shadow">▶</div>
+                )}
                 {isSeries && item.page_number != null && (
                   <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-[9px] text-white/60 text-center py-0.5">
                     {item.page_number}
