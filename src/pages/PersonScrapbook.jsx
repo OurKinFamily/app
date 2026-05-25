@@ -192,9 +192,14 @@ function CollectionViewer({ collection, onClose }) {
                 <>
                   <div className="relative inline-block">
                     {current.is_video ? (
-                      <video src={current.url} poster={current.thumb_url} controls autoPlay
+                      <video key={current.path} poster={current.thumb_url} controls autoPlay
                         className="block max-w-full object-contain rounded-lg shadow-2xl"
-                        style={{ maxHeight: isSeries ? 'calc(100vh - 240px)' : 'calc(100vh - 192px)' }} />
+                        style={{ maxHeight: isSeries ? 'calc(100vh - 240px)' : 'calc(100vh - 192px)' }}>
+                        <source src={current.url} />
+                        {current.subtitle_url && (
+                          <track kind="subtitles" src={current.subtitle_url} srcLang="en" label="English" default />
+                        )}
+                      </video>
                     ) : (
                       <img src={current.url} alt=""
                         className="block max-w-full object-contain rounded-lg shadow-2xl"
