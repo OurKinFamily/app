@@ -18,7 +18,6 @@ import { SimilarFacesPage } from './pages/SimilarFacesPage'
 import { JobsPage } from './pages/JobsPage'
 import { AdminOverviewPage } from './pages/AdminOverviewPage'
 import { GalleryPage } from './pages/GalleryPage'
-import { MediaPage } from './pages/MediaPage'
 import { PlacesPage } from './pages/PlacesPage'
 import { PeopleGalleryPage } from './pages/PeopleGalleryPage'
 import { ScrapbookPage } from './pages/ScrapbookPage'
@@ -33,7 +32,6 @@ export default function App() {
         <Route path="/" element={<Navigate to="/gallery" replace />} />
         <Route element={<HomeLayout />}>
           <Route path="/gallery" element={<GalleryPage />} />
-          <Route path="/gallery/media" element={<MediaPage />} />
           <Route path="/gallery/places" element={<PlacesPage />} />
           <Route path="/gallery/people" element={<PeopleGalleryPage />} />
           <Route path="/gallery/scrapbook" element={<ScrapbookPage />} />

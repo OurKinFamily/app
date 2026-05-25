@@ -9,7 +9,6 @@ export function HomeLayout() {
         <Sidebar>
           <SidebarSection>Our Kin</SidebarSection>
           <SidebarLink to="/gallery" icon={<Images size={14} />}>Gallery</SidebarLink>
-          <SidebarLink to="/gallery/media" indent>Media</SidebarLink>
           <SidebarLink to="/gallery/places" indent>Places</SidebarLink>
           <SidebarLink to="/gallery/people" indent>People</SidebarLink>
           <SidebarLink to="/gallery/scrapbook" indent>Scrapbook</SidebarLink>
