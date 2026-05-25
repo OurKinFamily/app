@@ -85,7 +85,7 @@ export function GalleryGrid({ params = {}, disabled = false }) {
     try {
       const res  = await fetch(buildUrl(offsetRef.current))
       const data = await res.json()
-      const batch = Array.isArray(data.photos) ? data.photos : []
+      const batch = Array.isArray(data.media) ? data.media : []
       photosRef.current = [...photosRef.current, ...batch]
       setPhotos([...photosRef.current])
       offsetRef.current += batch.length
