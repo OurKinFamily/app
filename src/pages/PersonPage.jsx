@@ -40,7 +40,6 @@ export function PersonPage() {
           <SidebarBack to="/manage/people">People</SidebarBack>
           <SidebarLink to="overview">Overview</SidebarLink>
           <SidebarLink to="ancestry">Ancestry</SidebarLink>
-          <SidebarLink to="gallery">Gallery</SidebarLink>
           <SidebarLink to="scrapbook">Scrapbook</SidebarLink>
           <SidebarLink to="travel">Travel</SidebarLink>
           <SidebarLink to="ai">AI</SidebarLink>
@@ -80,7 +79,7 @@ export function PersonPage() {
           </div>
         </div>
 
-        <Outlet context={{ person, relatives, reloadRelatives }} />
+        <Outlet context={{ person, setPerson, relatives, reloadRelatives }} />
       </div>
 
       {pickerOpen && (

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Search } from 'lucide-react'
 import { searchPeople, createPerson, addRelationship } from '../lib/api'
+import { useEscToClose } from '../lib/hooks'
 
 const LABELS = {
   spouse: 'Spouse',
@@ -10,6 +11,7 @@ const LABELS = {
 }
 
 export function AddRelativeModal({ action, onClose, onSuccess }) {
+  useEscToClose(onClose)
   const [mode, setMode] = useState('search')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -19,6 +21,10 @@ export function AddRelativeModal({ action, onClose, onSuccess }) {
   const [birthDate, setBirthDate] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  // co-parent selection for child type — default all spouses checked
+  const [coParentIds, setCoParentIds] = useState(
+    () => new Set((action.spouses || []).map(s => s.id))
+  )
   const inputRef = useRef(null)
 
   useEffect(() => { inputRef.current?.focus() }, [mode])
@@ -51,11 +57,18 @@ export function AddRelativeModal({ action, onClose, onSuccess }) {
         })
         targetId = p.id
       }
+      // Always add focal person as parent
       await addRelationship(action.personId, {
         rel_type: action.type,
         target_id: targetId,
         parent_ids: action.parentIds || [],
       })
+      // Add co-parents if this is a child and co-parents are selected
+      if (action.type === 'child') {
+        await Promise.all([...coParentIds].map(pid =>
+          addRelationship(pid, { rel_type: 'child', target_id: targetId, parent_ids: [] })
+        ))
+      }
       onSuccess()
     } catch (e) {
       setError('Something went wrong. Please try again.')
@@ -76,6 +89,12 @@ export function AddRelativeModal({ action, onClose, onSuccess }) {
             <X size={18} />
           </button>
         </div>
+
+        {action.type === 'sibling' && (!action.parentIds || action.parentIds.length === 0) && (
+          <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/25 rounded-lg">
+            <p className="text-amber-400 text-xs">This person has no parents in the graph. Siblings are linked by sharing parents — add a parent first, then come back to add siblings.</p>
+          </div>
+        )}
 
         {/* Mode toggle */}
         <div className="flex gap-1 bg-white/5 rounded-lg p-1 mb-4">
@@ -158,6 +177,28 @@ export function AddRelativeModal({ action, onClose, onSuccess }) {
           </div>
         )}
 
+        {/* Co-parent picker — only for child type when spouses exist */}
+        {action.type === 'child' && action.spouses?.length > 0 && (
+          <div className="mt-4 p-3 bg-white/3 border border-white/8 rounded-lg">
+            <p className="text-[11px] text-white/40 mb-2">Also child of</p>
+            <div className="space-y-1.5">
+              {action.spouses.map(s => (
+                <label key={s.id} className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox"
+                    checked={coParentIds.has(s.id)}
+                    onChange={e => setCoParentIds(prev => {
+                      const next = new Set(prev)
+                      e.target.checked ? next.add(s.id) : next.delete(s.id)
+                      return next
+                    })}
+                    className="accent-blue-500" />
+                  <span className="text-[12px] text-white/70">{s.known_as || s.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         {error && <p className="text-red-400/80 text-xs mt-3">{error}</p>}
 
         <div className="flex gap-2.5 mt-5">
@@ -169,7 +210,7 @@ export function AddRelativeModal({ action, onClose, onSuccess }) {
           </button>
           <button
             onClick={submit}
-            disabled={saving || !canSubmit}
+            disabled={saving || !canSubmit || (action.type === 'sibling' && (!action.parentIds || action.parentIds.length === 0))}
             className="flex-1 py-2 rounded-lg text-sm bg-white/10 text-white hover:bg-white/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving…' : 'Add'}
