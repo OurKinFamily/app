@@ -40,8 +40,8 @@ export async function getFaces(id) {
   return res.json()
 }
 
-export async function getPhotos(id) {
-  const res = await fetch(`${BASE}/people/${id}/photos`)
+export async function getPhotos(id, limit = 100, offset = 0) {
+  const res = await fetch(`${BASE}/people/${id}/photos?limit=${limit}&offset=${offset}`)
   if (!res.ok) throw new Error('Failed to fetch photos')
   return res.json()
 }
@@ -62,4 +62,35 @@ export async function addRelationship(personId, data) {
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error('Failed to add relationship')
+}
+
+export async function getClusters(status = 'unassigned', limit = 100, offset = 0) {
+  const res = await fetch(`${BASE}/faces/clusters?status=${status}&limit=${limit}&offset=${offset}`)
+  if (!res.ok) throw new Error('Failed to fetch clusters')
+  return res.json()
+}
+
+export async function getCluster(id) {
+  const res = await fetch(`${BASE}/faces/clusters/${id}`)
+  if (!res.ok) throw new Error('Cluster not found')
+  return res.json()
+}
+
+export async function assignCluster(clusterId, personId) {
+  const res = await fetch(`${BASE}/faces/clusters/${clusterId}/assign`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ person_id: personId }),
+  })
+  if (!res.ok) throw new Error('Failed to assign cluster')
+}
+
+export async function skipCluster(clusterId) {
+  const res = await fetch(`${BASE}/faces/clusters/${clusterId}/skip`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to skip cluster')
+}
+
+export async function unskipCluster(clusterId) {
+  const res = await fetch(`${BASE}/faces/clusters/${clusterId}/unskip`, { method: 'POST' })
+  if (!res.ok) throw new Error('Failed to unskip cluster')
 }

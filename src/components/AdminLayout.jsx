@@ -7,7 +7,8 @@ export function AdminLayout() {
       <div className="sticky top-12 self-start h-[calc(100vh-3rem)] pt-8 pb-8 pl-4 overflow-y-auto">
         <Sidebar>
           <SidebarBack to="/">Home</SidebarBack>
-          <SidebarSection>Workers</SidebarSection>
+          <SidebarSection>Admin</SidebarSection>
+          <SidebarLink to="/admin/overview">Overview</SidebarLink>
           <SidebarLink to="/admin/jobs">Jobs</SidebarLink>
         </Sidebar>
       </div>

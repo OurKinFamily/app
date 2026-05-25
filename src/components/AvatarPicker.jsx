@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { getFaces, setAvatar } from '../lib/api'
+import { useEscToClose } from '../lib/hooks'
 
 const PAGE_SIZE = 60
 
 export function AvatarPicker({ person, onClose, onSaved }) {
+  useEscToClose(onClose)
   const [faces, setFaces] = useState(null)
   const [shown, setShown] = useState(PAGE_SIZE)
   const [saving, setSaving] = useState(false)
