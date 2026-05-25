@@ -96,6 +96,7 @@ function CollectionViewer({ collection, onClose }) {
   const [items, setItems]       = useState(null)
   const [selected, setSelected] = useState(null)
   const [playing, setPlaying]   = useState(false)
+  const [detail, setDetail]     = useState(null)
   const audioRef                = useRef(null)
 
   useEffect(() => {
@@ -104,6 +105,18 @@ function CollectionViewer({ collection, onClose }) {
       .then(d => { setItems(d.items); if (d.items.length) setSelected(0) })
       .catch(() => setItems([]))
   }, [collection.id])
+
+  // Fetch people/faces/objects detail for the current item
+  useEffect(() => {
+    if (!items || selected === null) { setDetail(null); return }
+    const path = items[selected]?.path
+    if (!path) return
+    setDetail(null)
+    fetch(`/api/gallery/detail?path=${encodeURIComponent(path)}`)
+      .then(r => r.json())
+      .then(setDetail)
+      .catch(() => setDetail(null))
+  }, [items, selected])
 
   useEffect(() => {
     if (!items) return
@@ -217,18 +230,68 @@ function CollectionViewer({ collection, onClose }) {
             </div>
 
             {/* Metadata panel */}
-            {current && (current.transcription || current.description || current.context_subject || current.content_date) && (
+            {current && (
               <div className="w-72 shrink-0 border-l border-white/8 overflow-y-auto p-4 space-y-4 bg-black/20">
                 {current.content_date && (
                   <div>
                     <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Date</p>
                     <p className="text-white/70 text-[13px]">{current.content_date}</p>
+                    {current.content_date_explanation && (
+                      <p className="text-white/30 text-[10px] mt-0.5 italic">{current.content_date_explanation}</p>
+                    )}
                   </div>
                 )}
                 {current.context_subject && (
                   <div>
                     <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Subject</p>
                     <p className="text-white/70 text-[13px]">{current.context_subject}</p>
+                  </div>
+                )}
+                {current.place_name && (
+                  <div>
+                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Place</p>
+                    <p className="text-white/70 text-[13px]">{current.place_name}</p>
+                  </div>
+                )}
+
+                {/* People — assigned */}
+                {detail?.people?.length > 0 && (
+                  <div>
+                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1.5">People</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {detail.people.map(p => (
+                        <a key={p.id} href={`/manage/people/${p.id}`}
+                          className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 rounded-full pl-0.5 pr-2 py-0.5 transition-colors">
+                          {p.crop_url
+                            ? <img src={p.crop_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                            : <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[9px] text-white/40">{(p.known_as || p.name || '?')[0]}</span>}
+                          <span className="text-white/60 text-[11px]">{p.known_as || p.name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Unidentified faces */}
+                {detail?.unidentified?.length > 0 && (
+                  <div>
+                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1.5">
+                      Unidentified faces ({detail.unidentified.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {detail.unidentified.map(f => (
+                        <img key={f.face_index} src={f.crop_url} alt=""
+                          title={`Face ${f.face_index}`}
+                          className="w-9 h-9 rounded object-cover border border-white/10" loading="lazy" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {current.context_notes && (
+                  <div>
+                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Notes</p>
+                    <p className="text-white/50 text-[12px] leading-relaxed">{current.context_notes}</p>
                   </div>
                 )}
                 {current.description && (
@@ -241,6 +304,14 @@ function CollectionViewer({ collection, onClose }) {
                   <div>
                     <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Transcription</p>
                     <p className="text-white/40 text-[11px] leading-relaxed whitespace-pre-wrap font-mono">{current.transcription}</p>
+                  </div>
+                )}
+                {(current.physical_status || current.physical_condition) && (
+                  <div>
+                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Physical original</p>
+                    <p className="text-white/50 text-[12px]">
+                      {current.physical_status}{current.physical_condition ? ` · ${current.physical_condition}` : ''}
+                    </p>
                   </div>
                 )}
               </div>
