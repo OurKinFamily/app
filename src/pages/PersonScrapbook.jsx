@@ -31,6 +31,7 @@ const TYPE_ICONS = {
 export function PersonScrapbook() {
   const { person } = useOutletContext()
   const [collections, setCollections] = useState(null)
+  const [items, setItems] = useState(null)
   const [open, setOpen] = useState(null)
 
   useEffect(() => {
@@ -38,20 +39,48 @@ export function PersonScrapbook() {
       .then(r => r.json())
       .then(setCollections)
       .catch(() => setCollections([]))
+    fetch(`/api/people/${person.id}/items`)
+      .then(r => r.json())
+      .then(d => setItems(d.items || []))
+      .catch(() => setItems([]))
   }, [person.id])
 
-  if (!collections) return <div className="text-white/30 text-sm">Loading…</div>
-  if (!collections.length) return <div className="text-white/30 text-sm">No collections yet.</div>
+  if (!collections || !items) return <div className="text-white/30 text-sm">Loading…</div>
+  if (!collections.length && !items.length)
+    return <div className="text-white/30 text-sm">Nothing in the scrapbook yet.</div>
 
   return (
     <div className="p-6 max-w-4xl">
       <h2 className="text-white/40 uppercase tracking-wider text-xs mb-6">Scrapbook</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {collections.map(c => (
-          <CollectionCard key={c.id} collection={c} onClick={() => setOpen(c)} />
-        ))}
-      </div>
-      {open && <CollectionViewer collection={open} onClose={() => setOpen(null)} />}
+
+      {collections.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {collections.map(c => (
+            <CollectionCard key={c.id} collection={c} onClick={() => setOpen({ kind: 'collection', collection: c })} />
+          ))}
+        </div>
+      )}
+
+      {items.length > 0 && (
+        <>
+          <h3 className="text-white/40 uppercase tracking-wider text-xs mt-10 mb-4">Appears in</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {items.map(it => (
+              <ItemCard key={it.path} item={it} onClick={() => setOpen({ kind: 'item', item: it })} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {open?.kind === 'collection' && (
+        <CollectionViewer collection={open.collection} onClose={() => setOpen(null)} />
+      )}
+      {open?.kind === 'item' && (
+        <CollectionViewer
+          collection={{ name: open.item.context_subject || open.item.collection_name || 'Item', type: 'home_movies', is_series: false }}
+          presetItems={[open.item]}
+          onClose={() => setOpen(null)} />
+      )}
     </div>
   )
 }
@@ -89,9 +118,35 @@ function CollectionCard({ collection: c, onClick }) {
   )
 }
 
+// ── Individual item card (appears-in, not owned/grouped) ─────────────────────────
+
+function ItemCard({ item, onClick }) {
+  return (
+    <button onClick={onClick}
+      className="group text-left bg-white/3 hover:bg-white/6 border border-white/8 hover:border-white/15 rounded-xl overflow-hidden transition-all">
+      <div className="aspect-[4/3] bg-white/5 overflow-hidden relative">
+        {item.thumb_url
+          ? <img src={item.thumb_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          : <div className="w-full h-full flex items-center justify-center text-4xl opacity-30">{item.is_video ? '🎬' : '🖼'}</div>}
+        {item.is_video && (
+          <div className="absolute bottom-2 right-2 bg-black/60 text-white/70 text-[10px] px-1.5 py-0.5 rounded">▶ video</div>
+        )}
+      </div>
+      <div className="p-3">
+        <p className="text-white/80 text-[13px] font-medium leading-tight">{item.context_subject || 'Untitled'}</p>
+        <p className="text-white/35 text-[11px] mt-0.5">
+          {item.content_date}{item.place_name ? ` · ${item.place_name}` : ''}
+        </p>
+        {item.collection_name && <p className="text-white/25 text-[11px] mt-1">{item.collection_name}</p>}
+      </div>
+    </button>
+  )
+}
+
+
 // ── Collection viewer ──────────────────────────────────────────────────────────
 
-function CollectionViewer({ collection, onClose }) {
+function CollectionViewer({ collection, presetItems, onClose }) {
   useEscToClose(onClose)
   const [items, setItems]       = useState(null)
   const [selected, setSelected] = useState(null)
@@ -100,11 +155,16 @@ function CollectionViewer({ collection, onClose }) {
   const audioRef                = useRef(null)
 
   useEffect(() => {
+    if (presetItems) {
+      setItems(presetItems)
+      if (presetItems.length) setSelected(0)
+      return
+    }
     fetch(`/api/collections/${collection.id}/items`)
       .then(r => r.json())
       .then(d => { setItems(d.items); if (d.items.length) setSelected(0) })
       .catch(() => setItems([]))
-  }, [collection.id])
+  }, [collection.id, presetItems])
 
   // Fetch people/faces/objects detail for the current item
   useEffect(() => {
