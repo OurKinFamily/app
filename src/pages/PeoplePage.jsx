@@ -31,16 +31,20 @@ export function PeoplePage() {
 
   return (
     <Container className="py-6">
-      <div className="mb-6 flex items-center gap-3">
-        <h1 className="text-2xl font-semibold text-white">People</h1>
-        <span className="text-[12px] text-white/25">{people.length.toLocaleString()}</span>
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold text-white">People</h1>
+          <span className="text-[12px] text-white/25">{people.length.toLocaleString()}</span>
+        </div>
         <Input
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search…"
-          className="ml-auto max-w-xs"
+          className="md:ml-auto md:max-w-xs"
         />
-        <Button variant="secondary" size="sm" onClick={() => setShowModal(true)}>+ Add person</Button>
+        <Button variant="secondary" size="sm" onClick={() => setShowModal(true)} className="self-start md:self-auto">
+          + Add person
+        </Button>
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
