@@ -18,7 +18,7 @@ export function ManageLayout() {
         <Sidebar>
           <SidebarBack to="/">Home</SidebarBack>
           <SidebarSection>Manage</SidebarSection>
-          <SidebarLink to="/manage/people">People</SidebarLink>
+          <SidebarLink to="/manage/faces/unassigned">Faces</SidebarLink>
           <SidebarLink to="/manage/faces/unassigned" indent>Unassigned</SidebarLink>
           <SidebarLink to="/manage/faces/assigned" indent>Assigned</SidebarLink>
           <SidebarLink to="/manage/groups">Groups</SidebarLink>

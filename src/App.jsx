@@ -19,7 +19,6 @@ import { JobsPage } from './pages/JobsPage'
 import { AdminOverviewPage } from './pages/AdminOverviewPage'
 import { GalleryPage } from './pages/GalleryPage'
 import { PlacesPage } from './pages/PlacesPage'
-import { PeopleGalleryPage } from './pages/PeopleGalleryPage'
 import { ScrapbookPage } from './pages/ScrapbookPage'
 import { SuggestionsPage } from './pages/SuggestionsPage'
 import './index.css'
@@ -33,11 +32,11 @@ export default function App() {
         <Route element={<HomeLayout />}>
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/gallery/places" element={<PlacesPage />} />
-          <Route path="/gallery/people" element={<PeopleGalleryPage />} />
+          <Route path="/gallery/people" element={<PeoplePage />} />
           <Route path="/gallery/scrapbook" element={<ScrapbookPage />} />
         </Route>
         <Route path="/manage" element={<ManageLayout />}>
-          <Route path="people" element={<PeoplePage />} />
+          <Route path="people" element={<Navigate to="/gallery/people" replace />} />
           <Route path="faces" element={<Navigate to="/manage/faces/unassigned" replace />} />
           <Route path="faces/unassigned" element={<UnassignedFacesPage />} />
           <Route path="faces/assigned" element={<AssignedFacesPage />} />
