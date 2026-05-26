@@ -119,8 +119,10 @@ export function GalleryPage() {
 
   // Top sentinel observer: window scroll events stop firing at scrollY=0,
   // so we use IntersectionObserver to keep triggering loadNewer at the top.
+  // Skip while lightbox is open — sentinel sits at viewport top under the
+  // fixed-body lock and would fire loadNewer forever, shifting media[].
   useEffect(() => {
-    if (!hasMoreNewer || !topSentinelRef.current) return
+    if (lightboxOpen || !hasMoreNewer || !topSentinelRef.current) return
     const obs = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting) {
         prependedRef.current = true
@@ -130,7 +132,7 @@ export function GalleryPage() {
     }, { rootMargin: '300px' })
     obs.observe(topSentinelRef.current)
     return () => obs.disconnect()
-  }, [hasMoreNewer, loadNewer])
+  }, [lightboxOpen, hasMoreNewer, loadNewer])
 
   // Scroll-anchor: after prepending newer items, shift scrollY by the height delta.
   useLayoutEffect(() => {
