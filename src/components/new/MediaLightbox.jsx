@@ -93,7 +93,7 @@ export function MediaLightbox({
     const preload = i => {
       const it = items[i]
       if (!it || it.is_video) return
-      const src = it.url || it.thumbnail_url
+      const src = it.path ? `/api/media/medium/${it.path}` : (it.url || it.thumbnail_url)
       if (src) { const img = new Image(); img.src = src }
     }
     preload(index - 1)
@@ -115,7 +115,10 @@ export function MediaLightbox({
 
   const canPrev = index > 0
   const canNext = index < items.length - 1
-  const src = item.url || item.thumbnail_url
+  // Photos use the resized medium endpoint to avoid serving multi-MB originals to the lightbox.
+  const src = item.is_video
+    ? (item.url || item.thumbnail_url)
+    : (item.path ? `/api/media/medium/${item.path}` : (item.url || item.thumbnail_url))
   const fav = favorites?.has(item.path)
   const detail = renderDetail ? renderDetail(item, ctx, detailV) : (children || <DetailPlaceholder />)
   const rotate = () => { setRotation(r => (r + 90) % 360); onRotate?.(item, 90) }
