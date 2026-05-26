@@ -13,9 +13,7 @@ const STORAGE_KEY = 'gallery-row-height'
 export function GalleryPage() {
   const [yearFilter, setYearFilter] = useState(null)
   const [currentYear, setCurrentYear] = useState(null)
-  const params = yearFilter
-    ? { ts_from: `${yearFilter}-01-01`, ts_to: `${yearFilter + 1}-01-01` }
-    : {}
+  const params = yearFilter ? { year_from: yearFilter, year_to: yearFilter } : {}
   const { media, loading, hasMore, loadMore } = useGallery(params)
   const { favs, toggle: toggleFav } = useFavorites()
   const navigate = useNavigate()

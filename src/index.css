@@ -14,3 +14,12 @@ body {
     cursor: pointer;
   }
 }
+
+/* Scrolls but no visible scrollbar — used by DateScrubber. */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

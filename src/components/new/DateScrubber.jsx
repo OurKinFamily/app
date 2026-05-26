@@ -9,7 +9,7 @@ const YEARS = Array.from({ length: NEWEST - OLDEST + 1 }, (_, i) => NEWEST - i)
 // Desktop only — mobile chrome is too tight.
 export function DateScrubber({ activeYear, currentYear, onJump }) {
   return (
-    <div className="fixed right-0 top-12 z-20 hidden h-[calc(100vh-3rem)] w-14 flex-col items-end overflow-y-auto py-2 md:flex">
+    <div className="hide-scrollbar fixed right-0 top-12 z-20 hidden h-[calc(100vh-3rem)] w-14 flex-col items-end overflow-y-auto py-2 md:flex">
       {YEARS.map(y => {
         const isActive = activeYear === y
         const isCurrent = currentYear === y && !isActive
