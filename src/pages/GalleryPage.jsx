@@ -4,8 +4,8 @@ import { useGallery } from '../lib/useGallery'
 import { useFavorites } from '../lib/useFavorites'
 import { MediaGallery } from '../components/new/MediaGallery'
 
-const ROW_MIN = 100   // small (more per row)
-const ROW_MAX = 1200  // large (fewer per row)
+const ROW_MIN = 50    // small (more per row)
+const ROW_MAX = 2400  // large (fewer per row; tall enough to make portraits fill width)
 const ROW_DEFAULT = 200
 const STORAGE_KEY = 'gallery-row-height'
 
