@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Plus, X } from 'lucide-react'
 import { getClusters, getCluster, assignCluster, skipCluster, searchPeople, createPerson } from '../lib/api'
-import { PhotoViewer } from '../components/PhotoViewer'
-import { isVideo } from '../lib/media'
+import { isVideo, mediaUrl } from '../lib/media'
+import { Button } from '../components/new/Button'
+import { Input } from '../components/new/Input'
+import { EntityChip } from '../components/new/EntityChip'
+import { Select } from '../components/new/Select'
+import { PhotoLightbox } from '../components/new/PhotoLightbox'
 
 const QUICK_PERSON_IDS = [
   'person-stephen',
@@ -13,29 +18,45 @@ const QUICK_PERSON_IDS = [
 
 const PAGE_SIZE = 50
 
+function personToOption(p) {
+  return {
+    value: p.id,
+    text: p.known_as || p.name,
+    avatar: p.avatar ? mediaUrl(p.avatar) : null,
+    initials: true,
+    label: (
+      <>
+        {p.known_as && p.known_as !== p.name && <span className="text-white/35">({p.known_as}) </span>}
+        {p.name}
+      </>
+    ),
+  }
+}
+
 function ClusterCard({ cluster, isSelected, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left rounded-lg border transition-colors p-2 ${
-        isSelected
+      className={
+        'w-full rounded-lg border p-2 text-left transition-colors ' +
+        (isSelected
           ? 'border-blue-500/60 bg-blue-500/10'
-          : 'border-white/5 bg-white/3 hover:border-white/15 hover:bg-white/5'
-      }`}
+          : 'border-white/8 bg-white/5 hover:border-white/15 hover:bg-white/8')
+      }
     >
-      <div className="flex gap-1 mb-1.5">
+      <div className="mb-1.5 flex gap-1">
         {cluster.samples.slice(0, 4).map((url, i) => (
           <img
             key={i}
             src={url}
             alt=""
             loading="lazy"
-            className="w-12 h-12 rounded object-cover bg-white/5"
+            className="h-12 w-12 rounded bg-white/5 object-cover"
             onError={e => { e.target.style.display = 'none' }}
           />
         ))}
         {cluster.samples.length === 0 && (
-          <div className="w-12 h-12 rounded bg-white/5 flex items-center justify-center text-white/20 text-xs">?</div>
+          <div className="flex h-12 w-12 items-center justify-center rounded bg-white/5 text-xs text-white/20">?</div>
         )}
       </div>
       <div className="text-[11px] text-white/40">{cluster.size} face{cluster.size !== 1 ? 's' : ''}</div>
@@ -43,69 +64,66 @@ function ClusterCard({ cluster, isSelected, onClick }) {
   )
 }
 
-function QuickChip({ person, onAssign, disabled }) {
-  return (
-    <button
-      onMouseDown={() => onAssign(person.id)}
-      disabled={disabled}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-colors disabled:opacity-40"
-    >
-      {person.avatar
-        ? <img src={`/api/media/${person.avatar}`} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
-        : <div className="w-5 h-5 rounded-full bg-white/15 shrink-0" />
-      }
-      <span className="text-[12px] text-white/80 whitespace-nowrap">
-        {person.known_as || person.name.split(' ')[0]}
-      </span>
-    </button>
-  )
-}
-
 function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto }) {
   const [detail, setDetail]     = useState(null)
-  const [query, setQuery]       = useState('')
-  const [suggestions, setSugg]  = useState([])
-  const [showSugg, setShowSugg] = useState(false)
+  const [searchResults, setSearchResults] = useState([])
   const [saving, setSaving]     = useState(false)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName]   = useState('')
+  // face_index of crops the user has excluded from this assignment.
+  const [excluded, setExcluded] = useState(() => new Set())
 
   useEffect(() => {
     if (!cluster) return
+    setExcluded(new Set())
     getCluster(cluster.id).then(setDetail).catch(() => {})
   }, [cluster?.id])
 
-  useEffect(() => {
-    if (!query.trim()) { setSugg([]); return }
-    const t = setTimeout(async () => {
-      const results = await searchPeople(query).catch(() => [])
-      setSugg(results)
-    }, 200)
-    return () => clearTimeout(t)
-  }, [query])
+  function buildExcludeList() {
+    if (!detail || excluded.size === 0) return []
+    return detail.faces
+      .filter(f => excluded.has(f.face_index))
+      .map(f => [f.photo_path, f.face_index])
+  }
+
+  function toggleExcluded(faceIndex) {
+    setExcluded(prev => {
+      const next = new Set(prev)
+      next.has(faceIndex) ? next.delete(faceIndex) : next.add(faceIndex)
+      return next
+    })
+  }
+
+  const onSearch = async q => {
+    if (!q.trim()) { setSearchResults([]); return }
+    try {
+      const r = await searchPeople(q)
+      setSearchResults(r.map(personToOption))
+    } catch { setSearchResults([]) }
+  }
 
   const handleAssign = useCallback(async (personId) => {
     if (saving) return
     setSaving(true)
     try {
-      await assignCluster(cluster.id, personId)
+      await assignCluster(cluster.id, personId, buildExcludeList())
       onAssigned(cluster.id)
     } finally {
       setSaving(false)
     }
-  }, [cluster?.id, saving, onAssigned])
+  }, [cluster?.id, saving, onAssigned, detail, excluded])
 
   const handleCreate = useCallback(async () => {
     if (!newName.trim() || saving) return
     setSaving(true)
     try {
       const person = await createPerson({ name: newName.trim() })
-      await assignCluster(cluster.id, person.id)
+      await assignCluster(cluster.id, person.id, buildExcludeList())
       onAssigned(cluster.id)
     } finally {
       setSaving(false)
     }
-  }, [newName, saving, cluster?.id, onAssigned])
+  }, [newName, saving, cluster?.id, onAssigned, detail, excluded])
 
   const handleSkip = useCallback(async () => {
     await skipCluster(cluster.id)
@@ -114,143 +132,129 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
 
   if (!cluster) {
     return (
-      <div className="flex-1 flex items-center justify-center text-white/20 text-sm">
+      <div className="flex flex-1 items-center justify-center text-sm text-white/20">
         Select a cluster to identify
       </div>
     )
   }
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col gap-5 overflow-y-auto pr-2">
-
-      {/* Header */}
+    <div className="hide-scrollbar flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto pr-2">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-medium text-white">
           Cluster #{cluster.id} — {cluster.size} face{cluster.size !== 1 ? 's' : ''}
         </h2>
-        <button
-          onClick={handleSkip}
-          className="text-[12px] text-white/30 hover:text-white/60 px-2 py-1 rounded border border-white/10 hover:border-white/20 transition-colors"
-        >
-          Skip
-        </button>
+        <Button variant="secondary" size="sm" onClick={handleSkip}>Skip</Button>
       </div>
 
-      {/* Assign section (above crops) */}
       {!creating ? (
         <div className="space-y-3">
-          <label className="text-[11px] text-white/40 uppercase tracking-wider">Assign to person</label>
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-white/40">Assign to person</label>
 
-          {/* Quick chips */}
           {quickPeople.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {quickPeople.map(p => (
-                <QuickChip key={p.id} person={p} onAssign={handleAssign} disabled={saving} />
+                <EntityChip
+                  key={p.id}
+                  avatar={p.avatar ? mediaUrl(p.avatar) : null}
+                  initials
+                  text={p.known_as || p.name.split(' ')[0]}
+                  onClick={() => handleAssign(p.id)}
+                />
               ))}
             </div>
           )}
 
-          {/* Search */}
-          <div className="relative">
-            <input
-              type="text"
-              value={query}
-              onChange={e => { setQuery(e.target.value); setShowSugg(true) }}
-              onFocus={() => setShowSugg(true)}
-              onBlur={() => setTimeout(() => setShowSugg(false), 150)}
-              placeholder="Search all people…"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[13px] text-white placeholder-white/25 outline-none focus:border-white/25"
-            />
-            {showSugg && suggestions.length > 0 && (
-              <div className="absolute top-full mt-1 left-0 right-0 bg-[#1a1a1a] border border-white/10 rounded-lg overflow-hidden z-20 shadow-xl max-h-52 overflow-y-auto">
-                {suggestions.map(p => (
-                  <button
-                    key={p.id}
-                    onMouseDown={() => handleAssign(p.id)}
-                    disabled={saving}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-white/70 hover:bg-white/5 hover:text-white text-left"
-                  >
-                    {p.avatar
-                      ? <img src={`/api/media/${p.avatar}`} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
-                      : <div className="w-6 h-6 rounded-full bg-white/10 shrink-0" />
-                    }
-                    <span>
-                      {p.known_as && <span className="text-white/40 mr-1">({p.known_as})</span>}
-                      {p.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <Select
+            options={searchResults}
+            value={null}
+            onChange={opt => handleAssign(opt.value)}
+            onQueryChange={onSearch}
+            placeholder="Search all people…"
+          />
 
           <button
             onClick={() => setCreating(true)}
-            className="text-[12px] text-blue-400/70 hover:text-blue-400 transition-colors"
+            className="flex items-center gap-1 text-[12px] text-blue-400/70 transition-colors hover:text-blue-400"
           >
-            + Create new person
+            <Plus size={12} /> Create new person
           </button>
         </div>
       ) : (
         <div className="space-y-2">
-          <label className="text-[11px] text-white/40 uppercase tracking-wider">New person name</label>
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-white/40">New person name</label>
           <div className="flex gap-2">
-            <input
-              type="text"
+            <Input
               value={newName}
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
               placeholder="Full name…"
               autoFocus
-              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[13px] text-white placeholder-white/25 outline-none focus:border-white/25"
             />
-            <button
-              onClick={handleCreate}
-              disabled={saving || !newName.trim()}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[13px] disabled:opacity-40 transition-colors"
-            >
-              Create & Assign
-            </button>
-            <button
-              onClick={() => setCreating(false)}
-              className="px-3 py-2 rounded-lg border border-white/10 text-white/50 hover:text-white text-[13px] transition-colors"
-            >
-              Cancel
-            </button>
+            <Button size="sm" onClick={handleCreate} disabled={saving || !newName.trim()}>
+              Create &amp; Assign
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setCreating(false)}>Cancel</Button>
           </div>
         </div>
       )}
 
-      {/* Face crops */}
       <div>
-        <div className="text-[11px] text-white/30 mb-2 uppercase tracking-wider">
-          {detail ? `${detail.faces.length} crops` : 'Samples'}
-          {!detail && <span className="ml-1 opacity-50">(loading…)</span>}
+        <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-white/40">
+          <span>
+            {detail ? `${detail.faces.length} crops` : 'Samples'}
+            {!detail && <span className="ml-1 opacity-50">(loading…)</span>}
+            {excluded.size > 0 && <span className="ml-2 text-red-400/70 normal-case">· {excluded.size} excluded</span>}
+          </span>
+          {excluded.size > 0 && (
+            <button onClick={() => setExcluded(new Set())} className="text-[10px] normal-case text-white/40 hover:text-white">
+              clear
+            </button>
+          )}
         </div>
         <div className="flex flex-wrap gap-1.5">
           {detail
-            ? detail.faces.map((f, i) => (
-                <button
-                  key={i}
-                  onClick={() => f.photo_path && onOpenPhoto(detail.faces, i)}
-                  className="rounded overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  title="Open original photo"
-                >
-                  <img
-                    src={f.crop_url}
-                    alt=""
-                    className="w-16 h-16 object-cover bg-white/5 hover:opacity-80 transition-opacity"
-                    onError={e => { e.target.style.display = 'none' }}
-                  />
-                </button>
-              ))
+            ? detail.faces.map((f, i) => {
+                const ex = excluded.has(f.face_index)
+                return (
+                  <div key={i} className="group/face relative">
+                    <button
+                      onClick={() => f.photo_path && onOpenPhoto(detail.faces, i)}
+                      className={
+                        'overflow-hidden rounded focus:outline-none focus:ring-2 focus:ring-blue-500/50 ' +
+                        (ex ? 'opacity-30 ring-1 ring-red-500/60' : '')
+                      }
+                      title="Open original photo"
+                    >
+                      <img
+                        src={f.crop_url}
+                        alt=""
+                        className="h-16 w-16 bg-white/5 object-cover transition-opacity hover:opacity-80"
+                        onError={e => { e.target.style.display = 'none' }}
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleExcluded(f.face_index)}
+                      aria-label={ex ? 'Include face' : 'Exclude face'}
+                      className={
+                        'absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-zinc-700 transition-colors ' +
+                        (ex
+                          ? 'bg-red-500 text-white opacity-100'
+                          : 'bg-zinc-900 text-white/60 opacity-0 hover:bg-red-500 hover:text-white group-hover/face:opacity-100')
+                      }
+                    >
+                      <X size={10} strokeWidth={3} />
+                    </button>
+                  </div>
+                )
+              })
             : cluster.samples.map((url, i) => (
-                <img key={i} src={url} alt="" className="w-16 h-16 rounded object-cover bg-white/5" />
+                <img key={i} src={url} alt="" className="h-16 w-16 rounded bg-white/5 object-cover" />
               ))
           }
         </div>
       </div>
-
     </div>
   )
 }
@@ -263,16 +267,15 @@ export function UnassignedFacesPage() {
   const [hasMore, setHasMore]     = useState(false)
   const [selected, setSelected]   = useState(null)
   const [quickPeople, setQuickPeople] = useState([])
-  const [viewer, setViewer]           = useState(null) // { photos, index }
+  const [viewer, setViewer]           = useState(null)
   const offsetRef = useRef(0)
   const sentinelRef = useRef(null)
 
-  // Fetch quick-select family members
   useEffect(() => {
     Promise.all(
       QUICK_PERSON_IDS.map(id =>
-        fetch(`/api/people/${id}`).then(r => r.ok ? r.json() : null).catch(() => null)
-      )
+        fetch(`/api/people/${id}`).then(r => r.ok ? r.json() : null).catch(() => null),
+      ),
     ).then(results => setQuickPeople(results.filter(Boolean)))
   }, [])
 
@@ -285,9 +288,7 @@ export function UnassignedFacesPage() {
       setTotal(data.total)
       setHasMore(offset + PAGE_SIZE < data.total)
       offsetRef.current = offset + data.clusters.length
-      if (!append) {
-        setSelected(null)
-      }
+      if (!append) setSelected(null)
     } finally {
       setLoading(false)
       setLoadingMore(false)
@@ -322,7 +323,6 @@ export function UnassignedFacesPage() {
   }, [])
 
   const handleOpenPhoto = useCallback((faces, index) => {
-    // Build unique-by-path photo list; keep clicked index aligned
     const seen = new Set()
     const photos = []
     let adjustedIndex = 0
@@ -337,55 +337,53 @@ export function UnassignedFacesPage() {
 
   return (
     <>
-    {viewer && (
-      <PhotoViewer
-        photos={viewer.photos}
-        initialIndex={viewer.index}
-        onClose={() => setViewer(null)}
-        onNeedMore={() => {}}
-        onNavigate={() => {}}
-      />
-    )}
-    <div className="flex h-[calc(100vh-3rem)]">
-      {/* Cluster list */}
-      <div className="w-56 shrink-0 border-r border-white/5 flex flex-col">
-        <div className="px-4 pt-6 pb-3 border-b border-white/5">
-          <h1 className="text-sm font-semibold text-white">Unassigned Clusters</h1>
-          <p className="text-[11px] text-white/30 mt-0.5">
-            {loading ? '…' : `${total} remaining`}
-          </p>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-          {loading && <p className="text-white/20 text-xs p-2">Loading…</p>}
-          {!loading && clusters.length === 0 && (
-            <p className="text-white/20 text-xs p-2">All done!</p>
-          )}
-          {clusters.map(c => (
-            <ClusterCard
-              key={c.id}
-              cluster={c}
-              isSelected={selected?.id === c.id}
-              onClick={() => setSelected(c)}
-            />
-          ))}
-          <div ref={sentinelRef} className="py-2 text-center">
-            {loadingMore && <span className="text-[11px] text-white/20">Loading…</span>}
+      {viewer && (
+        <PhotoLightbox
+          items={viewer.photos}
+          initialIndex={viewer.index}
+          onClose={() => setViewer(null)}
+        />
+      )}
+      <div className="flex h-[calc(100vh-var(--app-header-h,3rem))]">
+        {/* Cluster list */}
+        <div className="flex w-56 shrink-0 flex-col border-r border-white/5">
+          <div className="border-b border-white/5 px-4 pb-3 pt-6">
+            <h1 className="text-sm font-semibold text-white">Unassigned Clusters</h1>
+            <p className="mt-0.5 text-[11px] text-white/30">
+              {loading ? '…' : `${total} remaining`}
+            </p>
+          </div>
+          <div className="hide-scrollbar flex-1 space-y-1.5 overflow-y-auto p-2">
+            {loading && <p className="p-2 text-xs text-white/20">Loading…</p>}
+            {!loading && clusters.length === 0 && (
+              <p className="p-2 text-xs text-white/20">All done!</p>
+            )}
+            {clusters.map(c => (
+              <ClusterCard
+                key={c.id}
+                cluster={c}
+                isSelected={selected?.id === c.id}
+                onClick={() => setSelected(c)}
+              />
+            ))}
+            <div ref={sentinelRef} className="py-2 text-center">
+              {loadingMore && <span className="text-[11px] text-white/20">Loading…</span>}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Assignment panel */}
-      <div className="flex-1 p-6 flex overflow-hidden">
-        <AssignPanel
-          key={selected?.id ?? 'none'}
-          cluster={selected}
-          quickPeople={quickPeople}
-          onAssigned={removeCluster}
-          onSkipped={removeCluster}
-          onOpenPhoto={handleOpenPhoto}
-        />
+        {/* Assignment panel */}
+        <div className="flex flex-1 overflow-hidden p-6">
+          <AssignPanel
+            key={selected?.id ?? 'none'}
+            cluster={selected}
+            quickPeople={quickPeople}
+            onAssigned={removeCluster}
+            onSkipped={removeCluster}
+            onOpenPhoto={handleOpenPhoto}
+          />
+        </div>
       </div>
-    </div>
     </>
   )
 }

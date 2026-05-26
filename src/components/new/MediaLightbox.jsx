@@ -4,23 +4,7 @@ import { cn } from '../../lib/cn'
 import { IconButton } from './IconButton'
 import { FaceAssignPopover } from './FaceAssignPopover'
 import { MediaLightboxSheet } from './MediaLightboxSheet'
-
-// Maps a bbox in natural-media coords to a CSS rect over the rendered <img> or <video>.
-function bboxRect(el, bbox, pad = 0) {
-  if (!el) return null
-  const nw = el.naturalWidth || el.videoWidth
-  const nh = el.naturalHeight || el.videoHeight
-  if (!nw || !nh) return null
-  const [x1, y1, x2, y2] = bbox
-  const sx = el.clientWidth / nw
-  const sy = el.clientHeight / nh
-  return {
-    left: el.offsetLeft + x1 * sx - pad,
-    top: el.offsetTop + y1 * sy - pad,
-    width: (x2 - x1) * sx + pad * 2,
-    height: (y2 - y1) * sy + pad * 2,
-  }
-}
+import { bboxRect, onMediaError } from './mediaLightboxHelpers'
 
 // Lightbox shell. Detail content via renderDetail(item, ctx).
 // ctx: { setHighlight, setFaces, setFaceClickHandler } — lets the detail panel
@@ -199,6 +183,7 @@ export function MediaLightbox({
             ref={mediaRef} key={src} src={src} alt={item.filename || ''}
             onClick={() => setChrome(c => !c)}
             onLoad={() => setImgTick(t => t + 1)}
+            onError={e => onMediaError(e, item)}
             style={rotation ? { transform: `rotate(${rotation}deg)` } : undefined}
             className="max-h-full max-w-full object-contain transition-transform duration-200"
           />
