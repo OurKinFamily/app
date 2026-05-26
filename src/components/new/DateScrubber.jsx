@@ -7,7 +7,7 @@ import { cn } from '../../lib/cn'
 export function DateScrubber({ years = [], currentYear, onJump }) {
   if (!years.length) return null
   return (
-    <div className="hide-scrollbar fixed right-0 top-12 z-20 hidden h-[calc(100vh-3rem)] w-14 flex-col items-stretch overflow-y-auto bg-black/20 py-2 md:flex">
+    <div className="hide-scrollbar fixed right-0 top-12 z-[1200] flex h-[calc(100vh-3rem)] w-10 flex-col items-stretch overflow-y-auto bg-black/20 py-2 pb-20 md:w-14 md:pb-2">
       {years.map(({ year }) => {
         const isCurrent = currentYear === year
         return (
