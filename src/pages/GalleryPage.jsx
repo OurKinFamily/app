@@ -28,13 +28,23 @@ export function GalleryPage() {
     localStorage.setItem(STORAGE_KEY, String(Math.round(rowHeight)))
   }, [rowHeight])
 
-  // infinite scroll
+  // infinite scroll: sentinel observer + window scroll fallback (covers mobile edge cases)
   useEffect(() => {
     const obs = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting) loadMore()
     }, { rootMargin: '600px' })
     if (sentinelRef.current) obs.observe(sentinelRef.current)
-    return () => obs.disconnect()
+
+    const onScroll = () => {
+      const doc = document.documentElement
+      if (window.scrollY + window.innerHeight > doc.scrollHeight - 600) loadMore()
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+
+    return () => {
+      obs.disconnect()
+      window.removeEventListener('scroll', onScroll)
+    }
   }, [loadMore])
 
   // pinch-to-resize: override native zoom on the gallery only
