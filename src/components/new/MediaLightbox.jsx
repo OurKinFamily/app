@@ -88,6 +88,18 @@ export function MediaLightbox({
     if (items[index]) onNavigate?.(items[index])
   }, [index]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Preload neighbors so left/right is snappy.
+  useEffect(() => {
+    const preload = i => {
+      const it = items[i]
+      if (!it || it.is_video) return
+      const src = it.url || it.thumbnail_url
+      if (src) { const img = new Image(); img.src = src }
+    }
+    preload(index - 1)
+    preload(index + 1)
+  }, [index, items])
+
   useEffect(() => {
     const h = e => {
       if (e.key === 'ArrowRight') go(1)
