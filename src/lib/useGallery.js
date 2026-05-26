@@ -52,18 +52,36 @@ export function useGallery({ anchor = null, params = {} } = {}) {
     return () => { alive = false }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadOlder = useCallback(async () => {
+  const loadOlder = useCallback(async (skipMs = 0) => {
     if (loadingRef.current || !oldestRef.current) return
     loadingRef.current = true
     setLoading(true)
     try {
+      const oldestTs = new Date(oldestRef.current).getTime()
+      const ts_to = skipMs > 0 ? new Date(oldestTs - skipMs).toISOString() : oldestRef.current
       const qs = new URLSearchParams({ limit: LIMIT, sort: 'desc', ...params })
-      qs.set('ts_to', oldestRef.current)
+      qs.set('ts_to', ts_to)
       const res = await fetch(`/api/gallery?${qs}`)
       const d = await res.json()
       const batch = (d.media || []).filter(m => m.timestamp !== oldestRef.current)
       if (batch.length) {
-        mediaRef.current = [...mediaRef.current, ...batch]
+        const additions = []
+        if (skipMs > 0) {
+          // visualize the skipped range as gray placeholder tiles
+          const gapStart = oldestTs - skipMs
+          const gapEnd = oldestTs
+          for (let i = 0; i < 12; i++) {
+            additions.push({
+              path: `__gap__${gapStart}_${i}`,
+              __gap: true,
+              width: 1, height: 1,
+              dominant_color: '#1d1d1d',
+              timestamp: new Date(gapStart + (gapEnd - gapStart) * ((i + 0.5) / 12)).toISOString(),
+            })
+          }
+        }
+        additions.push(...batch)
+        mediaRef.current = [...mediaRef.current, ...additions]
         oldestRef.current = batch[batch.length - 1].timestamp
         setMedia([...mediaRef.current])
       }

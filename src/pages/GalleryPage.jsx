@@ -25,6 +25,7 @@ export function GalleryPage() {
   const rowHeightRef = useRef(ROW_DEFAULT)
   const prependedRef = useRef(false)
   const prevHeightRef = useRef(0)
+  const velocityRef = useRef({ y: 0, t: 0, v: 0 })
 
   const [rowHeight, setRowHeight] = useState(() => {
     const stored = Number(localStorage.getItem(STORAGE_KEY))
@@ -41,11 +42,28 @@ export function GalleryPage() {
     fetch('/api/gallery/years').then(r => (r.ok ? r.json() : null)).then(d => d && setYears(d)).catch(() => {})
   }, [])
 
-  // Scroll: load older near bottom, newer near top (if hasMoreNewer).
+  // Scroll: load older near bottom (skip ahead in time when scrolling fast),
+  // newer near top (if anchored).
   useEffect(() => {
+    const DAY = 86400 * 1000
     const onScroll = () => {
+      // velocity in px/sec
+      const now = performance.now()
+      const y = window.scrollY
+      const dt = now - velocityRef.current.t
+      if (dt > 0) velocityRef.current.v = Math.abs(y - velocityRef.current.y) / dt * 1000
+      velocityRef.current.y = y
+      velocityRef.current.t = now
+
       const doc = document.documentElement
-      if (window.scrollY + window.innerHeight > doc.scrollHeight - 600) loadOlder()
+      if (window.scrollY + window.innerHeight > doc.scrollHeight - 600) {
+        const v = velocityRef.current.v
+        const skipMs = v > 8000 ? 10 * 365 * DAY
+          : v > 4000 ? 365 * DAY
+          : v > 2000 ? 30 * DAY
+          : 0
+        loadOlder(skipMs)
+      }
       if (hasMoreNewer && window.scrollY < 600) {
         prependedRef.current = true
         prevHeightRef.current = doc.scrollHeight
