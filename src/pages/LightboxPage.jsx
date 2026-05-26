@@ -17,7 +17,7 @@ export function LightboxPage() {
 
   useEffect(() => {
     if (index < 0 && hasMore) loadMore()
-  }, [index, hasMore, loadMore])
+  }, [media, index, hasMore, loadMore])
 
   if (index < 0) {
     return <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black text-white/30">Loading…</div>
