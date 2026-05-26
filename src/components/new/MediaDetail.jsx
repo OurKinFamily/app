@@ -118,6 +118,7 @@ export function MediaDetail({ item, ctx }) {
                     <EntityChip
                       to={`/manage/people/${p.id}`}
                       avatar={p.crop_url || (p.avatar ? mediaUrl(p.avatar) : null)}
+                      initials
                       text={p.known_as || p.name}
                     />
                   </span>
