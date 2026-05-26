@@ -37,17 +37,17 @@ export function MediaLightbox({
   const [highlight, setHighlight] = useState(null)
   const [faces, setFaces] = useState([])
   const [assignAt, setAssignAt] = useState(null)
+  const [detailV, setDetailV] = useState(0)
   const [, setImgTick] = useState(0)
   const touch = useRef(null)
   const sheetTouch = useRef(null)
   const mediaRef = useRef(null)
-  const bumpRef = useRef(null)
 
-  const setBumpDetail = useCallback(fn => { bumpRef.current = fn }, [])
+  const bumpDetail = useCallback(() => setDetailV(v => v + 1), [])
   const openAssign = useCallback((face, x, y) => setAssignAt({ face, x, y }), [])
   const ctx = useMemo(
-    () => ({ setHighlight, setFaces, setBumpDetail, openAssign, setSheetOpen }),
-    [setBumpDetail, openAssign],
+    () => ({ setHighlight, setFaces, openAssign, setSheetOpen, bumpDetail }),
+    [openAssign, bumpDetail],
   )
 
   const go = useCallback(delta => {
@@ -117,8 +117,7 @@ export function MediaLightbox({
   const canNext = index < items.length - 1
   const src = item.url || item.thumbnail_url
   const fav = favorites?.has(item.path)
-  // eslint-disable-next-line react-hooks/refs -- ctx includes a setter that captures a ref
-  const detail = renderDetail ? renderDetail(item, ctx) : (children || <DetailPlaceholder />)
+  const detail = renderDetail ? renderDetail(item, ctx, detailV) : (children || <DetailPlaceholder />)
   const rotate = () => { setRotation(r => (r + 90) % 360); onRotate?.(item, 90) }
 
   const chromeCls = cn(
@@ -266,7 +265,7 @@ export function MediaLightbox({
           x={assignAt.x}
           y={assignAt.y}
           onClose={() => setAssignAt(null)}
-          onAssigned={() => bumpRef.current?.()}
+          onAssigned={bumpDetail}
         />
       )}
     </div>

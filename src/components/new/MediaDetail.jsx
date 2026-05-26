@@ -30,13 +30,6 @@ export function MediaDetail({ item, ctx }) {
   const [loading, setLoading] = useState(true)
   const [showAllFaces, setShowAllFaces] = useState(false)
 
-  const fetchDetail = async () => {
-    try {
-      const res = await fetch(`/api/gallery/detail?path=${encodeURIComponent(item.path)}`, { cache: 'no-store' })
-      if (res.ok) setDetail(await res.json())
-    } catch { /* ignore network errors */ }
-  }
-
   useEffect(() => {
     if (!item?.path) return
     let alive = true
@@ -63,8 +56,6 @@ export function MediaDetail({ item, ctx }) {
     ctx.setFaces(list)
   }, [detail, ctx])
 
-  // Register a reloader so the lightbox can refresh us after an assign.
-  useEffect(() => { ctx?.setBumpDetail?.(fetchDetail) }, [ctx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const cameraLabel = detail ? [detail.camera?.make, detail.camera?.model].filter(Boolean).join(' ') : ''
   const orientation = detail?.media?.orientation

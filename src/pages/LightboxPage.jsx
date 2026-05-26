@@ -52,7 +52,7 @@ export function LightboxPage() {
       onAlbum={it => console.log('add to album (mock)', it.path)}
       onDownload={it => console.log('download (mock)', it.path)}
       onDelete={() => { console.log('delete (mock)'); close() }}
-      renderDetail={(it, ctx) => <MediaDetail key={it.path} item={it} ctx={ctx} />}
+      renderDetail={(it, ctx, v) => <MediaDetail key={`${it.path}-${v}`} item={it} ctx={ctx} />}
     />
   )
 }
