@@ -69,7 +69,7 @@ export function Select({ options = [], value, onChange, onQueryChange, placehold
             onChange={e => handleQuery(e.target.value)}
             onFocus={() => setOpen(true)}
             placeholder={selectedMulti.length ? '' : placeholder}
-            className="min-w-[80px] flex-1 bg-transparent py-1 text-[13px] text-white placeholder-white/25 outline-none"
+            className="min-w-[80px] flex-1 bg-transparent py-1 text-base text-white caret-white placeholder-white/25 outline-none md:text-[13px]"
           />
         </div>
       ) : (
@@ -79,7 +79,7 @@ export function Select({ options = [], value, onChange, onQueryChange, placehold
           onChange={e => handleQuery(e.target.value)}
           onFocus={() => setOpen(true)}
           placeholder={placeholder}
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[13px] text-white placeholder-white/25 outline-none focus:border-white/25"
+          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-base text-white caret-white placeholder-white/25 outline-none focus:border-white/40 md:text-[13px]"
         />
       )}
 
