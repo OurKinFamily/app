@@ -20,6 +20,7 @@ import { Container } from '../components/new/Container'
 import { DetailSection } from '../components/new/DetailSection'
 import { Field } from '../components/new/Field'
 import { Tag } from '../components/new/Tag'
+import { ProgressBar } from '../components/new/ProgressBar'
 
 const TAG_TONES = ['default', 'green', 'amber', 'red', 'blue', 'purple', 'pink', 'orange', 'slate', 'cyan']
 import { MiniMap } from '../components/new/MiniMap'
@@ -212,6 +213,31 @@ export function DesignPage() {
             <Tag tone="pink">Family Friend</Tag>
             <Tag tone="cyan">Hobby / Club</Tag>
             <Tag tone="slate">Civic</Tag>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="ProgressBar — sizes, tones, with/without chips">
+        <div className="flex max-w-md flex-col gap-5">
+          <div>
+            <p className="mb-1 text-[11px] text-white/30">size=sm · tone=blue · 23%</p>
+            <ProgressBar pct={23} size="sm" />
+          </div>
+          <div>
+            <p className="mb-1 text-[11px] text-white/30">size=md · tone=green · 78% · with pct + counts</p>
+            <ProgressBar pct={78} tone="green" cur={7823} tot={10000} showPct showCounts />
+          </div>
+          <div>
+            <p className="mb-1 text-[11px] text-white/30">size=lg · tone=amber · 100%</p>
+            <ProgressBar pct={100} tone="amber" size="lg" showPct />
+          </div>
+          <div>
+            <p className="mb-1 text-[11px] text-white/30">size=md · tone=red · 12% · counts only</p>
+            <ProgressBar pct={12} tone="red" cur={123} tot={1024} showCounts />
+          </div>
+          <div>
+            <p className="mb-1 text-[11px] text-white/30">size=md · tone=purple · 50%</p>
+            <ProgressBar pct={50} tone="purple" showPct showCounts cur={500} tot={1000} />
           </div>
         </div>
       </Section>

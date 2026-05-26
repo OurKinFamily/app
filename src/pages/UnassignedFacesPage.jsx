@@ -3,10 +3,16 @@ import { Plus, X } from 'lucide-react'
 import { getClusters, getCluster, assignCluster, skipCluster, searchPeople, createPerson } from '../lib/api'
 import { isVideo, mediaUrl } from '../lib/media'
 import { Button } from '../components/new/Button'
+import { Container } from '../components/new/Container'
 import { Input } from '../components/new/Input'
+import { Label } from '../components/new/Label'
+import { Tag } from '../components/new/Tag'
 import { EntityChip } from '../components/new/EntityChip'
 import { Select } from '../components/new/Select'
-import { PhotoLightbox } from '../components/new/PhotoLightbox'
+import { SubheaderPortal } from '../components/new/SubheaderPortal'
+import { HeaderTrailingPortal } from '../components/new/HeaderTrailingPortal'
+import { MediaLightbox } from '../components/new/MediaLightbox'
+import { MediaDetail } from '../components/new/MediaDetail'
 
 const QUICK_PERSON_IDS = [
   'person-stephen',
@@ -17,6 +23,7 @@ const QUICK_PERSON_IDS = [
 ]
 
 const PAGE_SIZE = 50
+const CROP_BATCH = 200
 
 function personToOption(p) {
   return {
@@ -66,24 +73,45 @@ function ClusterCard({ cluster, isSelected, onClick }) {
 
 function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto }) {
   const [detail, setDetail]     = useState(null)
+  const [shown, setShown]       = useState(CROP_BATCH)
   const [searchResults, setSearchResults] = useState([])
   const [saving, setSaving]     = useState(false)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName]   = useState('')
-  // face_index of crops the user has excluded from this assignment.
   const [excluded, setExcluded] = useState(() => new Set())
 
   useEffect(() => {
     if (!cluster) return
     setExcluded(new Set())
+    setShown(CROP_BATCH)
     getCluster(cluster.id).then(setDetail).catch(() => {})
   }, [cluster?.id])
 
-  function buildExcludeList() {
-    if (!detail || excluded.size === 0) return []
-    return detail.faces
+  function buildAssignArgs() {
+    if (!detail) return { exclude: [], include: [], handledKeys: new Set() }
+    const visibleFaces = detail.faces.slice(0, shown)
+    const include = visibleFaces
+      .filter(f => !excluded.has(f.face_index))
+      .map(f => [f.photo_path, f.face_index])
+    const exclude = visibleFaces
       .filter(f => excluded.has(f.face_index))
       .map(f => [f.photo_path, f.face_index])
+    // Composite key (photo_path|face_index) — face_index alone repeats across photos.
+    const handledKeys = new Set(visibleFaces.map(f => `${f.photo_path}|${f.face_index}`))
+    return { include, exclude, handledKeys }
+  }
+
+  function applyAssignToLocalState(args) {
+    if (!args.handledKeys.size) return 0
+    const count = args.handledKeys.size
+    setDetail(d => d ? {
+      ...d,
+      faces: d.faces.filter(f => !args.handledKeys.has(`${f.photo_path}|${f.face_index}`)),
+      size: (d.size || 0) - count,
+    } : d)
+    setExcluded(new Set())
+    setShown(CROP_BATCH)
+    return count
   }
 
   function toggleExcluded(faceIndex) {
@@ -106,24 +134,30 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
     if (saving) return
     setSaving(true)
     try {
-      await assignCluster(cluster.id, personId, buildExcludeList())
-      onAssigned(cluster.id)
+      const args = buildAssignArgs()
+      await assignCluster(cluster.id, personId, args)
+      const delta = applyAssignToLocalState(args)
+      onAssigned(cluster.id, delta)
     } finally {
       setSaving(false)
     }
-  }, [cluster?.id, saving, onAssigned, detail, excluded])
+  }, [cluster?.id, saving, onAssigned, detail, excluded, shown])
 
   const handleCreate = useCallback(async () => {
     if (!newName.trim() || saving) return
     setSaving(true)
     try {
       const person = await createPerson({ name: newName.trim() })
-      await assignCluster(cluster.id, person.id, buildExcludeList())
-      onAssigned(cluster.id)
+      const args = buildAssignArgs()
+      await assignCluster(cluster.id, person.id, args)
+      const delta = applyAssignToLocalState(args)
+      setCreating(false)
+      setNewName('')
+      onAssigned(cluster.id, delta)
     } finally {
       setSaving(false)
     }
-  }, [newName, saving, cluster?.id, onAssigned, detail, excluded])
+  }, [newName, saving, cluster?.id, onAssigned, detail, excluded, shown])
 
   const handleSkip = useCallback(async () => {
     await skipCluster(cluster.id)
@@ -139,17 +173,18 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
   }
 
   return (
-    <div className="hide-scrollbar flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto pr-2">
+    <div className="hide-scrollbar flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-medium text-white">
-          Cluster #{cluster.id} — {cluster.size} face{cluster.size !== 1 ? 's' : ''}
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-base font-medium text-white">Cluster #{cluster.id}</h2>
+          <Tag tone="slate">{cluster.size.toLocaleString()} face{cluster.size !== 1 ? 's' : ''}</Tag>
+        </div>
         <Button variant="secondary" size="sm" onClick={handleSkip}>Skip</Button>
       </div>
 
       {!creating ? (
         <div className="space-y-3">
-          <label className="text-[10px] font-semibold uppercase tracking-wider text-white/40">Assign to person</label>
+          <Label>Assign to person</Label>
 
           {quickPeople.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -182,7 +217,7 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
         </div>
       ) : (
         <div className="space-y-2">
-          <label className="text-[10px] font-semibold uppercase tracking-wider text-white/40">New person name</label>
+          <Label>New person name</Label>
           <div className="flex gap-2">
             <Input
               value={newName}
@@ -200,21 +235,30 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
       )}
 
       <div>
-        <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-white/40">
-          <span>
-            {detail ? `${detail.faces.length} crops` : 'Samples'}
-            {!detail && <span className="ml-1 opacity-50">(loading…)</span>}
-            {excluded.size > 0 && <span className="ml-2 text-red-400/70 normal-case">· {excluded.size} excluded</span>}
-          </span>
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Label className="!mb-0">
+              {detail
+                ? (shown < detail.faces.length
+                    ? `${shown.toLocaleString()} of ${detail.faces.length.toLocaleString()} crops`
+                    : `${detail.faces.length.toLocaleString()} crops`)
+                : 'Samples'}
+            </Label>
+            {detail && shown < detail.faces.length && (
+              <Tag tone="amber">only loaded faces assigned</Tag>
+            )}
+            {excluded.size > 0 && <Tag tone="red">{excluded.size} excluded</Tag>}
+            {!detail && <span className="text-[11px] text-white/30">loading…</span>}
+          </div>
           {excluded.size > 0 && (
-            <button onClick={() => setExcluded(new Set())} className="text-[10px] normal-case text-white/40 hover:text-white">
+            <button onClick={() => setExcluded(new Set())} className="text-[11px] text-white/40 hover:text-white">
               clear
             </button>
           )}
         </div>
         <div className="flex flex-wrap gap-1.5">
           {detail
-            ? detail.faces.map((f, i) => {
+            ? detail.faces.slice(0, shown).map((f, i) => {
                 const ex = excluded.has(f.face_index)
                 return (
                   <div key={i} className="group/face relative">
@@ -229,6 +273,7 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
                       <img
                         src={f.crop_url}
                         alt=""
+                        loading="lazy"
                         className="h-16 w-16 bg-white/5 object-cover transition-opacity hover:opacity-80"
                         onError={e => { e.target.style.display = 'none' }}
                       />
@@ -250,10 +295,18 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
                 )
               })
             : cluster.samples.map((url, i) => (
-                <img key={i} src={url} alt="" className="h-16 w-16 rounded bg-white/5 object-cover" />
+                <img key={i} src={url} alt="" loading="lazy" className="h-16 w-16 rounded bg-white/5 object-cover" />
               ))
           }
         </div>
+        {detail && shown < detail.faces.length && (
+          <button
+            onClick={() => setShown(s => s + CROP_BATCH)}
+            className="mt-3 rounded-lg border border-white/10 px-3 py-1.5 text-[12px] text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            Show {Math.min(CROP_BATCH, detail.faces.length - shown)} more ({(detail.faces.length - shown).toLocaleString()} remaining)
+          </button>
+        )}
       </div>
     </div>
   )
@@ -309,6 +362,7 @@ export function UnassignedFacesPage() {
     return () => obs.disconnect()
   }, [hasMore, loadingMore, loadPage])
 
+  // Skip removes the cluster entirely; assign drains it (stay selected).
   const removeCluster = useCallback((clusterId) => {
     setClusters(prev => {
       const idx = prev.findIndex(c => c.id === clusterId)
@@ -322,37 +376,59 @@ export function UnassignedFacesPage() {
     setTotal(t => t - 1)
   }, [])
 
+  const drainCluster = useCallback((clusterId, delta) => {
+    if (!delta) return
+    setClusters(prev => {
+      const updated = prev.map(c => c.id === clusterId ? { ...c, size: Math.max(0, c.size - delta) } : c)
+      const next    = updated.filter(c => c.size > 0)
+      // If the just-drained cluster is gone, jump selection to the same slot in
+      // the new list (or the previous one as fallback).
+      const removedIdx = updated.findIndex(c => c.id === clusterId && c.size <= 0)
+      if (removedIdx >= 0) {
+        setSelected(next[removedIdx] || next[removedIdx - 1] || next[0] || null)
+      } else {
+        setSelected(old => old?.id === clusterId ? { ...old, size: Math.max(0, old.size - delta) } : old)
+      }
+      return next
+    })
+  }, [])
+
   const handleOpenPhoto = useCallback((faces, index) => {
     const seen = new Set()
     const photos = []
     let adjustedIndex = 0
     faces.forEach((f, i) => {
-      if (!f.photo_path || seen.has(f.photo_path)) return
+      if (!f.photo_path) return
+      const path = f.photo_path.startsWith('/photos/') ? f.photo_path.slice('/photos/'.length) : f.photo_path
+      if (seen.has(path)) return
       if (i === index) adjustedIndex = photos.length
-      seen.add(f.photo_path)
-      photos.push({ path: f.photo_path, url: `/api/media/${f.photo_path}`, is_video: isVideo(f.photo_path) })
+      seen.add(path)
+      photos.push({ path, url: `/api/media/${path}`, is_video: isVideo(path) })
     })
     setViewer({ photos, index: adjustedIndex })
   }, [])
 
   return (
     <>
+      <SubheaderPortal>
+        <h1 className="text-sm font-medium text-white/80">Unassigned Faces</h1>
+      </SubheaderPortal>
+      <HeaderTrailingPortal>
+        {!loading && <Tag tone="amber">{total.toLocaleString()} remaining</Tag>}
+      </HeaderTrailingPortal>
+
       {viewer && (
-        <PhotoLightbox
+        <MediaLightbox
           items={viewer.photos}
           initialIndex={viewer.index}
           onClose={() => setViewer(null)}
+          renderDetail={(it, ctx, v) => <MediaDetail key={`${it.path}-${v}`} item={it} ctx={ctx} />}
         />
       )}
+
       <div className="flex h-[calc(100vh-var(--app-header-h,3rem))]">
-        {/* Cluster list */}
-        <div className="flex w-56 shrink-0 flex-col border-r border-white/5">
-          <div className="border-b border-white/5 px-4 pb-3 pt-6">
-            <h1 className="text-sm font-semibold text-white">Unassigned Clusters</h1>
-            <p className="mt-0.5 text-[11px] text-white/30">
-              {loading ? '…' : `${total} remaining`}
-            </p>
-          </div>
+        {/* Cluster sidebar */}
+        <aside className="flex w-56 shrink-0 flex-col border-r border-white/5">
           <div className="hide-scrollbar flex-1 space-y-1.5 overflow-y-auto p-2">
             {loading && <p className="p-2 text-xs text-white/20">Loading…</p>}
             {!loading && clusters.length === 0 && (
@@ -370,19 +446,21 @@ export function UnassignedFacesPage() {
               {loadingMore && <span className="text-[11px] text-white/20">Loading…</span>}
             </div>
           </div>
-        </div>
+        </aside>
 
-        {/* Assignment panel */}
-        <div className="flex flex-1 overflow-hidden p-6">
-          <AssignPanel
-            key={selected?.id ?? 'none'}
-            cluster={selected}
-            quickPeople={quickPeople}
-            onAssigned={removeCluster}
-            onSkipped={removeCluster}
-            onOpenPhoto={handleOpenPhoto}
-          />
-        </div>
+        {/* Main pane */}
+        <main className="flex flex-1 overflow-hidden">
+          <Container className="flex flex-1 py-6">
+            <AssignPanel
+              key={selected?.id ?? 'none'}
+              cluster={selected}
+              quickPeople={quickPeople}
+              onAssigned={drainCluster}
+              onSkipped={removeCluster}
+              onOpenPhoto={handleOpenPhoto}
+            />
+          </Container>
+        </main>
       </div>
     </>
   )

@@ -1,10 +1,32 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
+import { ChevronLeft, Maximize2, X } from 'lucide-react'
 import { searchPeople } from '../lib/api'
-import { isVideo } from '../lib/media'
+import { isVideo, mediaUrl } from '../lib/media'
 import { useEscToClose } from '../lib/hooks'
+import { Container } from '../components/new/Container'
+import { Button } from '../components/new/Button'
+import { Input } from '../components/new/Input'
+import { EntityChip } from '../components/new/EntityChip'
+import { Select } from '../components/new/Select'
+import { Tag } from '../components/new/Tag'
 
 const PAGE_SIZE = 100
+
+function personToOption(p) {
+  return {
+    value: p.id,
+    text: p.known_as || p.name,
+    avatar: p.avatar ? mediaUrl(p.avatar) : null,
+    initials: true,
+    label: (
+      <>
+        {p.known_as && p.known_as !== p.name && <span className="text-white/35">({p.known_as}) </span>}
+        {p.name}
+      </>
+    ),
+  }
+}
 
 export function SimilarFacesPage() {
   const [searchParams] = useSearchParams()
@@ -14,10 +36,10 @@ export function SimilarFacesPage() {
   const personId  = searchParams.get('person_id')
 
   const [activePath, setActivePath]       = useState(photoPath)
-  const [activeFaceIdx, setActiveFaceIdx] = useState(faceIndex)
+  const [activeFaceIdx]                   = useState(faceIndex)
   const [activeSeedCrop, setActiveSeedCrop] = useState(seedCrop ? `/api/media/${seedCrop}` : null)
 
-  const [threshold, setThreshold] = useState(0.5)
+  const [threshold, setThreshold]   = useState(0.5)
   const [allResults, setAllResults] = useState(null)
   const [facesUsed, setFacesUsed]   = useState(null)
   const [buckets, setBuckets]       = useState(null)
@@ -25,13 +47,12 @@ export function SimilarFacesPage() {
   const [loading, setLoading]       = useState(false)
   const [error, setError]           = useState(null)
 
-  const [selected, setSelected]     = useState(new Set())
-  const [knownPerson, setKnownPerson] = useState(null) // set when arriving via person_id
-  const [personQuery, setPersonQuery] = useState('')
-  const [suggestions, setSuggestions] = useState([])
-  const [assigning, setAssigning]   = useState(false)
-  const [assigned, setAssigned]     = useState(0)
-  const [lightbox, setLightbox]     = useState(null)
+  const [selected, setSelected]       = useState(new Set())
+  const [knownPerson, setKnownPerson] = useState(null)
+  const [personOpts, setPersonOpts]   = useState([])
+  const [assigning, setAssigning]     = useState(false)
+  const [assigned, setAssigned]       = useState(0)
+  const [lightbox, setLightbox]       = useState(null)
 
   const sentinelRef = useRef(null)
 
@@ -99,19 +120,19 @@ export function SimilarFacesPage() {
     if (!allResults) return
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setShown(n => Math.min(n + PAGE_SIZE, allResults.length)) },
-      { rootMargin: '400px' }
+      { rootMargin: '400px' },
     )
     if (sentinelRef.current) observer.observe(sentinelRef.current)
     return () => observer.disconnect()
   }, [allResults])
 
-  useEffect(() => {
-    if (!personQuery.trim()) { setSuggestions([]); return }
-    const t = setTimeout(async () => {
-      setSuggestions(await searchPeople(personQuery).catch(() => []))
-    }, 200)
-    return () => clearTimeout(t)
-  }, [personQuery])
+  const onPersonSearch = async q => {
+    if (!q.trim()) { setPersonOpts([]); return }
+    try {
+      const r = await searchPeople(q)
+      setPersonOpts(r.map(personToOption))
+    } catch { setPersonOpts([]) }
+  }
 
   function toggleAll() {
     if (!allResults) return
@@ -119,7 +140,7 @@ export function SimilarFacesPage() {
     else setSelected(new Set(allResults.map((_, i) => i)))
   }
 
-  async function assignSelected(person) {
+  async function assignSelected(personIdToAssign) {
     const faces = [...selected].map(i => allResults[i])
     setAssigning(true)
     try {
@@ -127,7 +148,7 @@ export function SimilarFacesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          person_id: person.id,
+          person_id: personIdToAssign,
           faces: faces.map(f => ({
             photo_path: f.photo_path,
             face_index: f.face_index,
@@ -139,8 +160,7 @@ export function SimilarFacesPage() {
       setAllResults(prev => prev.filter(r => !removedKeys.has(`${r.photo_path}:${r.face_index}`)))
       setAssigned(prev => prev + faces.length)
       setSelected(new Set())
-      setPersonQuery('')
-      setSuggestions([])
+      setPersonOpts([])
     } finally {
       setAssigning(false)
     }
@@ -148,30 +168,32 @@ export function SimilarFacesPage() {
 
   if (!activePath && !personId) {
     return (
-      <div className="p-6 text-white/30 text-sm">
-        No face selected. Open a photo, click a face crop, then "Find similar".
-      </div>
+      <Container className="py-6">
+        <p className="text-[13px] text-white/30">
+          No face selected. Open a photo, click a face crop, then &ldquo;Find similar&rdquo;.
+        </p>
+      </Container>
     )
   }
 
   const visible = allResults?.slice(0, shown) ?? []
 
   return (
-    <div className="p-6 max-w-5xl">
-      <div className="flex items-center gap-3 mb-4">
+    <Container className="py-6">
+      <div className="mb-4 flex items-center gap-3">
         <h1 className="text-lg font-medium text-white/80">Similar Faces</h1>
         {knownPerson && (
           <Link to={`/manage/people/${personId}`}
-            className="text-[12px] text-white/35 hover:text-white/60 transition-colors">
-            ← {knownPerson.known_as || knownPerson.name}
+            className="flex items-center gap-1 text-[12px] text-white/35 transition-colors hover:text-white/60">
+            <ChevronLeft size={12} /> {knownPerson.known_as || knownPerson.name}
           </Link>
         )}
       </div>
 
       {/* Seed + controls */}
-      <div className="flex items-start gap-4 mb-6 p-4 bg-white/3 border border-white/8 rounded-xl">
+      <div className="mb-6 flex items-start gap-4 rounded-xl border border-white/8 bg-white/5 p-4">
         {activeSeedCrop && (
-          <img src={activeSeedCrop} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0 ring-2 ring-white/20" />
+          <img src={activeSeedCrop} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover ring-2 ring-white/20" />
         )}
         <div className="flex-1 space-y-2">
           {facesUsed != null ? (
@@ -180,72 +202,60 @@ export function SimilarFacesPage() {
                 {buckets ? `${buckets.length} temporal means` : 'Mean'} · {facesUsed.toLocaleString()} faces
               </p>
               {buckets && (
-                <div className="flex gap-2 mt-1 flex-wrap">
+                <div className="mt-1 flex flex-wrap gap-1.5">
                   {buckets.map((b, i) => (
-                    <span key={i} className="text-[10px] text-white/25 bg-white/5 px-1.5 py-0.5 rounded">
+                    <Tag key={i}>
                       {b.from === b.to ? b.from : `${b.from}–${b.to}`} · {b.faces}
-                    </span>
+                    </Tag>
                   ))}
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-[12px] text-white/40 break-all">{photoPath} · face {faceIndex}</p>
+            <p className="break-all text-[12px] text-white/40">{photoPath} · face {faceIndex}</p>
           )}
           <div className="flex items-center gap-3">
             <label className="text-[11px] text-white/40">Threshold</label>
-            <input type="range" min="0.3" max="0.9" step="0.05" value={threshold}
+            <input
+              type="range" min="0.3" max="0.9" step="0.05" value={threshold}
               onChange={e => setThreshold(parseFloat(e.target.value))}
-              className="w-32 accent-blue-500" />
-            <span className="text-[11px] text-white/50 w-8">{threshold}</span>
-            <button onClick={search} disabled={loading}
-              className="px-3 py-1 bg-white/10 hover:bg-white/15 text-white/70 text-[12px] rounded transition-colors disabled:opacity-50">
+              className="w-32 accent-blue-500"
+            />
+            <span className="w-8 text-[11px] text-white/50">{threshold}</span>
+            <Button size="sm" onClick={search} disabled={loading}>
               {loading ? 'Searching…' : 'Search'}
-            </button>
+            </Button>
           </div>
           <p className="text-[11px] text-white/25">Lower threshold = stricter (fewer, closer matches)</p>
         </div>
       </div>
 
-      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
-      {loading && <p className="text-white/30 text-sm">Searching {(100000).toLocaleString()} faces…</p>}
+      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {loading && <p className="text-[13px] text-white/30">Searching {(100000).toLocaleString()} faces…</p>}
 
       {allResults && (
         <>
           {/* Bulk assign bar */}
-          <div className="flex items-center gap-3 mb-4 sticky top-0 z-10 bg-[#0a0a0a]/90 backdrop-blur py-2">
-            <button onClick={toggleAll} className="text-[11px] text-white/40 hover:text-white/70 px-2 py-1 border border-white/10 rounded transition-colors">
+          <div className="sticky top-[var(--app-header-h,3rem)] z-10 mb-4 flex flex-wrap items-center gap-3 bg-[#0a0a0a]/90 py-2 backdrop-blur">
+            <Button variant="secondary" size="sm" onClick={toggleAll}>
               {selected.size === allResults.length ? 'Deselect all' : `Select all ${allResults.length.toLocaleString()}`}
-            </button>
+            </Button>
             {selected.size > 0 && (
               <>
                 <span className="text-[11px] text-white/50">{selected.size.toLocaleString()} selected</span>
                 {knownPerson ? (
-                  <button disabled={assigning} onClick={() => assignSelected(knownPerson)}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-[12px] rounded transition-colors disabled:opacity-50">
-                    {knownPerson.avatar
-                      ? <img src={`/api/media/${knownPerson.avatar}`} alt="" className="w-4 h-4 rounded-full object-cover shrink-0" />
-                      : <div className="w-4 h-4 rounded-full bg-white/10 shrink-0" />}
+                  <Button size="sm" disabled={assigning} onClick={() => assignSelected(knownPerson.id)}>
                     Assign to {knownPerson.known_as || knownPerson.name}
-                  </button>
+                  </Button>
                 ) : (
-                  <div className="relative flex-1 max-w-xs">
-                    <input value={personQuery} onChange={e => setPersonQuery(e.target.value)}
+                  <div className="min-w-[14rem] flex-1 max-w-xs">
+                    <Select
+                      options={personOpts}
+                      value={null}
+                      onChange={opt => assignSelected(opt.value)}
+                      onQueryChange={onPersonSearch}
                       placeholder="Assign to person…"
-                      className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-[12px] text-white placeholder-white/25 outline-none focus:border-white/25" />
-                    {suggestions.length > 0 && (
-                      <div className="absolute top-full mt-1 left-0 right-0 bg-[#1a1a1a] border border-white/10 rounded overflow-hidden z-20 shadow-xl">
-                        {suggestions.map(p => (
-                          <button key={p.id} disabled={assigning} onClick={() => assignSelected(p)}
-                            className="w-full flex items-center gap-2 px-2 py-1.5 text-[12px] text-white/60 hover:bg-white/5 hover:text-white text-left">
-                            {p.avatar
-                              ? <img src={`/api/media/${p.avatar}`} alt="" className="w-4 h-4 rounded-full object-cover shrink-0" />
-                              : <div className="w-4 h-4 rounded-full bg-white/10 shrink-0" />}
-                            {p.known_as || p.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    />
                   </div>
                 )}
               </>
@@ -263,61 +273,73 @@ export function SimilarFacesPage() {
             {visible.map((r, i) => {
               const sel = selected.has(i)
               return (
-                <div key={i} className="relative group/thumb aspect-square">
+                <div key={i} className="group/thumb relative aspect-square">
                   <button
-                    onClick={() => setSelected(s => { const n = new Set(s); sel ? n.delete(i) : n.add(i); return n })}
-                    className={`w-full h-full rounded overflow-hidden transition-all ${sel ? 'ring-2 ring-blue-400' : 'hover:opacity-80'}`}>
-                    <img src={r.crop_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                    {sel && <div className="absolute inset-0 bg-blue-500/20 rounded" />}
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[9px] text-white/60 text-center py-0.5">
+                    onClick={() => setSelected(s => { const n = new Set(s); if (sel) n.delete(i); else n.add(i); return n })}
+                    className={
+                      'h-full w-full overflow-hidden rounded transition-all ' +
+                      (sel ? 'ring-2 ring-blue-400' : 'hover:opacity-80')
+                    }
+                  >
+                    <img src={r.crop_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    {sel && <div className="absolute inset-0 rounded bg-blue-500/20" />}
+                    <div className="absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-[9px] text-white/60">
                       {(r.similarity * 100).toFixed(0)}%
                     </div>
                     {sel && (
-                      <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-[8px] font-bold">✓</span>
+                      <div className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500">
+                        <span className="text-[8px] font-bold text-white">✓</span>
                       </div>
                     )}
                   </button>
                   <button
                     onClick={e => { e.stopPropagation(); setLightbox({ photoPath: r.photo_path, cropUrl: r.crop_url, similarity: r.similarity }) }}
-                    className="absolute top-1 left-1 opacity-0 group-hover/thumb:opacity-100 w-5 h-5 bg-black/70 hover:bg-black/90 rounded flex items-center justify-center text-white/70 hover:text-white transition-all text-[10px]"
+                    className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded bg-black/70 text-white/70 opacity-0 transition-all hover:bg-black/90 hover:text-white group-hover/thumb:opacity-100"
                     title="View full photo"
-                  >⤢</button>
+                  >
+                    <Maximize2 size={10} />
+                  </button>
                 </div>
               )
             })}
           </div>
 
-          <div ref={sentinelRef} className="h-16 flex items-center justify-center text-white/20 text-[11px]">
+          <div ref={sentinelRef} className="flex h-16 items-center justify-center text-[11px] text-white/20">
             {shown < allResults.length ? 'Loading more…' : ''}
           </div>
         </>
       )}
 
-      {lightbox && <Lightbox lightbox={lightbox} onClose={() => setLightbox(null)} />}
-    </div>
+      {lightbox && <SeedLightbox lightbox={lightbox} onClose={() => setLightbox(null)} />}
+    </Container>
   )
 }
 
-function Lightbox({ lightbox, onClose }) {
+// Side-by-side: full photo + matched crop + similarity %. Specific to this
+// page's "verify a match" workflow — kept custom rather than reusing the
+// general PhotoLightbox, which has a different layout/job.
+function SeedLightbox({ lightbox, onClose }) {
   useEscToClose(onClose)
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-6" onClick={onClose}>
-      <div className="relative flex gap-4 items-start max-w-5xl w-full" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose}
-          className="absolute -top-3 -right-3 z-10 w-7 h-7 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white/60 hover:text-white text-sm transition-colors">
-          ✕
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/85 p-6" onClick={onClose}>
+      <div className="relative flex w-full max-w-5xl items-start gap-4" onClick={e => e.stopPropagation()}>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute -right-3 -top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/60 transition-colors hover:bg-white/20 hover:text-white"
+        >
+          <X size={14} />
         </button>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {isVideo(lightbox.photoPath) ? (
-            <video src={`/api/media/${lightbox.photoPath}`} controls className="w-full max-h-[80vh] rounded-lg" />
+            <video src={`/api/media/${lightbox.photoPath}`} controls className="max-h-[80vh] w-full rounded-lg" />
           ) : (
-            <img src={`/api/media/${lightbox.photoPath}`} alt="" className="w-full max-h-[80vh] object-contain rounded-lg" />
+            <img src={`/api/media/${lightbox.photoPath}`} alt="" className="max-h-[80vh] w-full rounded-lg object-contain" />
           )}
-          <p className="text-[11px] text-white/30 mt-2 break-all">{lightbox.photoPath}</p>
+          <p className="mt-2 break-all text-[11px] text-white/30">{lightbox.photoPath}</p>
         </div>
-        <div className="shrink-0 flex flex-col items-center gap-2">
-          <img src={lightbox.cropUrl} alt="" className="w-40 h-40 object-cover rounded-lg ring-2 ring-white/20" />
+        <div className="flex shrink-0 flex-col items-center gap-2">
+          <img src={lightbox.cropUrl} alt="" className="h-40 w-40 rounded-lg object-cover ring-2 ring-white/20" />
           <span className="text-[12px] text-white/50">{(lightbox.similarity * 100).toFixed(1)}% match</span>
         </div>
       </div>

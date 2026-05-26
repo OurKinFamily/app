@@ -1,22 +1,30 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { X, Play, ListChecks } from 'lucide-react'
+import { Button } from '../components/new/Button'
+import { Container } from '../components/new/Container'
+import { Drawer } from '../components/new/Drawer'
+import { Input } from '../components/new/Input'
+import { Label } from '../components/new/Label'
+import { ProgressBar } from '../components/new/ProgressBar'
+import { Tag } from '../components/new/Tag'
+import { SubheaderPortal } from '../components/new/SubheaderPortal'
+import { HeaderTrailingPortal } from '../components/new/HeaderTrailingPortal'
 
 const API = '/api/jobs'  // Vite proxy strips /api → FastAPI sees /jobs
 
-const BADGE = {
-  running:   'bg-blue-900/50 text-blue-400',
-  completed: 'bg-green-900/50 text-green-400',
-  failed:    'bg-red-900/50 text-red-400',
-  cancelled: 'bg-zinc-800 text-zinc-400',
-  queued:    'bg-zinc-800 text-yellow-400',
-  unknown:   'bg-yellow-900/20 text-yellow-600',
+const STATUS_TONE = {
+  running:   'blue',
+  completed: 'green',
+  failed:    'red',
+  cancelled: 'slate',
+  queued:    'amber',
+  unknown:   'amber',
 }
 
-function Badge({ status }) {
+function StatusTag({ status }) {
   const display = status === 'unknown' ? 'running' : status
   return (
-    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0 ${BADGE[display] || BADGE.queued}`}>
-      {display}
-    </span>
+    <Tag tone={STATUS_TONE[display] || 'slate'} className="uppercase tracking-wider">{display}</Tag>
   )
 }
 
@@ -93,8 +101,6 @@ export function JobsPage() {
     }
   }
 
-  // ── Log modal ──
-
   const pollLog = useCallback(async (runId) => {
     if (!runId) return
     try {
@@ -153,181 +159,197 @@ export function JobsPage() {
     setRuns(prev => prev.map(r => r.id === runId ? { ...r, status: 'completed' } : r))
   }
 
-  // ── Render ──
-
   const sortedRuns = [...runs].sort((a, b) => {
     const order = { running: 0, queued: 1, unknown: 2, failed: 3, cancelled: 4, completed: 5 }
     const sd = (order[a.status] ?? 5) - (order[b.status] ?? 5)
     return sd !== 0 ? sd : (b.started_at || '').localeCompare(a.started_at || '')
   })
 
-  return (
-    <div className="flex h-screen overflow-hidden">
+  const activeCount = runs.filter(r => r.status === 'running' || r.status === 'queued' || r.status === 'unknown').length
+  const [jobsOpen, setJobsOpen] = useState(false)
 
-      {/* Job list */}
-      <div className="w-64 min-w-[256px] border-r border-white/10 flex flex-col overflow-hidden">
-        <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-white/25 border-b border-white/10 flex-shrink-0">
-          Available Jobs
+  function handleSelect(job) {
+    selectJob(job)
+    setJobsOpen(false)
+  }
+
+  return (
+    <>
+      <SubheaderPortal>
+        <div className="flex items-center gap-3">
+          <h1 className="text-sm font-medium text-white/80">Jobs</h1>
+          {activeCount > 0 && <Tag tone="blue">{activeCount} running</Tag>}
         </div>
-        <div className="overflow-y-auto flex-1">
+      </SubheaderPortal>
+
+      <HeaderTrailingPortal>
+        <button
+          onClick={() => setJobsOpen(true)}
+          aria-label="Available jobs"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <ListChecks size={18} />
+        </button>
+      </HeaderTrailingPortal>
+
+      <Drawer open={jobsOpen} onClose={() => setJobsOpen(false)} title="Available Jobs">
+        <div className="-mx-4 -my-4 flex flex-col">
           {jobs.map(job => (
-            <div
+            <button
               key={job.id}
-              onClick={() => selectJob(job)}
-              className={`px-4 py-3 cursor-pointer border-b border-white/5 border-l-2 transition-colors ${
-                selected?.id === job.id
-                  ? 'bg-blue-900/20 border-l-blue-500'
-                  : 'border-l-transparent hover:bg-white/5'
-              }`}
+              onClick={() => handleSelect(job)}
+              className={
+                'border-b border-white/5 border-l-2 px-4 py-3 text-left transition-colors ' +
+                (selected?.id === job.id
+                  ? 'border-l-blue-500 bg-blue-900/20'
+                  : 'border-l-transparent hover:bg-white/5')
+              }
             >
               <div className="flex items-center gap-2 text-[13px] font-medium text-white/90">
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: job.color || '#6b7280' }} />
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: job.color || '#6b7280' }} />
                 {job.name}
               </div>
-              <div className="text-[11px] text-white/35 mt-0.5 leading-snug">{job.description}</div>
-            </div>
+              <div className="mt-0.5 text-[11px] leading-snug text-white/35">{job.description}</div>
+            </button>
           ))}
         </div>
-      </div>
+      </Drawer>
 
-      {/* Center */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-
-        {/* Form / empty state */}
-        {!selected ? (
-          <div className="flex-shrink-0 px-6 py-10 text-white/25 text-sm">Select a job to configure and run it</div>
-        ) : (
-          <div className="flex-shrink-0 px-6 py-5 border-b border-white/10">
-            <div className="text-[15px] font-semibold text-white mb-1">{selected.name}</div>
-            <div className="text-[12px] text-white/40 mb-4">{selected.description}</div>
-            <div className="flex flex-col gap-3">
-              {(selected.params || []).map(p => (
-                <div key={p.name} className="flex items-start gap-3">
-                  <label className="text-[12px] text-white/40 w-32 flex-shrink-0 pt-1.5">
-                    {p.label}{p.required && ' *'}
-                  </label>
-                  {p.type === 'flag' ? (
-                    <div className="flex items-center gap-2 pt-1">
-                      <input
-                        type="checkbox"
-                        checked={!!params[p.name]}
-                        onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.checked }))}
-                        className="w-4 h-4 cursor-pointer accent-blue-500"
-                      />
-                      {p.hint && <span className="text-[11px] text-white/20">{p.hint}</span>}
+      <div className="flex h-[calc(100vh-var(--app-header-h,3rem))] overflow-hidden">
+        {/* Center */}
+        <main className="flex flex-1 flex-col overflow-hidden">
+          {!selected ? (
+            <div className="px-6 py-10 text-sm text-white/25">Select a job to configure and run it</div>
+          ) : (
+            <div className="shrink-0 border-b border-white/5">
+              <Container className="py-5">
+                <div className="mb-1 text-[15px] font-semibold text-white">{selected.name}</div>
+                <div className="mb-4 text-[12px] text-white/40">{selected.description}</div>
+                <div className="flex flex-col gap-3">
+                  {(selected.params || []).map(p => (
+                    <div key={p.name} className="flex items-start gap-3">
+                      <Label className="!mb-0 w-32 shrink-0 pt-1.5">
+                        {p.label}{p.required && ' *'}
+                      </Label>
+                      {p.type === 'flag' ? (
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="checkbox"
+                            checked={!!params[p.name]}
+                            onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.checked }))}
+                            className="h-4 w-4 cursor-pointer accent-blue-500"
+                          />
+                          {p.hint && <span className="text-[11px] text-white/30">{p.hint}</span>}
+                        </div>
+                      ) : (
+                        <div className="flex flex-1 flex-col gap-1">
+                          <Input
+                            value={params[p.name] ?? ''}
+                            onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.value }))}
+                          />
+                          {p.hint && <span className="text-[11px] text-white/30">{p.hint}</span>}
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-1 flex-1">
-                      <input
-                        type="text"
-                        value={params[p.name] ?? ''}
-                        onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.value }))}
-                        className="bg-white/5 border border-white/10 rounded-md text-white text-[13px] px-3 py-1.5 outline-none focus:border-blue-500 transition-colors"
-                      />
-                      {p.hint && <span className="text-[11px] text-white/20">{p.hint}</span>}
-                    </div>
-                  )}
+                  ))}
                 </div>
-              ))}
+                <div className="mt-4">
+                  <Button onClick={startRun} disabled={starting}>
+                    <Play size={13} /> {starting ? 'Starting…' : 'Run'}
+                  </Button>
+                </div>
+              </Container>
             </div>
-            <div className="mt-4">
-              <button
-                onClick={startRun}
-                disabled={starting}
-                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[13px] font-medium rounded-md transition-colors"
-              >
-                {starting ? 'Starting…' : '▶ Run'}
-              </button>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Run history */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-6 py-2 text-[11px] font-semibold uppercase tracking-wider text-white/25 border-b border-white/10 sticky top-0 bg-black z-10">
-            Run History
-          </div>
-          {sortedRuns.length === 0 ? (
-            <div className="px-6 py-6 text-[13px] text-white/25">No runs yet</div>
-          ) : sortedRuns.map(run => {
-            const progress = parseProgress(run.last_line)
-            return (
-              <div
-                key={run.id}
-                onClick={() => openLog(run)}
-                className={`flex items-start gap-3 px-6 py-3 border-b border-white/5 cursor-pointer transition-colors hover:bg-white/5 ${logRun?.id === run.id ? 'bg-blue-900/20' : ''}`}
-              >
-                <Badge status={run.status} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] text-white/90">{run.job_name}</div>
-                  <div className="text-[11px] text-white/30 mt-0.5">
-                    {run.started_at?.replace('T', ' ') || '—'}
-                    {duration(run) ? ` · ${duration(run)}` : ''}
-                    {' · '}#{run.id}
+          {/* Run history */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="sticky top-0 z-10 border-b border-white/5 bg-black px-6 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/30">
+              Run History
+            </div>
+            {sortedRuns.length === 0 ? (
+              <div className="px-6 py-6 text-[13px] text-white/25">No runs yet</div>
+            ) : sortedRuns.map(run => {
+              const progress = parseProgress(run.last_line)
+              const tone = STATUS_TONE[run.status === 'unknown' ? 'running' : run.status] || 'blue'
+              return (
+                <button
+                  key={run.id}
+                  onClick={() => openLog(run)}
+                  className={
+                    'flex w-full items-start gap-3 border-b border-white/5 px-6 py-3 text-left transition-colors hover:bg-white/5 ' +
+                    (logRun?.id === run.id ? 'bg-blue-900/20' : '')
+                  }
+                >
+                  <StatusTag status={run.status} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] text-white/90">{run.job_name}</div>
+                    <div className="mt-0.5 text-[11px] text-white/30">
+                      {run.started_at?.replace('T', ' ') || '—'}
+                      {duration(run) ? ` · ${duration(run)}` : ''}
+                      {' · '}#{run.id}
+                    </div>
+                    {progress ? (
+                      <div className="mt-1.5">
+                        <ProgressBar pct={progress.pct} cur={progress.cur} tot={progress.tot} tone={tone} size="sm" showPct showCounts />
+                      </div>
+                    ) : run.last_line ? (
+                      <div className="mt-1 truncate text-[11px] text-white/25">{run.last_line}</div>
+                    ) : null}
                   </div>
-                  {progress ? (
-                    <>
-                      <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-blue-900/30 border border-blue-900 text-blue-400">{progress.pct.toFixed(1)}%</span>
-                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-green-900/30 border border-green-900 text-green-400">{progress.cur.toLocaleString()} / {progress.tot.toLocaleString()}</span>
-                      </div>
-                      <div className="mt-1.5 h-0.5 bg-white/10 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${progress.pct}%` }} />
-                      </div>
-                    </>
-                  ) : run.last_line ? (
-                    <div className="text-[11px] text-white/25 mt-1 truncate">{run.last_line}</div>
-                  ) : null}
-                </div>
-                {run.status === 'unknown' && (
-                  <button
-                    onClick={e => dismissRun(run.id, e)}
-                    className="text-[11px] text-white/30 hover:text-white/60 px-2 py-0.5 rounded border border-white/10 hover:border-white/20 flex-shrink-0 transition-colors"
-                  >
-                    Mark done
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
+                  {run.status === 'unknown' && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={e => dismissRun(run.id, e)}
+                      className="shrink-0"
+                    >
+                      Mark done
+                    </Button>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </main>
       </div>
 
       {/* Log modal */}
       {logRun && (
         <div
-          className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/75"
           onClick={e => e.target === e.currentTarget && closeLog()}
         >
-          <div className="bg-[#0d0d0d] border border-white/10 rounded-xl w-[860px] max-w-[95vw] h-[80vh] flex flex-col overflow-hidden">
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 flex-shrink-0">
-              <span className="text-[14px] font-semibold text-white flex-1">{logRun.job_name}</span>
-              <Badge status={logRun.status} />
+          <div className="flex h-screen w-screen flex-col overflow-hidden bg-[#0d0d0d] md:h-[80vh] md:w-[860px] md:max-w-[95vw] md:rounded-xl md:border md:border-white/10">
+            <div className="flex shrink-0 items-center gap-3 border-b border-white/10 p-3">
+              <span className="flex-1 text-sm font-medium text-white/85">{logRun.job_name}</span>
+              <StatusTag status={logRun.status} />
               {!logDone && logRun.status === 'running' && (
-                <button
-                  onClick={cancelRun}
-                  className="text-[12px] text-white/40 hover:text-white/70 px-2 py-0.5 rounded border border-white/10 hover:border-white/20 transition-colors"
-                >
-                  Cancel
-                </button>
+                <Button size="sm" variant="secondary" onClick={cancelRun}>Cancel</Button>
               )}
-              <button onClick={closeLog} className="text-white/30 hover:text-white/70 text-lg leading-none px-1 transition-colors">✕</button>
+              <button
+                onClick={closeLog}
+                aria-label="Close"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <X size={18} />
+              </button>
             </div>
             <div
               ref={logBodyRef}
-              className="flex-1 overflow-y-auto p-4 font-mono text-[12px] text-white/70 leading-relaxed whitespace-pre-wrap break-all"
+              className="flex-1 overflow-y-auto whitespace-pre-wrap break-all p-4 font-mono text-[12px] leading-relaxed text-white/70"
             >
               {logText || <span className="text-white/20">Waiting for output…</span>}
             </div>
-            <div className="flex items-center gap-3 px-4 py-2.5 border-t border-white/10 flex-shrink-0">
-              <span className={`text-[12px] flex-1 ${logDone ? 'text-white/30' : 'text-blue-400 animate-pulse'}`}>
+            <div className="flex shrink-0 items-center gap-3 border-t border-white/10 p-2.5">
+              <span className={'flex-1 text-[12px] ' + (logDone ? 'text-white/30' : 'animate-pulse text-blue-400')}>
                 {logDone
                   ? `Finished · exit code ${logRun.exit_code ?? '—'}`
                   : 'Running…'}
               </span>
               <button
                 onClick={() => { if (logBodyRef.current) logBodyRef.current.scrollTop = logBodyRef.current.scrollHeight }}
-                className="text-[12px] text-white/30 hover:text-white/60 transition-colors"
+                className="text-[12px] text-white/30 transition-colors hover:text-white/60"
               >
                 ↓ Bottom
               </button>
@@ -335,6 +357,6 @@ export function JobsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

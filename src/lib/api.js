@@ -76,14 +76,18 @@ export async function getCluster(id) {
   return res.json()
 }
 
-// `exclude` is optional — array of [photo_path, face_index] tuples for faces
-// in the cluster that should NOT be assigned (and instead get added to the
-// face-level skip list).
-export async function assignCluster(clusterId, personId, exclude = []) {
+// exclude: faces to permanently skip (won't reappear after reclustering).
+// include: when provided, only these faces get assigned — remainder stays in
+// the cluster for future partial assigns.
+export async function assignCluster(clusterId, personId, { exclude = [], include = null } = {}) {
   const res = await fetch(`${BASE}/faces/clusters/${clusterId}/assign`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ person_id: personId, exclude: exclude.length ? exclude : null }),
+    body: JSON.stringify({
+      person_id: personId,
+      exclude:   exclude.length ? exclude : null,
+      include,
+    }),
   })
   if (!res.ok) throw new Error('Failed to assign cluster')
 }
