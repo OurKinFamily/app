@@ -41,9 +41,16 @@ export function useGallery(params = {}, opts = {}) {
   }, [paramsKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset + first load on mount and when params change.
-  // State updates happen inside async callbacks (allowed), refs are reset synchronously.
+  // When seeded, keep the seed items and skip the initial fetch.
   useEffect(() => {
     let alive = true
+    if (seed?.items?.length) {
+      mediaRef.current = [...seed.items]
+      offsetRef.current = seed.offset ?? seed.items.length
+      hasMoreRef.current = true
+      loadingRef.current = false
+      return () => { alive = false }
+    }
     mediaRef.current = []
     offsetRef.current = 0
     hasMoreRef.current = true
