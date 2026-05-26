@@ -91,7 +91,10 @@ export function GalleryPage() {
 
   // After clicking a year, auto-prepend one batch of newer items so the user
   // has scroll headroom above to load more newer years naturally.
+  // Skip while the lightbox is open — prepending shifts media and would change
+  // what the frozen lightbox index points at.
   useEffect(() => {
+    if (lightboxOpen) return
     if (yearFilter == null) { autoPrependedFor.current = null; return }
     if (autoPrependedFor.current === yearFilter) return
     if (!hasMoreNewer || media.length === 0) return
@@ -99,7 +102,7 @@ export function GalleryPage() {
     prependedRef.current = true
     prevHeightRef.current = document.documentElement.scrollHeight
     loadNewer()
-  }, [yearFilter, media.length, hasMoreNewer, loadNewer])
+  }, [lightboxOpen, yearFilter, media.length, hasMoreNewer, loadNewer])
 
   // Ensure the page is scrollable. Sparse-year filters (e.g. 1925 with 1 image)
   // would otherwise lock you on a non-scrollable page; keep paging in either
