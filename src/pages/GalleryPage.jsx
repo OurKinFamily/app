@@ -3,6 +3,7 @@ import { useNavigate, Outlet } from 'react-router-dom'
 import { useGallery } from '../lib/useGallery'
 import { useFavorites } from '../lib/useFavorites'
 import { MediaGallery } from '../components/new/MediaGallery'
+import { DateScrubber } from '../components/new/DateScrubber'
 
 const ROW_MIN = 50    // small (more per row)
 const ROW_MAX = 2400  // large (fewer per row; tall enough to make portraits fill width)
@@ -10,7 +11,12 @@ const ROW_DEFAULT = 200
 const STORAGE_KEY = 'gallery-row-height'
 
 export function GalleryPage() {
-  const { media, loading, hasMore, loadMore } = useGallery()
+  const [yearFilter, setYearFilter] = useState(null)
+  const [currentYear, setCurrentYear] = useState(null)
+  const params = yearFilter
+    ? { ts_from: `${yearFilter}-01-01`, ts_to: `${yearFilter + 1}-01-01` }
+    : {}
+  const { media, loading, hasMore, loadMore } = useGallery(params)
   const { favs, toggle: toggleFav } = useFavorites()
   const navigate = useNavigate()
   const sentinelRef = useRef(null)
@@ -46,6 +52,24 @@ export function GalleryPage() {
       window.removeEventListener('scroll', onScroll)
     }
   }, [loadMore])
+
+  // Rough "current year" follower for the scrubber — based on the topmost visible item.
+  useEffect(() => {
+    const onScroll = () => {
+      const items = document.querySelectorAll('[data-year]')
+      for (const el of items) {
+        const r = el.getBoundingClientRect()
+        if (r.bottom > 0) {
+          const y = Number(el.getAttribute('data-year'))
+          if (y) setCurrentYear(y)
+          break
+        }
+      }
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [media])
 
   // pinch-to-resize: override native zoom on the gallery only
   useEffect(() => {
@@ -109,6 +133,12 @@ export function GalleryPage() {
           </div>
         )}
       </div>
+
+      <DateScrubber
+        activeYear={yearFilter}
+        currentYear={currentYear}
+        onJump={y => { window.scrollTo(0, 0); setYearFilter(y) }}
+      />
 
       <Outlet context={{ media, hasMore, loadMore }} />
     </div>

@@ -24,6 +24,7 @@ export function MediaGallery({ items, onSelect, favorites, onFavorite, rowHeight
           {row.items.map(item => (
             <div
               key={item.path}
+              data-year={item.timestamp ? new Date(item.timestamp).getFullYear() : undefined}
               style={{ flex: row.last ? `0 0 ${Math.round(item.aspect * row.height)}px` : `${item.aspect} 1 0` }}
             >
               <Media

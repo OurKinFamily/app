@@ -32,7 +32,7 @@ export function MediaDetail({ item, ctx }) {
 
   const fetchDetail = async () => {
     try {
-      const res = await fetch(`/api/gallery/detail?path=${encodeURIComponent(item.path)}`)
+      const res = await fetch(`/api/gallery/detail?path=${encodeURIComponent(item.path)}`, { cache: 'no-store' })
       if (res.ok) setDetail(await res.json())
     } catch { /* ignore network errors */ }
   }
@@ -40,7 +40,7 @@ export function MediaDetail({ item, ctx }) {
   useEffect(() => {
     if (!item?.path) return
     let alive = true
-    fetch(`/api/gallery/detail?path=${encodeURIComponent(item.path)}`)
+    fetch(`/api/gallery/detail?path=${encodeURIComponent(item.path)}`, { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : null))
       .then(d => { if (alive && d) setDetail(d) })
       .catch(() => {})
