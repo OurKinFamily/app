@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { Images, Users, MapPin, Settings2 } from 'lucide-react'
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Mobile bottom nav. Bar UI only — positioning (fixed bottom) is the parent's job.
 // Horizontally scrollable; keep to ~5 items.

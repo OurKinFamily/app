@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Slide-from-right drawer with a backdrop. z above all other overlays
 // (subheader z-30, bottom bar 1100, date scrubber 1200, mobile menu 1200).

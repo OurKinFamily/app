@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Right-edge clickable year list. `years` is an array of {year, count} from
 // /api/gallery/years — only years that actually exist in the catalog. Highlights

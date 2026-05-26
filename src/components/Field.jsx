@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Label ↔ value row for detail panels. Renders nothing when value is empty.
 // Optional `icon` sits just left of the value.

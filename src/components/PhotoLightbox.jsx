@@ -1,4 +1,4 @@
-import { useFavorites } from '../../lib/useFavorites'
+import { useFavorites } from '../lib/useFavorites'
 import { MediaLightbox } from './MediaLightbox'
 import { MediaDetail } from './MediaDetail'
 

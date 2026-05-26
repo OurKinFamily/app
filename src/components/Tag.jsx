@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Tones. Pill variant uses bg + colored text; plain variant uses colored text only.
 const TONE_PILL = {

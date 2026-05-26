@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Mobile detail bottom-sheet for MediaLightbox. Half-open by default; drag the
 // handle (or swipe up) to expand. Desktop uses a side panel instead.

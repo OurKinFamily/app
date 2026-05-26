@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { X, ChevronLeft, ChevronRight, Heart, RotateCw, Download, Trash2, Album, Volume2, Square } from 'lucide-react'
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 import { IconButton } from './IconButton'
 import { FaceAssignPopover } from './FaceAssignPopover'
 import { MediaLightboxSheet } from './MediaLightboxSheet'

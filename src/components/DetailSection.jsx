@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // One labeled block in a detail panel — uppercase label + a top divider.
 export function DetailSection({ title, children, className }) {

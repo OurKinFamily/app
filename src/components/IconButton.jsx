@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Small icon action button. Stops propagation so it won't trigger a parent's
 // click handler (e.g. the lightbox's tap-to-toggle-chrome).

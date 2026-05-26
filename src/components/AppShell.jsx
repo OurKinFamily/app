@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Top-level app frame: header (top) · sidebar (desktop) · main · bottomBar (mobile).
 // The page (window) scrolls; header is sticky, the sidebar slot is sticky inside its column.

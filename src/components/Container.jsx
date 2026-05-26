@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Centered, max-width content column with responsive horizontal padding.
 // Wraps a page's content so it doesn't sprawl on wide screens.

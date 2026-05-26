@@ -4,7 +4,7 @@ import {
   UserPlus, UserCheck, Users2, Sparkles,
   LayoutDashboard, Activity, Palette,
 } from 'lucide-react'
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 const SECTIONS = [
   {

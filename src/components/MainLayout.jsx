@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { X } from 'lucide-react'
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 import { AppShell } from './AppShell'
 import { AppHeader } from './AppHeader'
 import { SidebarNav } from './SidebarNav'

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, Check } from 'lucide-react'
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 import { Leading } from './Leading'
 
 // Searchable select / combobox. Each option: { value, text, label?, avatar?, icon?, initials? }

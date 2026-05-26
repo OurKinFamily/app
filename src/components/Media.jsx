@@ -1,5 +1,5 @@
 import { Play, Heart } from 'lucide-react'
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Single media tile — a photo or video thumbnail. Fills its container; the parent
 // (e.g. the justified MediaGallery) decides the box shape, so cover never crops.

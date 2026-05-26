@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Tones map to a fill colour. The track is always the same neutral white/10.
 const FILL = {

@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Small square thumbnail — face crops, object crops, page thumbs. Optional
 // selected ring + onClick. Lighter than Media (no favorite / video / justify).

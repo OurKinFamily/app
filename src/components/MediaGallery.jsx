@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { Media } from './Media'
 import { DateScrubber } from './DateScrubber'
-import { computeRows } from '../../lib/justifiedRows'
+import { computeRows } from '../lib/justifiedRows'
 
 const DAY_MS = 86400 * 1000
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { mediaUrl } from '../../lib/media'
-import { searchPeople } from '../../lib/api'
+import { mediaUrl } from '../lib/media'
+import { searchPeople } from '../lib/api'
 import { DetailSection } from './DetailSection'
 import { Tag } from './Tag'
 import { Thumb } from './Thumb'

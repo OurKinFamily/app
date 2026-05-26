@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { X } from 'lucide-react'
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 import { Leading } from './Leading'
 
 // Generic pill for any entity. Leading is optional (avatar | icon | initials | none).

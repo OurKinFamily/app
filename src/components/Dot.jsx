@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Wrap any element to overlay a small status dot in the top-right corner.
 // Use for unread / active-state / has-attention indicators.

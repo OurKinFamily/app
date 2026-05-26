@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Color swatch row — chip + label + hex. For the Colors section (dominant/mean/salient).
 export function Swatch({ color, label, className }) {

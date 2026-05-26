@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { searchPeople } from '../../lib/api'
-import { mediaUrl } from '../../lib/media'
+import { searchPeople } from '../lib/api'
+import { mediaUrl } from '../lib/media'
 import { Select } from './Select'
 
 function toOption(p) {

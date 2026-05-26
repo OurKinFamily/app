@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // Form label. `required` shows a red *, optional `hint` (e.g. "(optional)") dimmer after.
 export function Label({ children, htmlFor, hint, required, className }) {

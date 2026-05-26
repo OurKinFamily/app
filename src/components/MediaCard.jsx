@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../lib/cn'
 
 // MediaCard + MediaRow — two layouts of the same data.
 //
