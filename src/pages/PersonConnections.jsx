@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useOutletContext } from 'react-router-dom'
-import { Link } from 'react-router-dom'
+import { useOutletContext, useNavigate, Link } from 'react-router-dom'
 import { searchPeople, getPeople } from '../lib/api'
+import { mediaUrl } from '../lib/media'
+import { displayName } from '../lib/people'
+import { Button } from '../components/new/Button'
+import { EntityItem } from '../components/new/EntityItem'
 
 const CONNECTION_TYPES = [
   'Friend', 'Close Friend', 'Childhood Friend',
@@ -30,16 +33,16 @@ export function PersonConnections() {
     load()
   }
 
+  const navigate = useNavigate()
   return (
-    <div className="max-w-xl">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[12px] font-medium text-white/50 uppercase tracking-wider">
+    <div className="max-w-2xl">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
           Connections · {connections.length}
         </h2>
-        <button onClick={() => setAdding(v => !v)}
-          className="text-[11px] text-white/40 hover:text-white/70 px-2 py-1 rounded transition-colors">
+        <Button variant="secondary" size="sm" onClick={() => setAdding(v => !v)}>
           {adding ? 'Cancel' : '+ Add connection'}
-        </button>
+        </Button>
       </div>
 
       {adding && (
@@ -51,38 +54,29 @@ export function PersonConnections() {
       )}
 
       {loading ? (
-        <p className="text-white/30 text-sm">Loading…</p>
+        <p className="text-[13px] text-white/30">Loading…</p>
       ) : connections.length === 0 ? (
-        <p className="text-[12px] text-white/25">No connections yet.</p>
+        <p className="text-[13px] text-white/25">No connections yet.</p>
       ) : (
-        <div className="space-y-1 mt-3">
+        <div className="mt-3 space-y-2">
           {connections.map(c => (
-            <div key={c.id} className="flex items-center gap-3 p-2.5 bg-white/3 border border-white/6 rounded-lg group">
-              {c.avatar
-                ? <img src={`/api/media/${c.avatar}`} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                : <div className="w-8 h-8 rounded-full bg-white/10 shrink-0 flex items-center justify-center text-white/30 text-xs font-medium">
-                    {(c.known_as || c.name).slice(0, 1).toUpperCase()}
-                  </div>}
-              <div className="flex-1 min-w-0">
-                <Link to={`/manage/people/${c.id}`} className="text-[13px] text-white/70 hover:text-white">
-                  {c.name}
-                </Link>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {c.context && <span className="text-[11px] text-white/30">{c.context}</span>}
+            <EntityItem
+              key={c.id}
+              avatar={c.avatar ? mediaUrl(c.avatar) : null}
+              initials
+              text={displayName(c)}
+              secondary={
+                <span>
+                  {c.context && <span>{c.context}</span>}
                   {c.through_groups?.map(g => (
                     <Link key={g.id} to={`/manage/groups/${g.id}`}
-                      className="text-[11px] text-white/20 hover:text-white/50">
-                      via {g.name}
-                    </Link>
+                      className="ml-2 text-white/30 hover:text-white/60">via {g.name}</Link>
                   ))}
-                </div>
-              </div>
-              {c.since && <span className="text-[11px] text-white/25 shrink-0">{c.since}</span>}
-              <button onClick={() => remove(c.id)}
-                className="opacity-0 group-hover:opacity-100 text-white/25 hover:text-red-400 text-xs px-2 transition-all">
-                Remove
-              </button>
-            </div>
+                </span>
+              }
+              trailing={c.since || undefined}
+              onClick={() => navigate(`/manage/people/${c.id}`)}
+            />
           ))}
         </div>
       )}

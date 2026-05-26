@@ -17,13 +17,11 @@ export function PersonTravel() {
   }, [person.id])
 
   return (
-    <div className="-mx-8 -mb-8">
-      <PhotoMap
-        points={points}
-        loading={loading}
-        height="calc(100vh - 13rem)"
-        badge={points.length ? `${points.length.toLocaleString()} photos with GPS` : null}
-      />
-    </div>
+    <PhotoMap
+      points={points}
+      loading={loading}
+      height="calc(100vh - 16rem)"
+      badge={points.length ? `${points.length.toLocaleString()} photos with GPS` : null}
+    />
   )
 }
