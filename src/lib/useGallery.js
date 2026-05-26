@@ -87,7 +87,7 @@ export function useGallery({ anchor = null, params = {} } = {}) {
         oldestRef.current = batch[batch.length - 1].timestamp
         setMedia([...mediaRef.current])
       }
-      setHasMoreOlder(batch.length >= LIMIT - 1)
+      setHasMoreOlder(batch.length > 0)
     } catch { /* ignore */ }
     finally { loadingRef.current = false; setLoading(false) }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -108,7 +108,7 @@ export function useGallery({ anchor = null, params = {} } = {}) {
         newestRef.current = reversed[0].timestamp
         setMedia([...mediaRef.current])
       }
-      setHasMoreNewer(batch.length >= LIMIT - 1)
+      setHasMoreNewer(batch.length > 0)
     } catch { /* ignore */ }
     finally { loadingRef.current = false; setLoading(false) }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps

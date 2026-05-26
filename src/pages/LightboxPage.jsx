@@ -34,7 +34,7 @@ export function LightboxPage() {
     if (window.history.length > 1) navigate(-1)
     else navigate('/gallery')
   }
-  const onNav = item => navigate(`/gallery/photo/${item.path}`, { replace: true })
+  const onNav = item => navigate(`../photo/${item.path}`, { replace: true })
 
   return (
     <MediaLightbox

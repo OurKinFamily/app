@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useNavigate, Outlet } from 'react-router-dom'
+import { useNavigate, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useGallery } from '../lib/useGallery'
 import { useFavorites } from '../lib/useFavorites'
 import { MediaGallery } from '../components/new/MediaGallery'
@@ -11,16 +11,31 @@ const ROW_DEFAULT = 200
 const STORAGE_KEY = 'gallery-row-height'
 
 export function GalleryPage() {
-  const [yearFilter, setYearFilter] = useState(null)
+  const { year: yearParam } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const lightboxOpen = location.pathname.includes('/photo/')
+  // yearFilter is anchor state — set on click only. URL is initial seed.
+  // Subsequent URL changes (from scroll-sync below) don't refetch.
+  const [yearFilter, setYearFilterState] = useState(() =>
+    yearParam && /^\d{4}$/.test(yearParam) ? Number(yearParam) : null
+  )
   const [currentYear, setCurrentYear] = useState(null)
   const [years, setYears] = useState([])
   const { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer } = useGallery({
     anchor: yearFilter != null ? { year: yearFilter } : null,
   })
   const { favs, toggle: toggleFav } = useFavorites()
-  const navigate = useNavigate()
+
+  // Reflect current scroll year in URL (without re-anchoring useGallery).
+  useEffect(() => {
+    if (lightboxOpen || !currentYear) return
+    if (Number(yearParam) === currentYear) return
+    navigate(`/gallery/${currentYear}`, { replace: true })
+  }, [currentYear, yearParam, navigate, lightboxOpen])
 
   const galleryRef = useRef(null)
+  const topSentinelRef = useRef(null)
   const pinchStart = useRef(null)
   const rowHeightRef = useRef(ROW_DEFAULT)
   const prependedRef = useRef(false)
@@ -86,6 +101,40 @@ export function GalleryPage() {
     loadNewer()
   }, [yearFilter, media.length, hasMoreNewer, loadNewer])
 
+  // Ensure the page is scrollable. Sparse-year filters (e.g. 1925 with 1 image)
+  // would otherwise lock you on a non-scrollable page; keep paging in either
+  // direction until content fills the viewport or no more data exists.
+  // Skip while lightbox is open — body is position:fixed, scrollHeight is tiny
+  // and this would loop, shifting items behind the frozen lightbox index.
+  useEffect(() => {
+    if (lightboxOpen) return
+    if (media.length === 0) return
+    const doc = document.documentElement
+    if (doc.scrollHeight >= window.innerHeight * 1.5) return
+    if (hasMoreNewer) {
+      prependedRef.current = true
+      prevHeightRef.current = doc.scrollHeight
+      loadNewer()
+    } else if (hasMoreOlder) {
+      loadOlder()
+    }
+  }, [lightboxOpen, media, hasMoreNewer, hasMoreOlder, loadNewer, loadOlder])
+
+  // Top sentinel observer: window scroll events stop firing at scrollY=0,
+  // so we use IntersectionObserver to keep triggering loadNewer at the top.
+  useEffect(() => {
+    if (!hasMoreNewer || !topSentinelRef.current) return
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        prependedRef.current = true
+        prevHeightRef.current = document.documentElement.scrollHeight
+        loadNewer()
+      }
+    }, { rootMargin: '300px' })
+    obs.observe(topSentinelRef.current)
+    return () => obs.disconnect()
+  }, [hasMoreNewer, loadNewer])
+
   // Scroll-anchor: after prepending newer items, shift scrollY by the height delta.
   useLayoutEffect(() => {
     if (!prependedRef.current) return
@@ -141,7 +190,7 @@ export function GalleryPage() {
     }
   }, [])
 
-  const open = item => navigate(`/gallery/photo/${item.path}`)
+  const open = item => navigate(`photo/${item.path}`)
 
   return (
     <div className="p-4">
@@ -149,6 +198,8 @@ export function GalleryPage() {
       {media.length > 0 && (
         <p className="mb-3 text-[12px] text-white/25">{media.length.toLocaleString()} loaded</p>
       )}
+
+      <div ref={topSentinelRef} className="h-px" />
 
       <div ref={galleryRef} style={{ touchAction: 'pan-x pan-y' }}>
         <MediaGallery items={media} rowHeight={rowHeight} favorites={favs} onFavorite={toggleFav} onSelect={open} />
@@ -168,7 +219,11 @@ export function GalleryPage() {
         years={years}
         activeYear={yearFilter}
         currentYear={currentYear}
-        onJump={y => { window.scrollTo(0, 0); setYearFilter(y) }}
+        onJump={y => {
+          window.scrollTo(0, 0)
+          setYearFilterState(y)
+          navigate(y ? `/gallery/${y}` : '/gallery')
+        }}
       />
 
       <Outlet context={{ media, hasMore: hasMoreOlder, loadMore: loadOlder }} />

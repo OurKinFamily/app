@@ -36,6 +36,9 @@ export default function App() {
             <Route path="/gallery" element={<GalleryPage />}>
               <Route path="photo/*" element={<LightboxPage />} />
             </Route>
+            <Route path="/gallery/:year" element={<GalleryPage />}>
+              <Route path="photo/*" element={<LightboxPage />} />
+            </Route>
             <Route path="/gallery/places" element={<PlacesPage />} />
             <Route path="/gallery/people" element={<PeoplePage />} />
             <Route path="/gallery/scrapbook" element={<ScrapbookPage />} />
