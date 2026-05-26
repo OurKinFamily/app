@@ -19,7 +19,7 @@ export function MainLayout() {
       <AppShell
         header={<AppHeader onMenu={() => setDrawerOpen(true)} />}
         sidebar={
-          <div className="h-full w-56 overflow-y-auto border-r border-white/5 p-3">
+          <div className="sticky top-12 h-[calc(100vh-3rem)] w-56 overflow-y-auto border-r border-white/5 p-3">
             <SidebarNav />
           </div>
         }
