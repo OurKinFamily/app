@@ -1,61 +1,62 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getPeople } from '../lib/api'
-import { PersonCard } from '../components/PersonCard'
+import { mediaUrl } from '../lib/media'
+import { displayName, otherName } from '../lib/people'
+import { Container } from '../components/new/Container'
+import { Input } from '../components/new/Input'
+import { Button } from '../components/new/Button'
+import { EntityItem } from '../components/new/EntityItem'
 import { AddPersonModal } from '../components/AddPersonModal'
 
 export function PeoplePage() {
-  const [people, setPeople]     = useState([])
-  const [query, setQuery]       = useState('')
+  const [people, setPeople] = useState([])
+  const [query, setQuery] = useState('')
   const [showModal, setShowModal] = useState(false)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    getPeople().then(setPeople)
-  }, [])
+  useEffect(() => { getPeople().then(setPeople).catch(() => {}) }, [])
 
-  function handleCreated(person) {
+  const handleCreated = person => {
     setShowModal(false)
     navigate(`/manage/people/${person.id}`)
   }
 
-  const filtered = query.trim()
+  const q = query.trim().toLowerCase()
+  const filtered = q
     ? people.filter(p =>
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        (p.known_as || '').toLowerCase().includes(query.toLowerCase())
+        p.name.toLowerCase().includes(q) || (p.known_as || '').toLowerCase().includes(q)
       )
     : people
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="flex items-center gap-4 mb-8">
-        <h1 className="text-3xl font-semibold text-white">People</h1>
-        <input
+    <Container className="py-6">
+      <div className="mb-6 flex items-center gap-3">
+        <h1 className="text-2xl font-semibold text-white">People</h1>
+        <span className="text-[12px] text-white/25">{people.length.toLocaleString()}</span>
+        <Input
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search…"
-          className="flex-1 max-w-xs bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[13px] text-white placeholder-white/25 outline-none focus:border-white/25"
+          className="ml-auto max-w-xs"
         />
-        <button
-          onClick={() => setShowModal(true)}
-          className="ml-auto px-3 py-1.5 text-[13px] text-white/50 hover:text-white border border-white/10 hover:border-white/25 rounded-lg transition-colors"
-        >
-          + Add person
-        </button>
+        <Button variant="secondary" size="sm" onClick={() => setShowModal(true)}>+ Add person</Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
         {filtered.map(p => (
-          <PersonCard key={p.id} person={p} onClick={() => navigate(`/manage/people/${p.id}`)} />
+          <EntityItem
+            key={p.id}
+            avatar={p.avatar ? mediaUrl(p.avatar) : null}
+            initials
+            text={displayName(p)}
+            secondary={otherName(p) || (p.birth_date ? `b. ${p.birth_date.slice(0, 4)}` : null)}
+            onClick={() => navigate(`/manage/people/${p.id}`)}
+          />
         ))}
       </div>
 
-      {showModal && (
-        <AddPersonModal
-          onClose={() => setShowModal(false)}
-          onCreated={handleCreated}
-        />
-      )}
-    </div>
+      {showModal && <AddPersonModal onClose={() => setShowModal(false)} onCreated={handleCreated} />}
+    </Container>
   )
 }
