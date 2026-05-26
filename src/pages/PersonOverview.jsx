@@ -226,25 +226,9 @@ function PersonGalleryInline({ personId }) {
   })
   const { favs, toggle: toggleFav } = useFavorites()
   const [viewer, setViewer] = useState(null)
-  const loadingRef = useRef(false)
 
-  useEffect(() => { loadingRef.current = loading }, [loading])
-
-  // Window scroll: pull next page when near the bottom. IntersectionObserver
-  // alone can't re-fire while the sentinel stays in view across consecutive
-  // loads, so use a continuous scroll check (same pattern as GalleryPage).
-  useEffect(() => {
-    const onScroll = () => {
-      if (loadingRef.current || !hasMoreOlder) return
-      const doc = document.documentElement
-      if (window.scrollY + window.innerHeight > doc.scrollHeight - 600) loadOlder()
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [hasMoreOlder, loadOlder])
-
-  // Auto-fill if the first batch didn't fill the viewport (otherwise scroll
-  // never triggers and the user is stuck at one page).
+  // Auto-fill if the first batch didn't fill the viewport — MediaGallery's
+  // scroll listener can't fire when the page isn't scrollable yet.
   useEffect(() => {
     if (loading || !hasMoreOlder || media.length === 0) return
     const doc = document.documentElement
@@ -263,6 +247,7 @@ function PersonGalleryInline({ personId }) {
         favorites={favs}
         onFavorite={it => toggleFav(it.path)}
         onSelect={it => setViewer(media.findIndex(m => m.path === it.path))}
+        onLoadOlder={loadOlder}
       />
       {(loading || hasMoreOlder) && (
         <div className="flex h-8 items-center justify-center text-[11px] text-white/20">
@@ -275,7 +260,7 @@ function PersonGalleryInline({ personId }) {
           items={media}
           initialIndex={viewer}
           onClose={() => setViewer(null)}
-          onNeedMore={() => { if (!loadingRef.current && hasMoreOlder) loadOlder() }}
+          onNeedMore={() => { if (!loading && hasMoreOlder) loadOlder() }}
         />
       )}
     </div>

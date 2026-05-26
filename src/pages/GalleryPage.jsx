@@ -3,7 +3,6 @@ import { useNavigate, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useGallery } from '../lib/useGallery'
 import { useFavorites } from '../lib/useFavorites'
 import { MediaGallery } from '../components/new/MediaGallery'
-import { DateScrubber } from '../components/new/DateScrubber'
 
 const ROW_MIN = 50
 const ROW_MAX = 2400
@@ -20,7 +19,6 @@ export function GalleryPage() {
   const [yearFilter, setYearFilterState] = useState(() =>
     yearParam && /^\d{4}$/.test(yearParam) ? Number(yearParam) : null
   )
-  const [currentYear, setCurrentYear] = useState(null)
   const [years, setYears] = useState([])
   const { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer } = useGallery({
     anchor: yearFilter != null ? { year: yearFilter } : null,
@@ -34,7 +32,6 @@ export function GalleryPage() {
   const rowHeightRef = useRef(ROW_DEFAULT)
   const prependedRef = useRef(false)
   const prevHeightRef = useRef(0)
-  const velocityRef = useRef({ y: 0, t: 0, v: 0 })
   const autoPrependedFor = useRef(null)
 
   const [rowHeight, setRowHeight] = useState(() => {
@@ -52,36 +49,19 @@ export function GalleryPage() {
     fetch('/api/gallery/years').then(r => (r.ok ? r.json() : null)).then(d => d && setYears(d)).catch(() => {})
   }, [])
 
-  // Scroll: load older near bottom (skip ahead in time when scrolling fast),
-  // newer near top (if anchored). Velocity bands escalate gradually.
+  // Bottom-edge loader (+velocity skip) is owned by MediaGallery.
+  // Here we only handle the upward direction when an anchor exposed older years.
   useEffect(() => {
-    const DAY = 86400 * 1000
     const onScroll = () => {
-      const now = performance.now()
-      const y = window.scrollY
-      const dt = now - velocityRef.current.t
-      if (dt > 0) velocityRef.current.v = Math.abs(y - velocityRef.current.y) / dt * 1000
-      velocityRef.current.y = y
-      velocityRef.current.t = now
-
-      const doc = document.documentElement
-      if (window.scrollY + window.innerHeight > doc.scrollHeight - 600) {
-        const v = velocityRef.current.v
-        const skipMs = v > 30000 ? 10 * 365 * DAY
-          : v > 15000 ? 365 * DAY
-          : v > 5000 ? 30 * DAY
-          : 0
-        loadOlder(skipMs)
-      }
       if (hasMoreNewer && window.scrollY < 600) {
         prependedRef.current = true
-        prevHeightRef.current = doc.scrollHeight
+        prevHeightRef.current = document.documentElement.scrollHeight
         loadNewer()
       }
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [loadOlder, loadNewer, hasMoreNewer])
+  }, [loadNewer, hasMoreNewer])
 
   // After clicking a year, auto-prepend one batch of newer items so the user
   // has scroll headroom above to load more newer years naturally.
@@ -143,24 +123,6 @@ export function GalleryPage() {
     prependedRef.current = false
   }, [media])
 
-  // Current visible year via topmost item with data-year.
-  useEffect(() => {
-    const onScroll = () => {
-      const items = document.querySelectorAll('[data-year]')
-      for (const el of items) {
-        const r = el.getBoundingClientRect()
-        if (r.bottom > 0) {
-          const y = Number(el.getAttribute('data-year'))
-          if (y) setCurrentYear(y)
-          break
-        }
-      }
-    }
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [media])
-
   // Pinch-to-resize.
   useEffect(() => {
     const el = galleryRef.current
@@ -200,7 +162,23 @@ export function GalleryPage() {
       <div ref={topSentinelRef} className="h-px" />
 
       <div ref={galleryRef} style={{ touchAction: 'pan-x pan-y' }}>
-        <MediaGallery items={media} rowHeight={rowHeight} favorites={favs} onFavorite={toggleFav} onSelect={open} />
+        <MediaGallery
+          items={media}
+          rowHeight={rowHeight}
+          favorites={favs}
+          onFavorite={toggleFav}
+          onSelect={open}
+          onLoadOlder={loadOlder}
+          scrubber={{
+            years,
+            onJump: y => {
+              if (y === yearFilter) return
+              window.scrollTo(0, 0)
+              setYearFilterState(y)
+              navigate(y ? `/gallery/${y}` : '/gallery')
+            },
+          }}
+        />
       </div>
 
       <div className="flex h-16 items-center justify-center">
@@ -212,17 +190,6 @@ export function GalleryPage() {
           </div>
         )}
       </div>
-
-      <DateScrubber
-        years={years}
-        currentYear={currentYear}
-        onJump={y => {
-          if (y === yearFilter) return
-          window.scrollTo(0, 0)
-          setYearFilterState(y)
-          navigate(y ? `/gallery/${y}` : '/gallery')
-        }}
-      />
 
       <Outlet context={{ media, hasMore: hasMoreOlder, loadMore: loadOlder }} />
     </div>

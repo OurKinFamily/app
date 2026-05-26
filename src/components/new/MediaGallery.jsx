@@ -1,6 +1,9 @@
-import { useRef, useState, useLayoutEffect } from 'react'
+import { useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { Media } from './Media'
+import { DateScrubber } from './DateScrubber'
 import { computeRows } from '../../lib/justifiedRows'
+
+const DAY_MS = 86400 * 1000
 
 function formatDay(iso) {
   const d = new Date(iso + 'T00:00:00')
@@ -28,10 +31,22 @@ function citiesFor(items) {
 
 
 // Justified-rows gallery, grouped by day with a section header per group.
+// Optional features:
+//  - onLoadOlder(skipMs):  when present, install a window scroll listener that
+//      pages older content near the bottom, escalating skipMs by scroll velocity
+//      so a long flick skips months/years/decade at a time.
+//  - scrubber: { years, anchor, onJump } — when present, render the right-edge
+//      DateScrubber and track which year is visible at the top of the viewport.
+//
 // Gap items (item.__gap === true) render as gray placeholders, no interactions.
-export function MediaGallery({ items, onSelect, favorites, onFavorite, rowHeight = 200, gap = 4 }) {
+export function MediaGallery({
+  items, onSelect, favorites, onFavorite, rowHeight = 200, gap = 4,
+  onLoadOlder, scrubber,
+}) {
   const ref = useRef(null)
   const [width, setWidth] = useState(0)
+  const [currentYear, setCurrentYear] = useState(null)
+  const velocityRef = useRef({ y: 0, t: 0, v: 0 })
 
   useLayoutEffect(() => {
     if (!ref.current) return
@@ -39,6 +54,50 @@ export function MediaGallery({ items, onSelect, favorites, onFavorite, rowHeight
     ro.observe(ref.current)
     return () => ro.disconnect()
   }, [])
+
+  // Bottom-edge loader with velocity-band skip-ahead.
+  useEffect(() => {
+    if (!onLoadOlder) return
+    const onScroll = () => {
+      const now = performance.now()
+      const y = window.scrollY
+      const dt = now - velocityRef.current.t
+      if (dt > 0) velocityRef.current.v = Math.abs(y - velocityRef.current.y) / dt * 1000
+      velocityRef.current.y = y
+      velocityRef.current.t = now
+
+      const doc = document.documentElement
+      if (y + window.innerHeight > doc.scrollHeight - 600) {
+        const v = velocityRef.current.v
+        const skipMs = v > 30000 ? 10 * 365 * DAY_MS
+          : v > 15000 ? 365 * DAY_MS
+          : v > 5000 ? 30 * DAY_MS
+          : 0
+        onLoadOlder(skipMs)
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [onLoadOlder])
+
+  // Track "current year" via topmost element with data-year (used by scrubber).
+  useEffect(() => {
+    if (!scrubber) return
+    const onScroll = () => {
+      const els = document.querySelectorAll('[data-year]')
+      for (const el of els) {
+        const r = el.getBoundingClientRect()
+        if (r.bottom > 0) {
+          const y = Number(el.getAttribute('data-year'))
+          if (y) setCurrentYear(y)
+          break
+        }
+      }
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [scrubber, items])
 
   const groups = groupByDay(items)
 
@@ -83,6 +142,14 @@ export function MediaGallery({ items, onSelect, favorites, onFavorite, rowHeight
           </section>
         )
       })}
+
+      {scrubber && (
+        <DateScrubber
+          years={scrubber.years}
+          currentYear={currentYear}
+          onJump={scrubber.onJump}
+        />
+      )}
     </div>
   )
 }
