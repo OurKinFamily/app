@@ -9,17 +9,14 @@ export function DateScrubber({ years = [], activeYear, currentYear, onJump }) {
   return (
     <div className="hide-scrollbar fixed right-0 top-12 z-20 hidden h-[calc(100vh-3rem)] w-14 flex-col items-stretch overflow-y-auto bg-black/20 py-2 md:flex">
       {years.map(({ year }) => {
-        const isActive = activeYear === year
-        const isCurrent = currentYear === year && !isActive
+        const isCurrent = currentYear === year
         return (
           <button
             key={year}
             onClick={() => onJump(year === activeYear ? null : year)}
             className={cn(
               'w-full px-2 py-0.5 text-right text-[10px] tabular-nums transition-colors hover:bg-black/70',
-              isActive ? 'text-white font-medium'
-                : isCurrent ? 'text-white/80'
-                : 'text-white/40',
+              isCurrent ? 'text-white font-medium' : 'text-white/40',
             )}
           >
             {year}

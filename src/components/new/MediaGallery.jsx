@@ -4,7 +4,7 @@ import { computeRows } from '../../lib/justifiedRows'
 
 function formatDay(iso) {
   const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function groupByDay(items) {
@@ -16,6 +16,16 @@ function groupByDay(items) {
   }
   return [...map.entries()].map(([day, items]) => ({ day, items }))
 }
+
+function citiesFor(items) {
+  const set = new Set()
+  for (const it of items) {
+    const c = it.city || it.place_name
+    if (c) set.add(c)
+  }
+  return [...set]
+}
+
 
 // Justified-rows gallery, grouped by day with a section header per group.
 // Gap items (item.__gap === true) render as gray placeholders, no interactions.
@@ -37,10 +47,16 @@ export function MediaGallery({ items, onSelect, favorites, onFavorite, rowHeight
       {groups.map(group => {
         const rows = computeRows(group.items, width, { rowHeight, gap })
         const showHeader = group.day !== '__unknown'
+        const cities = citiesFor(group.items)
         return (
           <section key={group.day}>
             {showHeader && (
-              <h3 className="mb-2 text-[13px] font-medium text-white/75">{formatDay(group.day)}</h3>
+              <h3 className="sticky top-12 z-10 mb-2 bg-[#0f0f0f] py-2 text-[13px] font-medium text-white/75">
+                {formatDay(group.day)}
+                {cities.length > 0 && (
+                  <span className="ml-2 text-white/40">{cities.join(' & ')}</span>
+                )}
+              </h3>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap }}>
               {rows.map((row, ri) => (

@@ -26,6 +26,7 @@ export function GalleryPage() {
   const prependedRef = useRef(false)
   const prevHeightRef = useRef(0)
   const velocityRef = useRef({ y: 0, t: 0, v: 0 })
+  const autoPrependedFor = useRef(null)
 
   const [rowHeight, setRowHeight] = useState(() => {
     const stored = Number(localStorage.getItem(STORAGE_KEY))
@@ -43,11 +44,10 @@ export function GalleryPage() {
   }, [])
 
   // Scroll: load older near bottom (skip ahead in time when scrolling fast),
-  // newer near top (if anchored).
+  // newer near top (if anchored). Velocity bands escalate gradually.
   useEffect(() => {
     const DAY = 86400 * 1000
     const onScroll = () => {
-      // velocity in px/sec
       const now = performance.now()
       const y = window.scrollY
       const dt = now - velocityRef.current.t
@@ -58,9 +58,9 @@ export function GalleryPage() {
       const doc = document.documentElement
       if (window.scrollY + window.innerHeight > doc.scrollHeight - 600) {
         const v = velocityRef.current.v
-        const skipMs = v > 8000 ? 10 * 365 * DAY
-          : v > 4000 ? 365 * DAY
-          : v > 2000 ? 30 * DAY
+        const skipMs = v > 30000 ? 10 * 365 * DAY
+          : v > 15000 ? 365 * DAY
+          : v > 5000 ? 30 * DAY
           : 0
         loadOlder(skipMs)
       }
@@ -73,6 +73,18 @@ export function GalleryPage() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [loadOlder, loadNewer, hasMoreNewer])
+
+  // After clicking a year, auto-prepend one batch of newer items so the user
+  // has scroll headroom above to load more newer years naturally.
+  useEffect(() => {
+    if (yearFilter == null) { autoPrependedFor.current = null; return }
+    if (autoPrependedFor.current === yearFilter) return
+    if (!hasMoreNewer || media.length === 0) return
+    autoPrependedFor.current = yearFilter
+    prependedRef.current = true
+    prevHeightRef.current = document.documentElement.scrollHeight
+    loadNewer()
+  }, [yearFilter, media.length, hasMoreNewer, loadNewer])
 
   // Scroll-anchor: after prepending newer items, shift scrollY by the height delta.
   useLayoutEffect(() => {

@@ -57,26 +57,28 @@ export function useGallery({ anchor = null, params = {} } = {}) {
     loadingRef.current = true
     setLoading(true)
     try {
-      const oldestTs = new Date(oldestRef.current).getTime()
-      const ts_to = skipMs > 0 ? new Date(oldestTs - skipMs).toISOString() : oldestRef.current
+      const oldestIso = oldestRef.current
+      const ts_to = skipMs > 0
+        ? new Date(new Date(oldestIso).getTime() - skipMs).toISOString()
+        : oldestIso
       const qs = new URLSearchParams({ limit: LIMIT, sort: 'desc', ...params })
       qs.set('ts_to', ts_to)
       const res = await fetch(`/api/gallery?${qs}`)
       const d = await res.json()
-      const batch = (d.media || []).filter(m => m.timestamp !== oldestRef.current)
+      const batch = (d.media || []).filter(m => m.timestamp !== oldestIso)
       if (batch.length) {
         const additions = []
         if (skipMs > 0) {
-          // visualize the skipped range as gray placeholder tiles
-          const gapStart = oldestTs - skipMs
-          const gapEnd = oldestTs
+          // Visualize skipped range. Use oldestIso for the timestamp so all gap
+          // tiles fall in the same day group as the last loaded real item — no
+          // bogus date headers spawn between them.
           for (let i = 0; i < 12; i++) {
             additions.push({
-              path: `__gap__${gapStart}_${i}`,
+              path: `__gap__${oldestIso}_${i}`,
               __gap: true,
               width: 1, height: 1,
               dominant_color: '#1d1d1d',
-              timestamp: new Date(gapStart + (gapEnd - gapStart) * ((i + 0.5) / 12)).toISOString(),
+              timestamp: oldestIso,
             })
           }
         }
