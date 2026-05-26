@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useGallery } from '../lib/useGallery'
+import { useFavorites } from '../lib/useFavorites'
 import { MediaLightbox } from '../components/new/MediaLightbox'
 import { MediaDetail } from '../components/new/MediaDetail'
 
@@ -15,6 +16,7 @@ export function LightboxPage() {
   const stateItems = location.state?.items
   const seed = stateItems ? { items: stateItems, offset: stateItems.length } : undefined
   const { media, hasMore, loadMore } = useGallery({}, { seed })
+  const { favs, toggle: toggleFav } = useFavorites()
 
   const index = media.findIndex(m => m.path === photoPath)
 
@@ -39,6 +41,8 @@ export function LightboxPage() {
       onClose={close}
       onNavigate={onNav}
       onNeedMore={loadMore}
+      favorites={favs}
+      onFavorite={toggleFav}
       onRotate={(it, deg) => console.log('rotate (mock — needs API)', it.path, deg)}
       onAlbum={it => console.log('add to album (mock)', it.path)}
       onDownload={it => console.log('download (mock)', it.path)}
