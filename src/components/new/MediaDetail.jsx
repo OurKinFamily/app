@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { mediaUrl } from '../../lib/media'
+import { searchPeople } from '../../lib/api'
 import { DetailSection } from './DetailSection'
 import { Field } from './Field'
 import { Tag } from './Tag'
@@ -8,6 +9,7 @@ import { MiniMap } from './MiniMap'
 import { Thumb } from './Thumb'
 import { EntityChip } from './EntityChip'
 import { Button } from './Button'
+import { Select } from './Select'
 
 function formatDate(ts) {
   if (!ts) return null
@@ -23,12 +25,50 @@ function formatSize(bytes) {
 const CONF_TONE = { high: 'green', medium: 'amber', low: 'red' }
 const FACE_PREVIEW = 6
 
+function personToOption(p) {
+  return {
+    value: p.id,
+    text: p.known_as || p.name,
+    avatar: p.avatar ? mediaUrl(p.avatar) : null,
+    initials: true,
+    label: (
+      <>
+        {p.known_as && p.known_as !== p.name && <span className="text-white/35">({p.known_as}) </span>}
+        {p.name}
+      </>
+    ),
+  }
+}
+
 // Mount one per item (key by item.path) so state resets cleanly on navigation.
 // ctx (from MediaLightbox): { setHighlight, setFaces, setBumpDetail, openAssign, ... }
 export function MediaDetail({ item, ctx }) {
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showAllFaces, setShowAllFaces] = useState(false)
+  const [addPersonOpen, setAddPersonOpen] = useState(false)
+  const [addResults, setAddResults] = useState([])
+
+  const onAddSearch = async q => {
+    if (!q.trim()) { setAddResults([]); return }
+    try {
+      const r = await searchPeople(q)
+      setAddResults(r.map(personToOption))
+    } catch { setAddResults([]) }
+  }
+
+  const tagPerson = async option => {
+    try {
+      await fetch(`/api/people/${option.value}/photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photo_path: item.path }),
+      })
+    } catch { /* ignore network errors */ }
+    setAddPersonOpen(false)
+    setAddResults([])
+    ctx?.bumpDetail?.()
+  }
 
   useEffect(() => {
     if (!item?.path) return
@@ -66,9 +106,9 @@ export function MediaDetail({ item, ctx }) {
       {loading && <p className="text-[11px] text-white/20">Loading…</p>}
       {detail && (
         <>
-          {detail.people?.length > 0 && (
-            <DetailSection title="People">
-              <div className="flex flex-wrap gap-1.5">
+          <DetailSection title={`People${detail.people?.length ? ` · ${detail.people.length}` : ''}`}>
+            {detail.people?.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
                 {detail.people.map(p => (
                   <span
                     key={p.id}
@@ -83,8 +123,20 @@ export function MediaDetail({ item, ctx }) {
                   </span>
                 ))}
               </div>
-            </DetailSection>
-          )}
+            )}
+            {addPersonOpen ? (
+              <Select
+                autoFocus
+                options={addResults}
+                value={null}
+                onChange={tagPerson}
+                onQueryChange={onAddSearch}
+                placeholder="Add a person…"
+              />
+            ) : (
+              <Button variant="secondary" size="sm" onClick={() => setAddPersonOpen(true)}>+ Add person</Button>
+            )}
+          </DetailSection>
 
           {detail.unidentified?.length > 0 && (() => {
             const all = detail.unidentified
