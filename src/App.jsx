@@ -33,8 +33,9 @@ export default function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Navigate to="/gallery" replace />} />
 
-            <Route path="/gallery" element={<GalleryPage />} />
-            <Route path="/gallery/photo/*" element={<LightboxPage />} />
+            <Route path="/gallery" element={<GalleryPage />}>
+              <Route path="photo/*" element={<LightboxPage />} />
+            </Route>
             <Route path="/gallery/places" element={<PlacesPage />} />
             <Route path="/gallery/people" element={<PeoplePage />} />
             <Route path="/gallery/scrapbook" element={<ScrapbookPage />} />

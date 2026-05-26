@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Outlet } from 'react-router-dom'
 import { useGallery } from '../lib/useGallery'
 import { useFavorites } from '../lib/useFavorites'
 import { MediaGallery } from '../components/new/MediaGallery'
@@ -10,7 +10,7 @@ const ROW_DEFAULT = 200
 const STORAGE_KEY = 'gallery-row-height'
 
 export function GalleryPage() {
-  const { media, loading, loadMore } = useGallery()
+  const { media, loading, hasMore, loadMore } = useGallery()
   const { favs, toggle: toggleFav } = useFavorites()
   const navigate = useNavigate()
   const sentinelRef = useRef(null)
@@ -72,7 +72,7 @@ export function GalleryPage() {
     }
   }, [])
 
-  const open = item => navigate(`/gallery/photo/${item.path}`, { state: { items: media } })
+  const open = item => navigate(`/gallery/photo/${item.path}`)
 
   return (
     <div className="p-4">
@@ -99,6 +99,8 @@ export function GalleryPage() {
           </div>
         )}
       </div>
+
+      <Outlet context={{ media, hasMore, loadMore }} />
     </div>
   )
 }

@@ -1,23 +1,18 @@
 import { useEffect } from 'react'
-import { useParams, useLocation, useNavigate } from 'react-router-dom'
-import { useGallery } from '../lib/useGallery'
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { useFavorites } from '../lib/useFavorites'
 import { MediaLightbox } from '../components/new/MediaLightbox'
 import { MediaDetail } from '../components/new/MediaDetail'
 
-// Its own route so the gallery DOM doesn't render behind the lightbox.
-// Seeded from location.state when arriving from /gallery for instant open.
+// Renders as the gallery's nested route so GalleryPage stays mounted underneath
+// (scroll position + loaded pages survive). Reads media from the outlet context.
 export function LightboxPage() {
   const params = useParams()
-  const location = useLocation()
   const navigate = useNavigate()
-
-  const photoPath = params['*'] || ''
-  const stateItems = location.state?.items
-  const seed = stateItems ? { items: stateItems, offset: stateItems.length } : undefined
-  const { media, hasMore, loadMore } = useGallery({}, { seed })
+  const { media, hasMore, loadMore } = useOutletContext()
   const { favs, toggle: toggleFav } = useFavorites()
 
+  const photoPath = params['*'] || ''
   const index = media.findIndex(m => m.path === photoPath)
 
   useEffect(() => {
@@ -25,14 +20,14 @@ export function LightboxPage() {
   }, [index, hasMore, loadMore])
 
   if (index < 0) {
-    return <div className="flex h-screen items-center justify-center text-white/30">Loading…</div>
+    return <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black text-white/30">Loading…</div>
   }
 
   const close = () => {
     if (window.history.length > 1) navigate(-1)
     else navigate('/gallery')
   }
-  const onNav = item => navigate(`/gallery/photo/${item.path}`, { replace: true, state: { items: media } })
+  const onNav = item => navigate(`/gallery/photo/${item.path}`, { replace: true })
 
   return (
     <MediaLightbox
