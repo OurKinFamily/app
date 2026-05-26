@@ -217,6 +217,7 @@ export function GalleryPage() {
         activeYear={yearFilter}
         currentYear={currentYear}
         onJump={y => {
+          if (y === yearFilter) return
           window.scrollTo(0, 0)
           setYearFilterState(y)
           navigate(y ? `/gallery/${y}` : '/gallery')

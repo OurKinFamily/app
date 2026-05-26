@@ -13,7 +13,7 @@ export function DateScrubber({ years = [], activeYear, currentYear, onJump }) {
         return (
           <button
             key={year}
-            onClick={() => onJump(year === activeYear ? null : year)}
+            onClick={() => onJump(year)}
             className={cn(
               'w-full px-2 py-0.5 text-right text-[10px] tabular-nums transition-colors hover:bg-black/70',
               isCurrent ? 'text-white font-medium' : 'text-white/40',
