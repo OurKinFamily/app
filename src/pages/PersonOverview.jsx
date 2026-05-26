@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { useOutletContext, Link } from 'react-router-dom'
+import { useOutletContext, useNavigate, Link } from 'react-router-dom'
 import { searchPeople, getPeople } from '../lib/api'
-import { PhotoViewer } from '../components/PhotoViewer'
 import { isVideo, mediaUrl, thumbUrl } from '../lib/media'
+import { displayName } from '../lib/people'
+import { EntityChip } from '../components/new/EntityChip'
+import { EntityItem } from '../components/new/EntityItem'
+import { Media } from '../components/new/Media'
+import { MediaLightbox } from '../components/new/MediaLightbox'
+import { MediaDetail } from '../components/new/MediaDetail'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -46,6 +51,7 @@ const INPUT_CLS = "w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 
 
 export function PersonOverview() {
   const { person, relatives, reloadRelatives, setPerson } = useOutletContext()
+  const navigateOverview = useNavigate()
   const [editing, setEditing]           = useState(false)
   const [groups, setGroups]             = useState([])
   const [connections, setConnections]   = useState([])
@@ -183,28 +189,26 @@ export function PersonOverview() {
             )
           })}
           {connections.map(c => (
-            <div key={c.id} className="flex items-center gap-3 p-2.5 bg-white/3 border border-white/6 rounded-lg group">
-              {c.avatar
-                ? <img src={`/api/media/${c.avatar}`} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                : <div className="w-8 h-8 rounded-full bg-white/10 shrink-0 flex items-center justify-center text-white/30 text-xs font-medium">
-                    {(c.known_as || c.name).slice(0, 1).toUpperCase()}
-                  </div>}
-              <div className="flex-1 min-w-0">
-                <Link to={`/manage/people/${c.id}`} className="text-[13px] text-white/70 hover:text-white">{c.name}</Link>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {c.context && <span className="text-[11px] text-white/30">{c.context}</span>}
-                  {c.through_groups?.map(g => (
-                    <Link key={g.id} to={`/manage/groups/${g.id}`} className="text-[11px] text-white/20 hover:text-white/50">
-                      via {g.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              {c.since && <span className="text-[11px] text-white/25 shrink-0">{c.since}</span>}
-              <button onClick={() => removeConnection(c.id)}
-                className="opacity-0 group-hover:opacity-100 text-white/25 hover:text-red-400 text-xs px-2 transition-all">
-                Remove
-              </button>
+            <div key={c.id} className="group relative">
+              <EntityItem
+                avatar={c.avatar ? mediaUrl(c.avatar) : null}
+                initials
+                text={displayName(c)}
+                secondary={
+                  <span>
+                    {c.context && <span>{c.context}</span>}
+                    {c.through_groups?.map(g => (
+                      <Link key={g.id} to={`/manage/groups/${g.id}`} className="ml-2 text-white/30 hover:text-white/60">via {g.name}</Link>
+                    ))}
+                  </span>
+                }
+                trailing={c.since || undefined}
+                onClick={() => navigateOverview(`/manage/people/${c.id}`)}
+              />
+              <button
+                onClick={e => { e.preventDefault(); removeConnection(c.id) }}
+                className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded px-2 text-[11px] text-white/30 hover:text-red-400 group-hover:block"
+              >Remove</button>
             </div>
           ))}
           {connections.length === 0 && !addingConn && <p className="text-[12px] text-white/25">No connections yet.</p>}
@@ -283,33 +287,24 @@ function PersonGalleryInline({ personId }) {
       </p>
       <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))' }}>
         {paths.map((path, i) => (
-          <button key={path} onClick={() => setViewer(i)}
-            className="aspect-square overflow-hidden rounded hover:opacity-80 transition-opacity relative">
-            <img src={thumbUrl(path)} alt="" className="w-full h-full object-cover" loading="lazy"
-              onError={e => { e.target.src = mediaUrl(path) }} />
-            {isVideo(path) && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-6 h-6 bg-black/50 rounded-full flex items-center justify-center">
-                  <span className="text-white text-[8px] ml-0.5">▶</span>
-                </div>
-              </div>
-            )}
-          </button>
+          <div key={path} className="aspect-square">
+            <Media thumb={thumbUrl(path)} isVideo={isVideo(path)} onClick={() => setViewer(i)} />
+          </div>
         ))}
       </div>
-      {!exhaustedRef.current && <div ref={sentinelRef} className="h-8 flex items-center justify-center text-white/20 text-[11px]">
+      {!exhaustedRef.current && <div ref={sentinelRef} className="flex h-8 items-center justify-center text-[11px] text-white/20">
         {loading ? 'Loading…' : ''}
       </div>}
 
       {viewer !== null && (
-        <PhotoViewer
-          photos={viewerPhotos}
+        <MediaLightbox
+          items={viewerPhotos}
           initialIndex={viewer}
           onClose={() => setViewer(null)}
           onNeedMore={() => {
             if (!loading && !exhaustedRef.current) fetchPage(personId, offsetRef.current)
           }}
-          onNavigate={() => {}}
+          renderDetail={(it, ctx, v) => <MediaDetail key={`${it.path}-${v}`} item={it} ctx={ctx} />}
         />
       )}
     </div>
@@ -634,18 +629,21 @@ function RelGroup({ label, people, relType, onRemove }) {
   if (!people?.length) return null
   return (
     <div>
-      <p className="text-white/40 uppercase tracking-wider text-xs mb-2">{label}</p>
+      <p className="mb-2 text-xs uppercase tracking-wider text-white/40">{label}</p>
       <div className="flex flex-wrap gap-2">
         {people.map(p => (
-          <div key={p.id} className="group relative flex items-center gap-1.5 rounded-lg bg-white/10 hover:bg-white/15 pl-1.5 pr-2 py-1 transition-colors">
-            {p.avatar
-              ? <img src={`/api/media/${p.avatar}`} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
-              : <div className="w-5 h-5 rounded-full bg-white/20 shrink-0 flex items-center justify-center text-[9px] text-white/50 font-medium">
-                  {(p.known_as || p.name).slice(0, 1).toUpperCase()}
-                </div>}
-            <Link to={`/manage/people/${p.id}`} className="text-[13px] text-white/80">{p.known_as || p.name}</Link>
-            <button onClick={() => onRemove(p.id, relType)}
-              className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all text-xs ml-0.5">✕</button>
+          <div key={p.id} className="group relative">
+            <EntityChip
+              to={`/manage/people/${p.id}`}
+              avatar={p.avatar ? mediaUrl(p.avatar) : null}
+              initials
+              text={displayName(p)}
+            />
+            <button
+              onClick={e => { e.preventDefault(); onRemove(p.id, relType) }}
+              className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-zinc-800 text-[10px] text-white/40 hover:text-red-400 group-hover:flex"
+              aria-label="Remove"
+            >×</button>
           </div>
         ))}
       </div>
