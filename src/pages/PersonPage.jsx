@@ -1,94 +1,93 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useParams, useNavigate, Outlet } from 'react-router-dom'
+import { useParams, useNavigate, Outlet, NavLink, Link } from 'react-router-dom'
+import { Pencil } from 'lucide-react'
 import { getPerson, getRelatives } from '../lib/api'
-import { Sidebar, SidebarBack, SidebarLink } from '../components/Sidebar'
+import { mediaUrl } from '../lib/media'
+import { cn } from '../lib/cn'
+import { Container } from '../components/new/Container'
+import { Avatar } from '../components/new/Avatar'
 import { AvatarPicker } from '../components/AvatarPicker'
 
-function initials(name) {
-  return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
-}
+const TABS = [
+  { to: 'overview', label: 'Overview' },
+  { to: 'ancestry', label: 'Ancestry' },
+  { to: 'scrapbook', label: 'Scrapbook' },
+  { to: 'travel', label: 'Travel' },
+  { to: 'ai', label: 'AI' },
+]
 
 export function PersonPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [person, setPerson]       = useState(null)
+  const [person, setPerson] = useState(null)
   const [relatives, setRelatives] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
 
-  const reloadRelatives = useCallback(() => {
-    getRelatives(id).then(setRelatives)
-  }, [id])
+  const reloadRelatives = useCallback(() => { getRelatives(id).then(setRelatives) }, [id])
 
   useEffect(() => {
     setPerson(null)
     setRelatives(null)
-    getPerson(id).then(setPerson).catch(() => navigate('/manage/people'))
-    getRelatives(id).then(setRelatives)
+    getPerson(id).then(setPerson).catch(() => navigate('/gallery/people'))
+    getRelatives(id).then(setRelatives).catch(() => {})
   }, [id])
 
-  if (!person) return <div className="min-h-screen p-8 text-white/40">Loading…</div>
-
-  const handleAvatarSaved = (cropPath) => {
-    setPerson(p => ({ ...p, avatar: cropPath }))
-  }
+  if (!person) return <div className="p-8 text-white/40">Loading…</div>
 
   return (
-    <div className="min-h-screen flex">
-      {/* Sidebar */}
-      <div className="sticky top-12 self-start h-[calc(100vh-3rem)] pt-8 pb-8 pl-4 overflow-y-auto">
-        <Sidebar>
-          <SidebarBack to="/manage/people">People</SidebarBack>
-          <SidebarLink to="overview">Overview</SidebarLink>
-          <SidebarLink to="ancestry">Ancestry</SidebarLink>
-          <SidebarLink to="scrapbook">Scrapbook</SidebarLink>
-          <SidebarLink to="travel">Travel</SidebarLink>
-          <SidebarLink to="ai">AI</SidebarLink>
-        </Sidebar>
-      </div>
+    <Container className="py-6">
+      <Link to="/gallery/people" className="text-[12px] text-white/40 hover:text-white/70">← People</Link>
 
-      {/* Main */}
-      <div className="flex-1 min-w-0 p-8">
-        {/* Person header */}
-        <div className="flex items-center gap-4 mb-8">
-          <div
-            className="relative group w-16 h-16 shrink-0 cursor-pointer"
-            onClick={() => setPickerOpen(true)}
-          >
-            {person.avatar ? (
-              <img
-                src={`/api/media/${person.avatar}`}
-                alt=""
-                className="w-16 h-16 rounded-full object-cover ring-2 ring-white/10"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-white/60 text-lg font-medium ring-2 ring-white/10">
-                {initials(person.name)}
-              </div>
-            )}
-            <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828A2 2 0 0110 16.414H8v-2a2 2 0 01.586-1.414z" />
-              </svg>
-            </div>
-          </div>
-          <div>
-            <h1 className="text-3xl font-semibold text-white">{person.name}</h1>
-            {person.known_as && person.known_as !== person.name && (
-              <p className="text-white/50 mt-1">Known as "{person.known_as}"</p>
-            )}
-          </div>
+      <div className="mt-3 mb-6 flex items-center gap-4">
+        <button
+          onClick={() => setPickerOpen(true)}
+          className="group relative h-16 w-16 shrink-0"
+          aria-label="Change avatar"
+        >
+          <Avatar
+            src={person.avatar ? mediaUrl(person.avatar) : null}
+            name={person.name}
+            size="xl"
+            className="ring-2"
+          />
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            <Pencil size={18} className="text-white" />
+          </span>
+        </button>
+        <div className="min-w-0">
+          <h1 className="truncate text-3xl font-semibold text-white">{person.name}</h1>
+          {person.known_as && person.known_as !== person.name && (
+            <p className="mt-1 text-white/50">Known as &ldquo;{person.known_as}&rdquo;</p>
+          )}
         </div>
-
-        <Outlet context={{ person, setPerson, relatives, reloadRelatives }} />
       </div>
+
+      <nav className="hide-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-white/10">
+        {TABS.map(t => (
+          <NavLink
+            key={t.to}
+            to={t.to}
+            className={({ isActive }) => cn(
+              '-mb-px shrink-0 border-b-2 px-4 py-2 text-[13px] transition-colors',
+              isActive
+                ? 'border-white text-white'
+                : 'border-transparent text-white/50 hover:text-white/80',
+            )}
+          >
+            {t.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <Outlet context={{ person, setPerson, relatives, reloadRelatives }} />
 
       {pickerOpen && (
         <AvatarPicker
           person={person}
           onClose={() => setPickerOpen(false)}
-          onSaved={handleAvatarSaved}
+          onSaved={cropPath => setPerson(p => ({ ...p, avatar: cropPath }))}
         />
       )}
-    </div>
+    </Container>
   )
 }

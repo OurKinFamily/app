@@ -14,6 +14,7 @@ const SIZES = {
   sm: 'w-7 h-7 text-[10px]',
   md: 'w-10 h-10 text-sm',
   lg: 'w-11 h-11 text-sm',
+  xl: 'w-16 h-16 text-lg',
 }
 
 export function Avatar({ src, name = '', size = 'md', className }) {
