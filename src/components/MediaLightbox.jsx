@@ -140,6 +140,7 @@ export function MediaLightbox({
           const dy = e.changedTouches[0].clientY - touch.current.y
           touch.current = null
           if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) go(dx < 0 ? 1 : -1)
+          else if (dy < -70 && !sheetOpen) setSheetOpen(true)
           else if (dy > 70 && !sheetOpen) onClose()
         }}
       >

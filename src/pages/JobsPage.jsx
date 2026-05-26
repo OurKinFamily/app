@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Play, ListChecks } from 'lucide-react'
+import { X, Play, ListChecks, Info } from 'lucide-react'
 import { Button } from '../components/Button'
 import { Container } from '../components/Container'
 import { Drawer } from '../components/Drawer'
@@ -24,6 +24,31 @@ function StatusTag({ status }) {
   const display = status === 'unknown' ? 'running' : status
   return (
     <Tag tone={STATUS_TONE[display] || 'slate'} className="uppercase tracking-wider">{display}</Tag>
+  )
+}
+
+function JobList({ jobs, selected, onSelect }) {
+  return (
+    <div className="flex flex-col">
+      {jobs.map(job => (
+        <button
+          key={job.id}
+          onClick={() => onSelect(job)}
+          className={
+            'border-b border-white/5 border-l-2 px-4 py-3 text-left transition-colors ' +
+            (selected?.id === job.id
+              ? 'border-l-blue-500 bg-blue-900/20'
+              : 'border-l-transparent hover:bg-white/5')
+          }
+        >
+          <div className="flex items-center gap-2 text-[13px] font-medium text-white/90">
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: job.color || '#6b7280' }} />
+            {job.name}
+          </div>
+          <div className="mt-0.5 text-[11px] leading-snug text-white/35">{job.description}</div>
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -179,36 +204,27 @@ export function JobsPage() {
         <button
           onClick={() => setJobsOpen(true)}
           aria-label="Available jobs"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white md:hidden"
         >
           <ListChecks size={18} />
         </button>
       </HeaderTrailingPortal>
 
       <Drawer open={jobsOpen} onClose={() => setJobsOpen(false)} title="Available Jobs">
-        <div className="-mx-4 -my-4 flex flex-col">
-          {jobs.map(job => (
-            <button
-              key={job.id}
-              onClick={() => handleSelect(job)}
-              className={
-                'border-b border-white/5 border-l-2 px-4 py-3 text-left transition-colors ' +
-                (selected?.id === job.id
-                  ? 'border-l-blue-500 bg-blue-900/20'
-                  : 'border-l-transparent hover:bg-white/5')
-              }
-            >
-              <div className="flex items-center gap-2 text-[13px] font-medium text-white/90">
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: job.color || '#6b7280' }} />
-                {job.name}
-              </div>
-              <div className="mt-0.5 text-[11px] leading-snug text-white/35">{job.description}</div>
-            </button>
-          ))}
-        </div>
+        <JobList jobs={jobs} selected={selected} onSelect={handleSelect} />
       </Drawer>
 
       <div className="flex h-[calc(100vh-var(--app-header-h,3rem))] overflow-hidden">
+        {/* Sidebar (desktop only) */}
+        <aside className="hidden w-64 shrink-0 flex-col border-r border-white/5 overflow-hidden md:flex">
+          <div className="shrink-0 border-b border-white/5 px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-white/30">
+            Available Jobs
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <JobList jobs={jobs} selected={selected} onSelect={handleSelect} />
+          </div>
+        </aside>
+
         {/* Center */}
         <main className="flex flex-1 flex-col overflow-hidden">
           {!selected ? (
@@ -218,6 +234,12 @@ export function JobsPage() {
               <Container className="py-5">
                 <div className="mb-1 text-[15px] font-semibold text-white">{selected.name}</div>
                 <div className="mb-4 text-[12px] text-white/40">{selected.description}</div>
+                {selected.whenToRun && (
+                  <div className="mb-4 flex gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2.5 text-[12px] leading-relaxed text-white/70">
+                    <Info size={14} className="mt-0.5 shrink-0 text-blue-400/80" />
+                    <div><span className="font-medium text-blue-300/90">When to run:</span> {selected.whenToRun}</div>
+                  </div>
+                )}
                 <div className="flex flex-col gap-3">
                   {(selected.params || []).map(p => (
                     <div key={p.name} className="flex items-start gap-3">
