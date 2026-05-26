@@ -46,15 +46,15 @@ function CoverageSection({ coverage }) {
   return (
     <section>
       <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/30 mb-3">Coverage</h2>
-      <div className="bg-white/3 border border-white/8 rounded-lg overflow-hidden">
-        <table className="w-full">
+      <div className="overflow-x-auto rounded-lg border border-white/8 bg-white/3">
+        <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-white/8">
-              <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-white/30 uppercase tracking-wider">Field</th>
-              <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-white/30 uppercase tracking-wider">Images</th>
-              <th className="px-4 py-2.5 w-36"></th>
-              <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-white/30 uppercase tracking-wider">Videos</th>
-              <th className="px-4 py-2.5 w-36"></th>
+              <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-white/30">Field</th>
+              <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-white/30">Images</th>
+              <th className="w-36 px-4 py-2.5"></th>
+              <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-white/30">Videos</th>
+              <th className="w-36 px-4 py-2.5"></th>
             </tr>
           </thead>
           <tbody>
@@ -65,9 +65,9 @@ function CoverageSection({ coverage }) {
                 <tr key={field} className="border-b border-white/5 last:border-0 hover:bg-white/2">
                   <td className="px-4 py-2.5 text-[12px] text-white/60">{FIELD_LABELS[field]}</td>
                   <td className="px-4 py-2.5 text-right text-[12px] tabular-nums text-white/50">{img ? fmt(img.count) : '—'}</td>
-                  <td className="px-4 py-2.5 w-36">{img ? <PctBar pct={img.pct} /> : null}</td>
+                  <td className="w-36 px-4 py-2.5">{img ? <PctBar pct={img.pct} /> : null}</td>
                   <td className="px-4 py-2.5 text-right text-[12px] tabular-nums text-white/50">{vid ? fmt(vid.count) : '—'}</td>
-                  <td className="px-4 py-2.5 w-36">{vid ? <PctBar pct={vid.pct} /> : null}</td>
+                  <td className="w-36 px-4 py-2.5">{vid ? <PctBar pct={vid.pct} /> : null}</td>
                 </tr>
               )
             })}
@@ -118,17 +118,17 @@ function ProcessorsSection({ processors }) {
   return (
     <section>
       <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/30 mb-3">Processors</h2>
-      <div className="bg-white/3 border border-white/8 rounded-lg p-4 space-y-3">
+      <div className="space-y-3 rounded-lg border border-white/8 bg-white/3 p-4">
         {entries.map(([name, count]) => {
           const pct = (count / total) * 100
           const color = PROC_COLORS[name] || '#6b7280'
           return (
-            <div key={name} className="grid items-center gap-3" style={{ gridTemplateColumns: '160px 1fr 80px' }}>
+            <div key={name} className="flex flex-col gap-1 sm:grid sm:grid-cols-[160px_1fr_80px] sm:items-center sm:gap-3">
               <span className="text-[12px] text-white/50">{name}</span>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-2 overflow-hidden rounded-full bg-white/5">
                 <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
               </div>
-              <span className="text-[12px] text-right tabular-nums text-white/60">{fmt(count)}</span>
+              <span className="text-[12px] tabular-nums text-white/60 sm:text-right">{fmt(count)}</span>
             </div>
           )
         })}
@@ -182,8 +182,8 @@ function FacesSection({ faces }) {
   const unassigned = (cl.cluster_count || 0) - (cl.assigned_count || 0)
   return (
     <section>
-      <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/30 mb-3">Face Detection</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-white/30">Face Detection</h2>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
         <StatCard label="Images scanned"   value={`${fmt(img.scanned)} / ${fmt(img.eligible)}`}   sub={`${img.eligible > 0 ? ((img.scanned/img.eligible)*100).toFixed(1) : 0}% of eligible`} />
         <StatCard label="Videos scanned"   value={`${fmt(vid.scanned)} / ${fmt(vid.eligible)}`}   sub={`${vid.eligible > 0 ? ((vid.scanned/vid.eligible)*100).toFixed(1) : 0}% of eligible`} />
         <StatCard label="Faces in images"  value={fmt(img.total_detected)} sub={`${fmt(img.with_2plus)} multi-face images`} />
@@ -234,8 +234,8 @@ function PeopleSection({ people }) {
         <StatCard label="People records"  value={fmt(people.total)}                sub={`${fmt(people.with_gallery)} with face gallery`} />
         <StatCard label="Gallery entries" value={fmt(people.total_gallery_faces)}  sub="total face references" />
       </div>
-      <div className="border border-white/8 rounded-lg overflow-auto max-h-80">
-        <table className="w-full border-collapse">
+      <div className="overflow-auto rounded-lg border border-white/8 max-h-80">
+        <table className="w-full min-w-[480px] border-collapse">
           <thead className="sticky top-0 bg-[#0d0d0d] z-10">
             <tr className="border-b border-white/8">
               {cols.map(col => (
@@ -273,16 +273,16 @@ function ExtensionsSection({ extensions }) {
   return (
     <section>
       <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/30 mb-3">File Types</h2>
-      <div className="bg-white/3 border border-white/8 rounded-lg p-4 space-y-2.5">
+      <div className="space-y-2.5 rounded-lg border border-white/8 bg-white/3 p-4">
         {entries.map(([ext, count]) => {
           const pct = (count / total) * 100
           return (
-            <div key={ext} className="grid items-center gap-3" style={{ gridTemplateColumns: '80px 1fr 80px' }}>
-              <span className="text-[12px] text-white/50 font-mono">.{ext}</span>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+            <div key={ext} className="grid grid-cols-[60px_1fr_70px] items-center gap-3 sm:grid-cols-[80px_1fr_80px]">
+              <span className="font-mono text-[12px] text-white/50">.{ext}</span>
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
                 <div className="h-full rounded-full bg-blue-500/70 transition-all duration-500" style={{ width: `${pct}%` }} />
               </div>
-              <span className="text-[12px] text-right tabular-nums text-white/50">{fmt(count)}</span>
+              <span className="text-right text-[12px] tabular-nums text-white/50">{fmt(count)}</span>
             </div>
           )
         })}
@@ -367,14 +367,14 @@ function DirsSection({ byDir }) {
 
   return (
     <section>
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/30">By Directory</h2>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {FILTER_MODES.map(m => (
             <button
               key={m.key}
               onClick={() => setMode(m.key)}
-              className={`px-2.5 py-1 rounded text-[11px] border transition-colors ${mode === m.key ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-white/10 text-white/30 hover:text-white/60 hover:border-white/20'}`}
+              className={`rounded border px-2.5 py-1 text-[11px] transition-colors ${mode === m.key ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-white/10 text-white/30 hover:border-white/20 hover:text-white/60'}`}
             >
               {m.label}
             </button>
@@ -385,12 +385,12 @@ function DirsSection({ byDir }) {
           value={filter}
           onChange={e => setFilter(e.target.value)}
           placeholder="Filter path…"
-          className="bg-white/5 border border-white/10 rounded px-2.5 py-1 text-[12px] text-white placeholder-white/20 outline-none focus:border-white/25 w-28"
+          className="w-full min-w-0 flex-1 rounded border border-white/10 bg-white/5 px-2.5 py-1 text-[12px] text-white placeholder-white/20 outline-none focus:border-white/25 sm:w-28 sm:flex-none"
         />
-        <span className="text-[11px] text-white/20 ml-auto">{rows.length} / {byDir.length} dirs</span>
+        <span className="ml-auto text-[11px] text-white/20">{rows.length} / {byDir.length} dirs</span>
       </div>
-      <div className="border border-white/8 rounded-lg overflow-auto max-h-[500px]">
-        <table className="w-full border-collapse">
+      <div className="overflow-auto rounded-lg border border-white/8 max-h-[500px]">
+        <table className="w-full min-w-[760px] border-collapse">
           <thead className="sticky top-0 bg-[#0d0d0d] z-10">
             <tr className="border-b border-white/8">
               {DIR_COLS.map(col => (
@@ -446,16 +446,16 @@ export function AdminOverviewPage() {
   const { totals, coverage, issues, extensions, processors, heritage, faces, people, by_dir, generated } = data
 
   return (
-    <div className="p-6 max-w-6xl space-y-8">
-      <div className="flex items-baseline gap-4">
-        <h1 className="text-2xl font-semibold text-white">Archive Overview</h1>
+    <div className="max-w-6xl space-y-8 p-4 md:p-6">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <h1 className="text-xl font-semibold text-white md:text-2xl">Archive Overview</h1>
         <span className="text-[12px] text-white/25">Generated {new Date(generated).toLocaleString()}</span>
       </div>
 
       {/* Summary */}
       <section>
-        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/30 mb-3">Summary</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-white/30">Summary</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatCard label="Total media" value={`${(totals.total/1000).toFixed(1)}k`}  sub={`${fmt(totals.total)} files`} />
           <StatCard label="Images"      value={`${(totals.images/1000).toFixed(1)}k`} sub={`${fmt(totals.images)} files`} />
           <StatCard label="Videos"      value={`${(totals.videos/1000).toFixed(1)}k`} sub={`${fmt(totals.videos)} files`} />

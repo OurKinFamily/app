@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react'
 import '@xyflow/react/dist/base.css'
 import { getRelatives } from '../lib/api'
 import { mediaUrl } from '../lib/media'
-import { EntityChip } from '../components/new/EntityChip'
+import { EntityChip } from '../components/EntityChip'
 import { AddRelativeModal } from '../components/AddRelativeModal'
 
 const NODE_W = 128

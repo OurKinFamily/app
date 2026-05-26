@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Play, ListChecks } from 'lucide-react'
-import { Button } from '../components/new/Button'
-import { Container } from '../components/new/Container'
-import { Drawer } from '../components/new/Drawer'
-import { Input } from '../components/new/Input'
-import { Label } from '../components/new/Label'
-import { ProgressBar } from '../components/new/ProgressBar'
-import { Tag } from '../components/new/Tag'
-import { SubheaderPortal } from '../components/new/SubheaderPortal'
-import { HeaderTrailingPortal } from '../components/new/HeaderTrailingPortal'
+import { Button } from '../components/Button'
+import { Container } from '../components/Container'
+import { Drawer } from '../components/Drawer'
+import { Input } from '../components/Input'
+import { Label } from '../components/Label'
+import { ProgressBar } from '../components/ProgressBar'
+import { Tag } from '../components/Tag'
+import { HeaderTrailingPortal } from '../components/HeaderTrailingPortal'
 
 const API = '/api/jobs'  // Vite proxy strips /api → FastAPI sees /jobs
 
@@ -175,14 +174,8 @@ export function JobsPage() {
 
   return (
     <>
-      <SubheaderPortal>
-        <div className="flex items-center gap-3">
-          <h1 className="text-sm font-medium text-white/80">Jobs</h1>
-          {activeCount > 0 && <Tag tone="blue">{activeCount} running</Tag>}
-        </div>
-      </SubheaderPortal>
-
       <HeaderTrailingPortal>
+        {activeCount > 0 && <Tag tone="blue">{activeCount} running</Tag>}
         <button
           onClick={() => setJobsOpen(true)}
           aria-label="Available jobs"

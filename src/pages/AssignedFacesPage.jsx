@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getClusters, getCluster } from '../lib/api'
 import { isVideo, mediaUrl } from '../lib/media'
-import { EntityChip } from '../components/new/EntityChip'
-import { PhotoLightbox } from '../components/new/PhotoLightbox'
+import { EntityChip } from '../components/EntityChip'
+import { PhotoLightbox } from '../components/PhotoLightbox'
 
 const PAGE_SIZE = 50
 

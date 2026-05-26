@@ -5,14 +5,14 @@ import {
   Briefcase, Building2, Home, Church, Landmark, Users, Users2, Tent,
   ChevronLeft, ChevronDown, X, Search, LayoutGrid, List,
 } from 'lucide-react'
-import { Container } from '../components/new/Container'
-import { Button } from '../components/new/Button'
-import { Input } from '../components/new/Input'
-import { Label } from '../components/new/Label'
-import { Textarea } from '../components/new/Textarea'
-import { EntityItem } from '../components/new/EntityItem'
-import { Tag } from '../components/new/Tag'
-import { Drawer } from '../components/new/Drawer'
+import { Container } from '../components/Container'
+import { Button } from '../components/Button'
+import { Input } from '../components/Input'
+import { Label } from '../components/Label'
+import { Textarea } from '../components/Textarea'
+import { EntityItem } from '../components/EntityItem'
+import { Tag } from '../components/Tag'
+import { Drawer } from '../components/Drawer'
 import { mediaUrl } from '../lib/media'
 
 const TYPE_META = {

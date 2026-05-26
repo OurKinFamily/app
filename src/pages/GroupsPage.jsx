@@ -5,14 +5,14 @@ import {
   Briefcase, Building2, Home, Church, Landmark, Users, Users2, Tent, Search,
   LayoutGrid, List, ChevronDown,
 } from 'lucide-react'
-import { Button } from '../components/new/Button'
-import { Container } from '../components/new/Container'
-import { Input } from '../components/new/Input'
-import { Label } from '../components/new/Label'
-import { Textarea } from '../components/new/Textarea'
-import { EntityItem } from '../components/new/EntityItem'
-import { Tag } from '../components/new/Tag'
-import { Drawer } from '../components/new/Drawer'
+import { Button } from '../components/Button'
+import { Container } from '../components/Container'
+import { Input } from '../components/Input'
+import { Label } from '../components/Label'
+import { Textarea } from '../components/Textarea'
+import { EntityItem } from '../components/EntityItem'
+import { Tag } from '../components/Tag'
+import { Drawer } from '../components/Drawer'
 
 const VIEW_STORAGE_KEY = 'groups-view-mode'
 

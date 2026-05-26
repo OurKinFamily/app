@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { RootLayout } from './components/RootLayout'
-import { MainLayout } from './components/new/MainLayout'
+import { MainLayout } from './components/MainLayout'
 import { PeoplePage } from './pages/PeoplePage'
 import { PersonPage } from './pages/PersonPage'
 import { PersonOverview } from './pages/PersonOverview'

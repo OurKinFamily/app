@@ -4,12 +4,12 @@ import { ChevronLeft, Maximize2, X } from 'lucide-react'
 import { searchPeople } from '../lib/api'
 import { isVideo, mediaUrl } from '../lib/media'
 import { useEscToClose } from '../lib/hooks'
-import { Container } from '../components/new/Container'
-import { Button } from '../components/new/Button'
-import { Input } from '../components/new/Input'
-import { EntityChip } from '../components/new/EntityChip'
-import { Select } from '../components/new/Select'
-import { Tag } from '../components/new/Tag'
+import { Container } from '../components/Container'
+import { Button } from '../components/Button'
+import { Input } from '../components/Input'
+import { EntityChip } from '../components/EntityChip'
+import { Select } from '../components/Select'
+import { Tag } from '../components/Tag'
 
 const PAGE_SIZE = 100
 

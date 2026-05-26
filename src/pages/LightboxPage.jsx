@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { useFavorites } from '../lib/useFavorites'
-import { MediaLightbox } from '../components/new/MediaLightbox'
-import { MediaDetail } from '../components/new/MediaDetail'
+import { MediaLightbox } from '../components/MediaLightbox'
+import { MediaDetail } from '../components/MediaDetail'
 
 // Renders as the gallery's nested route so GalleryPage stays mounted underneath
 // (scroll position + loaded pages survive). Reads media from the outlet context.

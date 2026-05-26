@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useOutletContext, useNavigate, Link } from 'react-router-dom'
-import { EntityItem } from '../components/new/EntityItem'
+import { EntityItem } from '../components/EntityItem'
 import { groupMeta } from '../lib/groups'
 
 export function PersonGroups() {

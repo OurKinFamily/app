@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { getPhotos } from '../lib/api'
 import { isVideo, mediaUrl } from '../lib/media'
-import { Media } from '../components/new/Media'
-import { PhotoLightbox } from '../components/new/PhotoLightbox'
+import { Media } from '../components/Media'
+import { PhotoLightbox } from '../components/PhotoLightbox'
 
 const PAGE_SIZE = 48
 

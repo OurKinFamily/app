@@ -5,10 +5,10 @@ import { mediaUrl } from '../lib/media'
 import { displayName } from '../lib/people'
 import { useGallery } from '../lib/useGallery'
 import { useFavorites } from '../lib/useFavorites'
-import { EntityChip } from '../components/new/EntityChip'
-import { EntityItem } from '../components/new/EntityItem'
-import { MediaGallery } from '../components/new/MediaGallery'
-import { PhotoLightbox } from '../components/new/PhotoLightbox'
+import { EntityChip } from '../components/EntityChip'
+import { EntityItem } from '../components/EntityItem'
+import { MediaGallery } from '../components/MediaGallery'
+import { PhotoLightbox } from '../components/PhotoLightbox'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

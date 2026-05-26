@@ -3,8 +3,8 @@ import { useOutletContext, useNavigate, Link } from 'react-router-dom'
 import { searchPeople, getPeople } from '../lib/api'
 import { mediaUrl } from '../lib/media'
 import { displayName } from '../lib/people'
-import { Button } from '../components/new/Button'
-import { EntityItem } from '../components/new/EntityItem'
+import { Button } from '../components/Button'
+import { EntityItem } from '../components/EntityItem'
 
 const CONNECTION_TYPES = [
   'Friend', 'Close Friend', 'Childhood Friend',

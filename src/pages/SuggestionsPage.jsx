@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button } from '../components/new/Button'
-import { Container } from '../components/new/Container'
-import { Input } from '../components/new/Input'
-import { Tag } from '../components/new/Tag'
+import { Button } from '../components/Button'
+import { Container } from '../components/Container'
+import { Input } from '../components/Input'
+import { Tag } from '../components/Tag'
 
 const TYPE_LABELS = {
   group_membership:  'Group',

@@ -5,8 +5,8 @@ import {
   Notebook, Award, Mail, FileText, Film, Video, ChevronLeft, Search,
   LayoutGrid, List,
 } from 'lucide-react'
-import { MediaCard, MediaRow } from '../components/new/MediaCard'
-import { PhotoLightbox } from '../components/new/PhotoLightbox'
+import { MediaCard, MediaRow } from '../components/MediaCard'
+import { PhotoLightbox } from '../components/PhotoLightbox'
 
 const VIEW_STORAGE_KEY = 'scrapbook-view-mode'
 

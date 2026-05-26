@@ -4,9 +4,9 @@ import { Pencil } from 'lucide-react'
 import { getPerson, getRelatives } from '../lib/api'
 import { mediaUrl } from '../lib/media'
 import { cn } from '../lib/cn'
-import { Container } from '../components/new/Container'
-import { Avatar } from '../components/new/Avatar'
-import { Button } from '../components/new/Button'
+import { Container } from '../components/Container'
+import { Avatar } from '../components/Avatar'
+import { Button } from '../components/Button'
 import { AvatarPicker } from '../components/AvatarPicker'
 
 const TABS = [
