@@ -77,17 +77,30 @@ export function MediaDetail({ item, ctx }) {
     }
   }, [detail, ctx])
 
+  // Bboxes from the sidecar are in original-image pixel coords; the lightbox
+  // renders a downsized "medium" version, so normalise to 0..1 against the
+  // original media dimensions wherever we push a bbox up to the lightbox.
+  const normBbox = (b) => {
+    if (!b) return null
+    const mw = detail?.media?.width
+    const mh = detail?.media?.height
+    if (!mw || !mh) return b
+    const [x1, y1, x2, y2] = b
+    return [x1 / mw, y1 / mh, x2 / mw, y2 / mh]
+  }
+
   // Push the face list up so the lightbox can draw interactive bboxes over the image.
   useEffect(() => {
     if (!ctx?.setFaces) return
     if (!detail) { ctx.setFaces([]); return }
     const list = [
       ...(detail.people || []).filter(p => p.bbox).map(p => ({
-        bbox: p.bbox, label: p.known_as || p.name, identified: true, person: p,
+        bbox: normBbox(p.bbox), label: p.known_as || p.name, identified: true, person: p,
       })),
-      ...(detail.unidentified || []).filter(f => f.bbox).map(f => ({
-        bbox: f.bbox, identified: false, face: f,
-      })),
+      ...(detail.unidentified || []).filter(f => f.bbox).map(f => {
+        const nb = normBbox(f.bbox)
+        return { bbox: nb, identified: false, face: { ...f, bbox: nb } }
+      }),
     ]
     ctx.setFaces(list)
   }, [detail, ctx])
@@ -116,7 +129,7 @@ export function MediaDetail({ item, ctx }) {
                 {detail.people.map(p => (
                   <span
                     key={p.id}
-                    onMouseEnter={() => p.bbox && ctx?.setHighlight?.({ bbox: p.bbox, label: p.known_as || p.name })}
+                    onMouseEnter={() => p.bbox && ctx?.setHighlight?.({ bbox: normBbox(p.bbox), label: p.known_as || p.name })}
                     onMouseLeave={() => ctx?.setHighlight?.(null)}
                   >
                     <EntityChip
@@ -159,7 +172,7 @@ export function MediaDetail({ item, ctx }) {
                     <Thumb
                       key={f.face_index}
                       src={f.crop_url}
-                      onClick={e => ctx?.openAssign?.(f, e.clientX, e.clientY)}
+                      onClick={e => ctx?.openAssign?.({ ...f, bbox: normBbox(f.bbox) }, e.clientX, e.clientY)}
                       className="h-10 w-10"
                     />
                   ))}
