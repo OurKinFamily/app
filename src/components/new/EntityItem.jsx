@@ -3,37 +3,11 @@ import { Leading } from './Leading'
 import { Tag } from './Tag'
 
 // Generic list/card item for any entity. Knows layout, not domain.
-//   variant="row"  (default) — horizontal: lead | text+badge / secondary | trailing
-//                              Compact, use for list rows.
-//   variant="card"           — vertical stack: lead on top, text+badge, secondary,
-//                              trailing at bottom. Use inside grids.
-export function EntityItem({ avatar, icon, initials, text, badge, secondary, trailing, variant = 'row', onClick, className }) {
+// Horizontal: lead | text+badge / secondary | trailing.
+// Works as a row in a stack OR as a cell in a grid (auto-fill columns).
+export function EntityItem({ avatar, icon, initials, text, badge, secondary, trailing, onClick, className }) {
   const lead = Boolean(avatar || icon || initials)
   const Comp = onClick ? 'button' : 'div'
-
-  if (variant === 'card') {
-    return (
-      <Comp
-        onClick={onClick}
-        className={cn(
-          'flex w-full items-center gap-4 rounded-xl border border-white/8 bg-white/5 p-4 text-left transition-colors',
-          onClick && 'cursor-pointer hover:bg-white/8',
-          className,
-        )}
-      >
-        <div className="min-w-0 flex-1">
-          <div className="text-sm text-white">
-            {text}
-            {badge && <Tag variant="plain" className="ml-2">{badge}</Tag>}
-          </div>
-          {secondary && <div className="mt-0.5 truncate text-[12px] text-white/50">{secondary}</div>}
-          {trailing && <div className="mt-1 text-[12px] text-white/30">{trailing}</div>}
-        </div>
-        {lead && <Leading avatar={avatar} icon={icon} initials={initials} text={text} size="xl" />}
-      </Comp>
-    )
-  }
-
   return (
     <Comp
       onClick={onClick}

@@ -114,8 +114,7 @@ export function GroupsPage() {
             return (
               <EntityItem
                 key={g.id}
-                variant={viewMode === 'grid' ? 'card' : 'row'}
-                icon={typeIcon(g.type, viewMode === 'grid' ? 24 : 18)}
+                icon={typeIcon(g.type)}
                 text={
                   <span className="flex items-center gap-2">
                     <span>{g.name}</span>
@@ -124,7 +123,7 @@ export function GroupsPage() {
                 }
                 secondary={g.location_name}
                 trailing={
-                  <span className="flex items-center gap-2">
+                  <span className="flex flex-col items-end gap-1">
                     <Tag tone={meta?.tone || 'default'}>{meta?.label || g.type}</Tag>
                     <span className="text-[11px] text-white/30">
                       {g.member_count} member{g.member_count !== 1 ? 's' : ''}

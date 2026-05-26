@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MapPin, Camera, ShieldCheck, GraduationCap, Briefcase, Heart } from 'lucide-react'
+import { MapPin, Camera, ShieldCheck } from 'lucide-react'
 import { EntityChip } from '../components/new/EntityChip'
 import { EntityItem } from '../components/new/EntityItem'
 import { MediaCard, MediaRow } from '../components/new/MediaCard'
@@ -396,59 +396,10 @@ export function DesignPage() {
         </div>
       </Section>
 
-      <Section title='EntityItem · variant="card" — people grid (avatar + initials)'>
-        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
+      <Section title="EntityItem · same row in an auto-fill grid (use this for grid views; no special variant)">
+        <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
           {PEOPLE.slice(0, 6).map(p => (
-            <EntityItem
-              key={p.id}
-              variant="card"
-              avatar={avatarSrc(p)}
-              initials
-              text={displayName(p)}
-              secondary={otherName(p)}
-              onClick={noop}
-            />
-          ))}
-        </div>
-      </Section>
-
-      <Section title='EntityItem · variant="card" — group grid (icon + Tag badge + trailing)'>
-        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
-          {GROUPS.map(g => {
-            const tone = g.type === 'school' ? 'blue' : g.type === 'workplace' ? 'amber' : 'green'
-            const Icon = g.type === 'school' ? GraduationCap : g.type === 'workplace' ? Briefcase : Heart
-            const memberCount = (g.id * 3) + 1
-            return (
-              <EntityItem
-                key={g.id}
-                variant="card"
-                icon={<Icon size={24} />}
-                text={g.name}
-                secondary={g.location_name}
-                trailing={
-                  <span className="flex items-center gap-2">
-                    <Tag tone={tone}>{g.type.replace('_', ' ')}</Tag>
-                    <span className="text-[11px] text-white/30">{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
-                  </span>
-                }
-                onClick={noop}
-              />
-            )
-          })}
-        </div>
-      </Section>
-
-      <Section title='EntityItem · variant="card" — text-only (no leading)'>
-        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
-          {GROUPS.map(g => (
-            <EntityItem
-              key={g.id}
-              variant="card"
-              text={g.name}
-              secondary={g.location_name}
-              badge={g.role}
-              onClick={noop}
-            />
+            <EntityItem key={p.id} avatar={avatarSrc(p)} initials text={displayName(p)} secondary={otherName(p)} onClick={noop} />
           ))}
         </div>
       </Section>

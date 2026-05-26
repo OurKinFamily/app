@@ -1,14 +1,37 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import {
+  Trophy, Dumbbell, Palette, GraduationCap, School as SchoolIcon, Sparkles,
+  Briefcase, Building2, Home, Church, Landmark, Users, Users2, Tent,
+  ChevronLeft, ChevronDown, X, Search, LayoutGrid, List,
+} from 'lucide-react'
+import { Container } from '../components/new/Container'
+import { Button } from '../components/new/Button'
+import { Input } from '../components/new/Input'
+import { Label } from '../components/new/Label'
+import { Textarea } from '../components/new/Textarea'
+import { EntityItem } from '../components/new/EntityItem'
+import { Tag } from '../components/new/Tag'
+import { Drawer } from '../components/new/Drawer'
+import { mediaUrl } from '../lib/media'
 
-const TYPE_LABELS = {
-  sports_team: 'Sports Team', fitness: 'Fitness', hobby_club: 'Hobby / Club',
-  school_class: 'School Class', school: 'School', extracurricular: 'Extracurricular',
-  workplace: 'Workplace', professional_org: 'Professional Org',
-  neighborhood: 'Neighborhood', religious: 'Religious', civic: 'Civic',
-  family_friend: 'Family Friend', extended_network: 'Extended Network',
-  camp: 'Camp',
+const TYPE_META = {
+  sports_team:      { label: 'Sports Team',      icon: Trophy,        tone: 'green'  },
+  fitness:          { label: 'Fitness',          icon: Dumbbell,      tone: 'green'  },
+  hobby_club:       { label: 'Hobby / Club',     icon: Palette,       tone: 'purple' },
+  school_class:     { label: 'School Class',     icon: GraduationCap, tone: 'blue'   },
+  school:           { label: 'School',           icon: SchoolIcon,    tone: 'blue'   },
+  extracurricular:  { label: 'Extracurricular',  icon: Sparkles,      tone: 'cyan'   },
+  workplace:        { label: 'Workplace',        icon: Briefcase,     tone: 'amber'  },
+  professional_org: { label: 'Professional Org', icon: Building2,     tone: 'amber'  },
+  neighborhood:     { label: 'Neighborhood',     icon: Home,          tone: 'orange' },
+  religious:        { label: 'Religious',        icon: Church,        tone: 'pink'   },
+  civic:            { label: 'Civic',            icon: Landmark,      tone: 'slate'  },
+  family_friend:    { label: 'Family Friend',    icon: Users,         tone: 'pink'   },
+  extended_network: { label: 'Extended Network', icon: Users2,        tone: 'cyan'   },
+  camp:             { label: 'Camp',             icon: Tent,          tone: 'green'  },
 }
+const TYPE_KEYS = Object.keys(TYPE_META)
 
 const TYPE_ROLES = {
   sports_team:      ['Player', 'Coach', 'Assistant Coach', 'Manager', 'Referee', 'Parent'],
@@ -27,67 +50,196 @@ const TYPE_ROLES = {
   camp:             ['Camper', 'Counselor', 'Staff', 'Director'],
 }
 
-function LocationPicker({ value, onChange }) {
-  const [query, setQuery]     = useState(value?.name || '')
-  const [results, setResults] = useState([])
-  const [open, setOpen]       = useState(false)
-  const timerRef              = useRef(null)
+function typeIcon(type, size = 18) {
+  const Icon = TYPE_META[type]?.icon || Users
+  return <Icon size={size} />
+}
 
-  function handleInput(e) {
-    const q = e.target.value
-    setQuery(q)
-    if (value) onChange(null)
-    clearTimeout(timerRef.current)
-    if (!q.trim()) { setResults([]); setOpen(false); return }
-    timerRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`,
-          { headers: { 'Accept-Language': 'en' } }
-        )
-        const data = await res.json()
-        setResults(data)
-        setOpen(data.length > 0)
-      } catch { /* ignore */ }
-    }, 350)
+const VIEW_STORAGE_KEY = 'group-members-view-mode'
+
+export function GroupPage() {
+  const { id }    = useParams()
+  const navigate  = useNavigate()
+  const [group, setGroup]     = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [addingMember, setAddingMember] = useState(false)
+  const [filter, setFilter]   = useState('')
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem(VIEW_STORAGE_KEY) || 'list')
+  useEffect(() => { localStorage.setItem(VIEW_STORAGE_KEY, viewMode) }, [viewMode])
+
+  async function load() {
+    const res = await fetch(`/api/groups/${id}`)
+    if (res.ok) setGroup(await res.json())
+    setLoading(false)
   }
 
-  function pick(r) {
-    const name = r.display_name.split(',').slice(0, 2).join(',').trim()
-    setQuery(name)
-    setResults([])
-    setOpen(false)
-    onChange({ name, lat: parseFloat(r.lat), lng: parseFloat(r.lon) })
+  useEffect(() => { load() }, [id])
+
+  async function removeMember(personId) {
+    await fetch(`/api/groups/${id}/members/${personId}`, { method: 'DELETE' })
+    load()
   }
+
+  async function deleteGroup() {
+    if (!confirm(`Delete "${group.name}"? This cannot be undone.`)) return
+    await fetch(`/api/groups/${id}`, { method: 'DELETE' })
+    navigate('/manage/groups')
+  }
+
+  if (loading) return <Container className="py-6"><p className="text-[13px] text-white/30">Loading…</p></Container>
+  if (!group)  return <Container className="py-6"><p className="text-[13px] text-white/30">Group not found.</p></Container>
+
+  const meta  = TYPE_META[group.type]
+  const when  = [group.year, group.season].filter(Boolean).join(' ')
+  const subline = [meta?.label || group.type, when, group.location_name].filter(Boolean).join(' · ')
 
   return (
-    <div className="relative">
-      <input value={query} onChange={handleInput}
-        placeholder="Search place…"
-        className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-[13px] text-white placeholder-white/25 outline-none focus:border-white/25" />
-      {value && (
-        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-green-400/70">
-          <span>📍</span>
-          <span>{value.lat.toFixed(4)}, {value.lng.toFixed(4)}</span>
-          <button type="button" onClick={() => { onChange(null); setQuery('') }}
-            className="ml-1 text-white/30 hover:text-white/60">✕</button>
+    <Container className="py-6">
+      <Link to="/manage/groups" className="flex items-center gap-1 text-[12px] text-white/40 hover:text-white/70">
+        <ChevronLeft size={14} /> Groups
+      </Link>
+
+      <div className="mb-6 mt-3 flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="shrink-0 text-zinc-400">{typeIcon(group.type, 24)}</span>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-medium text-white/80">{group.name}</h1>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-white/45">
+              {meta && <Tag tone={meta.tone}>{meta.label}</Tag>}
+              {when && <span>{when}</span>}
+              {group.location_name && <span>· {group.location_name}</span>}
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>Edit</Button>
+          <Button
+            size="sm"
+            onClick={deleteGroup}
+            className="border border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+          >
+            Delete
+          </Button>
+        </div>
+      </div>
+
+      {group.notes && <p className="mb-6 text-[13px] text-white/55">{group.notes}</p>}
+
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+          Members · {group.members?.length ?? 0}
+        </h2>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setAddingMember(v => !v)}>
+            {addingMember ? 'Cancel' : '+ Add member'}
+          </Button>
+          <ViewToggle value={viewMode} onChange={setViewMode} />
+        </div>
+      </div>
+
+      {(group.members || []).length > 0 && (
+        <div className="mb-5">
+          <label className="relative block">
+            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+            <Input
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+              placeholder="Filter members…"
+              className="pl-9"
+            />
+          </label>
         </div>
       )}
-      {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-[#1a1a1a] border border-white/10 rounded shadow-xl overflow-hidden">
-          {results.map(r => (
-            <button key={r.place_id} type="button" onClick={() => pick(r)}
-              className="w-full text-left px-3 py-2 text-[12px] text-white/70 hover:bg-white/5 truncate">
-              {r.display_name}
-            </button>
-          ))}
-        </div>
+
+      {addingMember && (
+        <AddMemberPanel
+          groupId={id}
+          groupType={group.type}
+          existingIds={new Set((group.members || []).map(m => m.id))}
+          onAdded={() => { setAddingMember(false); load() }}
+        />
       )}
+
+      {(() => {
+        const all = group.members || []
+        const q = filter.trim().toLowerCase()
+        const visible = q
+          ? all.filter(m => [m.name, m.known_as, m.role].filter(Boolean).join(' ').toLowerCase().includes(q))
+          : all
+        if (all.length === 0) return <p className="mt-3 text-[13px] text-white/25">No members yet.</p>
+        if (visible.length === 0) return <p className="mt-3 text-[13px] text-white/25">No members match &ldquo;{filter}&rdquo;.</p>
+        return (
+          <div className={
+            viewMode === 'grid'
+              ? 'mt-3 grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]'
+              : 'mt-3 space-y-2'
+          }>
+            {visible.map(m => (
+              <EntityItem
+                key={m.id}
+                avatar={m.avatar ? mediaUrl(m.avatar) : null}
+                initials
+                text={m.name}
+                badge={m.role}
+                onClick={() => navigate(`/manage/people/${m.id}`)}
+                trailing={
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); removeMember(m.id) }}
+                    aria-label="Remove member"
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-white/25 opacity-0 transition-opacity hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                  >
+                    <X size={14} />
+                  </button>
+                }
+                className="group"
+              />
+            ))}
+          </div>
+        )
+      })()}
+
+      <Drawer open={editing} onClose={() => setEditing(false)} title="Edit Group">
+        <EditGroupForm
+          group={group}
+          onSaved={updated => { setGroup(g => ({ ...g, ...updated })); setEditing(false) }}
+          onCancel={() => setEditing(false)}
+        />
+      </Drawer>
+    </Container>
+  )
+}
+
+function ViewToggle({ value, onChange }) {
+  const btn = (mode, Icon, label) => {
+    const active = value === mode
+    return (
+      <button
+        type="button"
+        onClick={() => onChange(mode)}
+        aria-label={label}
+        aria-pressed={active}
+        className={
+          'flex h-8 w-8 items-center justify-center transition-colors ' +
+          (active ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white/70')
+        }
+      >
+        <Icon size={16} />
+      </button>
+    )
+  }
+  return (
+    <div className="flex shrink-0 overflow-hidden rounded-lg border border-white/10">
+      {btn('grid', LayoutGrid, 'Grid view')}
+      {btn('list', List,       'List view')}
     </div>
   )
 }
 
-function EditForm({ group, onSaved, onCancel }) {
+// ── Edit form (rendered inside Drawer) ────────────────────────────────────────
+
+function EditGroupForm({ group, onSaved, onCancel }) {
   const [form, setForm] = useState({
     name:     group.name,
     type:     group.type,
@@ -123,56 +275,58 @@ function EditForm({ group, onSaved, onCancel }) {
   }
 
   return (
-    <form onSubmit={submit} className="mb-6 p-4 bg-white/3 border border-white/8 rounded-xl space-y-3">
+    <form onSubmit={submit} className="space-y-4">
       <div>
-        <label className="text-[11px] text-white/40 block mb-1">Name</label>
-        <input required value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))}
-          className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-[13px] text-white outline-none focus:border-white/25" />
+        <Label required>Name</Label>
+        <Input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
       </div>
       <div>
-        <label className="text-[11px] text-white/40 block mb-1">Type</label>
-        <select value={form.type} onChange={e => setForm(f => ({...f, type: e.target.value}))}
-          className="w-full bg-[#1a1a1a] border border-white/10 rounded px-3 py-1.5 text-[13px] text-white outline-none focus:border-white/25">
-          {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-[#1a1a1a]">{v}</option>)}
-        </select>
+        <Label>Type</Label>
+        <div className="relative">
+          <select
+            value={form.type}
+            onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+            className="w-full appearance-none rounded-lg border border-white/10 bg-[#1a1a1a] py-2 pl-3 pr-9 text-[13px] text-white outline-none focus:border-white/30"
+          >
+            {TYPE_KEYS.map(k => (
+              <option key={k} value={k} className="bg-[#1a1a1a]">{TYPE_META[k].label}</option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40" />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-[11px] text-white/40 block mb-1">Year</label>
-          <input type="number" placeholder="2025" value={form.year} onChange={e => setForm(f => ({...f, year: e.target.value}))}
-            className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-[13px] text-white outline-none focus:border-white/25" />
+          <Label>Year</Label>
+          <Input type="number" placeholder="2025" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} />
         </div>
         <div>
-          <label className="text-[11px] text-white/40 block mb-1">Season</label>
-          <input placeholder="Fall, Spring…" value={form.season} onChange={e => setForm(f => ({...f, season: e.target.value}))}
-            className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-[13px] text-white outline-none focus:border-white/25" />
+          <Label>Season</Label>
+          <Input placeholder="Fall, Spring…" value={form.season} onChange={e => setForm(f => ({ ...f, season: e.target.value }))} />
         </div>
       </div>
       <div>
-        <label className="text-[11px] text-white/40 block mb-1">Location</label>
-        <LocationPicker value={form.location} onChange={loc => setForm(f => ({...f, location: loc}))} />
+        <Label>Location</Label>
+        <LocationPicker value={form.location} onChange={loc => setForm(f => ({ ...f, location: loc }))} />
       </div>
       <div>
-        <label className="text-[11px] text-white/40 block mb-1">Notes</label>
-        <textarea rows={2} value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))}
-          className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-[13px] text-white outline-none focus:border-white/25 resize-none" />
+        <Label>Notes</Label>
+        <Textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
       </div>
-      <div className="flex gap-2 pt-1">
-        <button type="submit" disabled={saving}
-          className="px-4 py-1.5 bg-white/10 hover:bg-white/15 text-white text-[12px] rounded-lg transition-colors disabled:opacity-50">
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-        <button type="button" onClick={onCancel}
-          className="px-3 py-1.5 text-[12px] text-white/40 hover:text-white/70">Cancel</button>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" size="sm" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
       </div>
     </form>
   )
 }
 
+// ── Add member panel ──────────────────────────────────────────────────────────
+
 function AddMemberPanel({ groupId, groupType, existingIds, onAdded }) {
   const [query, setQuery]       = useState('')
   const [results, setResults]   = useState([])
-  const [selected, setSelected] = useState([])  // array of people
+  const [selected, setSelected] = useState([])
   const [role, setRole]         = useState('')
   const [saving, setSaving]     = useState(false)
   const roles = TYPE_ROLES[groupType] || []
@@ -206,7 +360,7 @@ function AddMemberPanel({ groupId, groupType, existingIds, onAdded }) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ person_id: p.id, role: role || null }),
-        })
+        }),
       ))
       setQuery(''); setSelected([]); setRole(''); setResults([])
       onAdded()
@@ -218,175 +372,128 @@ function AddMemberPanel({ groupId, groupType, existingIds, onAdded }) {
   const filtered = results.filter(p => !existingIds.has(p.id))
 
   return (
-    <div className="mt-4 p-3 bg-white/3 border border-white/8 rounded-lg space-y-2">
+    <div className="mt-4 space-y-2 rounded-lg border border-white/8 bg-white/3 p-3">
       <p className="text-[11px] text-white/40">Add members</p>
 
-      {/* Search input */}
-      <input value={query} onChange={e => setQuery(e.target.value)}
+      <Input
+        value={query}
+        onChange={e => setQuery(e.target.value)}
         onFocus={handleFocus}
         placeholder="Search people… (click to select multiple)"
-        className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-[12px] text-white placeholder-white/25 outline-none focus:border-white/25" />
+      />
 
-      {/* Results list */}
       {filtered.length > 0 && (
-        <div className="bg-[#1a1a1a] border border-white/10 rounded overflow-hidden max-h-48 overflow-y-auto">
+        <div className="max-h-48 overflow-y-auto overflow-hidden rounded border border-white/10 bg-[#1a1a1a]">
           {filtered.map(p => {
-            const isSelected = !!selected.find(x => x.id === p.id)
+            const sel = !!selected.find(x => x.id === p.id)
             return (
-              <button key={p.id} onClick={() => togglePerson(p)}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 text-[12px] hover:bg-white/5 text-left transition-colors ${isSelected ? 'bg-blue-500/10 text-white' : 'text-white/60'}`}>
-                <div className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-white/20'}`}>
-                  {isSelected && <span className="text-white text-[8px] font-bold">✓</span>}
+              <button key={p.id} type="button" onClick={() => togglePerson(p)}
+                className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-[12px] transition-colors hover:bg-white/5 ${sel ? 'bg-blue-500/10 text-white' : 'text-white/60'}`}>
+                <div className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${sel ? 'border-blue-500 bg-blue-500' : 'border-white/20'}`}>
+                  {sel && <span className="text-[8px] font-bold text-white">✓</span>}
                 </div>
                 {p.avatar
-                  ? <img src={`/api/media/${p.avatar}`} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
-                  : <div className="w-5 h-5 rounded-full bg-white/10 shrink-0" />}
-                <span>{p.name}{p.known_as ? <span className="text-white/30 ml-1">({p.known_as})</span> : ''}</span>
+                  ? <img src={mediaUrl(p.avatar)} alt="" className="h-5 w-5 shrink-0 rounded-full object-cover" />
+                  : <div className="h-5 w-5 shrink-0 rounded-full bg-white/10" />}
+                <span>{p.name}{p.known_as ? <span className="ml-1 text-white/30">({p.known_as})</span> : ''}</span>
               </button>
             )
           })}
         </div>
       )}
 
-      {/* Selected chips */}
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {selected.map(p => (
-            <span key={p.id} className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/15 border border-blue-500/30 rounded-full text-[11px] text-blue-300">
+            <span key={p.id} className="flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/15 px-2 py-0.5 text-[11px] text-blue-300">
               {p.name}
-              <button onClick={() => togglePerson(p)} className="text-blue-300/50 hover:text-blue-300">✕</button>
+              <button type="button" onClick={() => togglePerson(p)} className="text-blue-300/50 hover:text-blue-300">×</button>
             </span>
           ))}
         </div>
       )}
 
-      {/* Role + submit */}
       {selected.length > 0 && (
-        <div className="flex gap-2 items-center">
+        <div className="flex items-center gap-2">
           {roles.length > 0 ? (
-            <select value={role} onChange={e => setRole(e.target.value)}
-              className="flex-1 bg-[#1a1a1a] border border-white/10 rounded px-2 py-1 text-[12px] text-white outline-none">
-              <option value="" className="bg-[#1a1a1a]">Role (optional)</option>
-              {roles.map(r => <option key={r} value={r} className="bg-[#1a1a1a]">{r}</option>)}
-            </select>
+            <div className="relative flex-1">
+              <select
+                value={role}
+                onChange={e => setRole(e.target.value)}
+                className="w-full appearance-none rounded-lg border border-white/10 bg-[#1a1a1a] py-1.5 pl-2 pr-8 text-[12px] text-white outline-none"
+              >
+                <option value="" className="bg-[#1a1a1a]">Role (optional)</option>
+                {roles.map(r => <option key={r} value={r} className="bg-[#1a1a1a]">{r}</option>)}
+              </select>
+              <ChevronDown size={12} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-white/40" />
+            </div>
           ) : (
-            <input value={role} onChange={e => setRole(e.target.value)} placeholder="Role (optional)"
-              className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1 text-[12px] text-white placeholder-white/25 outline-none" />
+            <Input value={role} onChange={e => setRole(e.target.value)} placeholder="Role (optional)" className="flex-1" />
           )}
-          <button onClick={add} disabled={saving}
-            className="px-3 py-1 bg-white/10 hover:bg-white/15 text-white/80 text-[12px] rounded transition-colors disabled:opacity-50 shrink-0">
+          <Button size="sm" disabled={saving} onClick={add}>
             {saving ? 'Adding…' : `Add ${selected.length}`}
-          </button>
+          </Button>
         </div>
       )}
     </div>
   )
 }
 
-export function GroupPage() {
-  const { id }                          = useParams()
-  const navigate                        = useNavigate()
-  const [group, setGroup]               = useState(null)
-  const [loading, setLoading]           = useState(true)
-  const [editing, setEditing]           = useState(false)
-  const [addingMember, setAddingMember] = useState(false)
+// ── Nominatim location picker ─────────────────────────────────────────────────
 
-  async function load() {
-    const res = await fetch(`/api/groups/${id}`)
-    if (res.ok) setGroup(await res.json())
-    setLoading(false)
+function LocationPicker({ value, onChange }) {
+  const [query, setQuery]     = useState(value?.name || '')
+  const [results, setResults] = useState([])
+  const [open, setOpen]       = useState(false)
+  const timerRef              = useRef(null)
+
+  function handleInput(e) {
+    const q = e.target.value
+    setQuery(q)
+    if (value) onChange(null)
+    clearTimeout(timerRef.current)
+    if (!q.trim()) { setResults([]); setOpen(false); return }
+    timerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`,
+          { headers: { 'Accept-Language': 'en' } },
+        )
+        const data = await res.json()
+        setResults(data)
+        setOpen(data.length > 0)
+      } catch { /* ignore */ }
+    }, 350)
   }
 
-  useEffect(() => { load() }, [id])
-
-  async function removeMember(personId) {
-    await fetch(`/api/groups/${id}/members/${personId}`, { method: 'DELETE' })
-    load()
+  function pick(r) {
+    const name = r.display_name.split(',').slice(0, 2).join(',').trim()
+    setQuery(name)
+    setResults([])
+    setOpen(false)
+    onChange({ name, lat: parseFloat(r.lat), lng: parseFloat(r.lon) })
   }
-
-  async function deleteGroup() {
-    if (!confirm(`Delete "${group.name}"? This cannot be undone.`)) return
-    await fetch(`/api/groups/${id}`, { method: 'DELETE' })
-    navigate('/manage/groups')
-  }
-
-  if (loading) return <div className="p-6 text-white/30 text-sm">Loading…</div>
-  if (!group)  return <div className="p-6 text-white/30 text-sm">Group not found.</div>
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="mb-1">
-        <Link to="/manage/groups" className="text-[11px] text-white/30 hover:text-white/60">← Groups</Link>
-      </div>
-
-      {editing ? (
-        <EditForm
-          group={group}
-          onSaved={updated => { setGroup(g => ({...g, ...updated})); setEditing(false) }}
-          onCancel={() => setEditing(false)}
-        />
-      ) : (
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-xl font-medium text-white/90">{group.name}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[11px] text-white/40">{TYPE_LABELS[group.type] || group.type}</span>
-              {group.year && <span className="text-[11px] text-white/30">· {group.year}{group.season ? ` ${group.season}` : ''}</span>}
-              {group.location_name && <span className="text-[11px] text-white/30">· {group.location_name}</span>}
-            </div>
-            {group.notes && <p className="mt-2 text-[12px] text-white/40">{group.notes}</p>}
-          </div>
-          <div className="flex gap-3 shrink-0">
-            <button onClick={() => setEditing(true)}
-              className="text-[11px] text-white/30 hover:text-white/60 transition-colors px-2 py-1">
-              Edit
-            </button>
-            <button onClick={deleteGroup}
-              className="text-[11px] text-white/20 hover:text-red-400 transition-colors px-2 py-1">
-              Delete
-            </button>
-          </div>
+    <div className="relative">
+      <Input value={query} onChange={handleInput} placeholder="Search place…" />
+      {value && (
+        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-green-400/70">
+          <span>{value.lat.toFixed(4)}, {value.lng.toFixed(4)}</span>
+          <button type="button" onClick={() => { onChange(null); setQuery('') }}
+            className="ml-1 text-white/30 hover:text-white/60">×</button>
         </div>
       )}
-
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[12px] font-medium text-white/50 uppercase tracking-wider">
-          Members · {group.members?.length ?? 0}
-        </h2>
-        <button onClick={() => setAddingMember(v => !v)}
-          className="text-[11px] text-white/40 hover:text-white/70 px-2 py-1 rounded transition-colors">
-          {addingMember ? 'Cancel' : '+ Add member'}
-        </button>
-      </div>
-
-      {addingMember && (
-        <AddMemberPanel
-          groupId={id}
-          groupType={group.type}
-          existingIds={new Set((group.members || []).map(m => m.id))}
-          onAdded={() => { setAddingMember(false); load() }}
-        />
-      )}
-
-      <div className="space-y-1 mt-3">
-        {(group.members || []).length === 0 ? (
-          <p className="text-[12px] text-white/25">No members yet.</p>
-        ) : (group.members || []).map(m => (
-          <div key={m.id} className="flex items-center gap-3 p-2.5 bg-white/3 border border-white/6 rounded-lg group">
-            {m.avatar
-              ? <img src={`/api/media/${m.avatar}`} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-              : <div className="w-8 h-8 rounded-full bg-white/10 shrink-0" />}
-            <div className="flex-1 min-w-0">
-              <Link to={`/manage/people/${m.id}`} className="text-[13px] text-white/70 hover:text-white">{m.name}</Link>
-              {m.role && <span className="text-[11px] text-white/30 ml-2">{m.role}</span>}
-            </div>
-            <button onClick={() => removeMember(m.id)}
-              className="opacity-0 group-hover:opacity-100 text-white/25 hover:text-red-400 text-xs px-2 transition-all">
-              Remove
+      {open && (
+        <div className="absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-white/10 bg-[#1a1a1a] shadow-xl">
+          {results.map(r => (
+            <button key={r.place_id} type="button" onClick={() => pick(r)}
+              className="block w-full truncate px-3 py-2 text-left text-[12px] text-white/70 transition-colors hover:bg-white/5">
+              {r.display_name}
             </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
