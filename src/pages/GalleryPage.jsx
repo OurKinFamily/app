@@ -27,12 +27,6 @@ export function GalleryPage() {
   })
   const { favs, toggle: toggleFav } = useFavorites()
 
-  // Reflect current scroll year in URL (without re-anchoring useGallery).
-  useEffect(() => {
-    if (lightboxOpen || !currentYear) return
-    if (Number(yearParam) === currentYear) return
-    navigate(`/gallery/${currentYear}`, { replace: true })
-  }, [currentYear, yearParam, navigate, lightboxOpen])
 
   const galleryRef = useRef(null)
   const topSentinelRef = useRef(null)
