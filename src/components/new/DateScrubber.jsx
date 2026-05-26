@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn'
 // /api/gallery/years — only years that actually exist in the catalog. Highlights
 // the active (filtered) year and the "current" year (visible in viewport).
 // Desktop only — mobile chrome is too tight.
-export function DateScrubber({ years = [], activeYear, currentYear, onJump }) {
+export function DateScrubber({ years = [], currentYear, onJump }) {
   if (!years.length) return null
   return (
     <div className="hide-scrollbar fixed right-0 top-12 z-20 hidden h-[calc(100vh-3rem)] w-14 flex-col items-stretch overflow-y-auto bg-black/20 py-2 md:flex">

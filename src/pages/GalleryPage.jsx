@@ -214,7 +214,6 @@ export function GalleryPage() {
 
       <DateScrubber
         years={years}
-        activeYear={yearFilter}
         currentYear={currentYear}
         onJump={y => {
           if (y === yearFilter) return
