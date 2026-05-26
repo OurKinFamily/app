@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import { Images, Settings2, Shield } from 'lucide-react'
+import { Images, Settings2, Shield, Palette } from 'lucide-react'
 import { Sidebar, SidebarSection, SidebarLink } from './Sidebar'
 
 export function HomeLayout() {
@@ -15,6 +15,7 @@ export function HomeLayout() {
           <SidebarSection>Library</SidebarSection>
           <SidebarLink to="/manage/people" icon={<Settings2 size={14} />}>Manage</SidebarLink>
           <SidebarLink to="/admin/jobs" icon={<Shield size={14} />}>Admin</SidebarLink>
+          <SidebarLink to="/design" icon={<Palette size={14} />}>Design</SidebarLink>
         </Sidebar>
       </div>
       <div className="flex-1 min-w-0">
