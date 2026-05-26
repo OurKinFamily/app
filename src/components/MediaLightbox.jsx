@@ -87,7 +87,7 @@ export function MediaLightbox({
 
   useEffect(() => {
     if (items[index]) onNavigate?.(items[index])
-  }, [index]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [index])
 
   // Preload neighbors so left/right is snappy.
   useEffect(() => {
@@ -189,7 +189,6 @@ export function MediaLightbox({
           />
         )}
 
-        {/* eslint-disable react-hooks/refs -- face regions + highlight need the rendered img layout */}
         {!item.is_video && mediaRef.current?.naturalWidth > 0 && faces.map(f => {
           const r = bboxRect(mediaRef.current, f.bbox)
           if (!r) return null
@@ -219,8 +218,6 @@ export function MediaLightbox({
             </div>
           )
         })()}
-        {/* eslint-enable react-hooks/refs */}
-
         {canNext && (
           <button onClick={e => { e.stopPropagation(); go(1) }} aria-label="Next"
             className={cn('absolute right-2 z-10 hidden h-10 w-10 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/10 hover:text-white md:flex', chromeCls)}>
