@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useOutletContext, useNavigate, Link } from 'react-router-dom'
 import { searchPeople, getPeople } from '../lib/api'
-import { isVideo, mediaUrl, thumbUrl } from '../lib/media'
+import { mediaUrl } from '../lib/media'
 import { displayName } from '../lib/people'
+import { useGallery } from '../lib/useGallery'
+import { useFavorites } from '../lib/useFavorites'
 import { EntityChip } from '../components/new/EntityChip'
 import { EntityItem } from '../components/new/EntityItem'
-import { Media } from '../components/new/Media'
+import { MediaGallery } from '../components/new/MediaGallery'
 import { PhotoLightbox } from '../components/new/PhotoLightbox'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -218,87 +220,62 @@ export function PersonOverview() {
 
 // ── Inline gallery ────────────────────────────────────────────────────────────
 
-const GALLERY_PAGE = 100
-
 function PersonGalleryInline({ personId }) {
-  const [total, setTotal]   = useState(null)
-  const [paths, setPaths]   = useState([])
-  const [loading, setLoading] = useState(false)
+  const { media, loading, hasMoreOlder, loadOlder } = useGallery({
+    params: { person_ids: personId },
+  })
+  const { favs, toggle: toggleFav } = useFavorites()
   const [viewer, setViewer] = useState(null)
-  const sentinelRef         = useRef(null)
-  const offsetRef           = useRef(0)
-  const exhaustedRef        = useRef(false)
+  const loadingRef = useRef(false)
 
-  async function fetchPage(id, offset) {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/people/${id}/photos?limit=${GALLERY_PAGE}&offset=${offset}`)
-      if (!res.ok) return
-      const data = await res.json()
-      if (offset === 0) {
-        setTotal(data.total)
-        setPaths(data.paths)
-      } else {
-        setPaths(prev => [...prev, ...data.paths])
-      }
-      offsetRef.current = offset + data.paths.length
-      if (data.paths.length < GALLERY_PAGE) exhaustedRef.current = true
-    } finally {
-      setLoading(false)
+  useEffect(() => { loadingRef.current = loading }, [loading])
+
+  // Window scroll: pull next page when near the bottom. IntersectionObserver
+  // alone can't re-fire while the sentinel stays in view across consecutive
+  // loads, so use a continuous scroll check (same pattern as GalleryPage).
+  useEffect(() => {
+    const onScroll = () => {
+      if (loadingRef.current || !hasMoreOlder) return
+      const doc = document.documentElement
+      if (window.scrollY + window.innerHeight > doc.scrollHeight - 600) loadOlder()
     }
-  }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [hasMoreOlder, loadOlder])
 
+  // Auto-fill if the first batch didn't fill the viewport (otherwise scroll
+  // never triggers and the user is stuck at one page).
   useEffect(() => {
-    offsetRef.current = 0
-    exhaustedRef.current = false
-    setPaths([])
-    setTotal(null)
-    fetchPage(personId, 0)
-  }, [personId])
+    if (loading || !hasMoreOlder || media.length === 0) return
+    const doc = document.documentElement
+    if (doc.scrollHeight < window.innerHeight * 1.5) loadOlder()
+  }, [media.length, loading, hasMoreOlder, loadOlder])
 
-  useEffect(() => {
-    if (!sentinelRef.current) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !loading && !exhaustedRef.current) {
-          fetchPage(personId, offsetRef.current)
-        }
-      },
-      { rootMargin: '400px' }
-    )
-    observer.observe(sentinelRef.current)
-    return () => observer.disconnect()
-  }, [personId, loading])
-
-  if (total === null) return null
-  if (total === 0) return null
-
-  const viewerPhotos = paths.map(path => ({ path, url: mediaUrl(path), is_video: isVideo(path) }))
+  if (media.length === 0 && !loading) return null
 
   return (
     <div className="mt-10">
       <p className="text-white/40 uppercase tracking-wider text-xs mb-3">
-        Photos · {total.toLocaleString()}
+        Photos · {media.length.toLocaleString()}{hasMoreOlder ? '+' : ''}
       </p>
-      <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))' }}>
-        {paths.map((path, i) => (
-          <div key={path} className="aspect-square">
-            <Media thumb={thumbUrl(path)} isVideo={isVideo(path)} onClick={() => setViewer(i)} />
-          </div>
-        ))}
-      </div>
-      {!exhaustedRef.current && <div ref={sentinelRef} className="flex h-8 items-center justify-center text-[11px] text-white/20">
-        {loading ? 'Loading…' : ''}
-      </div>}
+      <MediaGallery
+        items={media}
+        favorites={favs}
+        onFavorite={it => toggleFav(it.path)}
+        onSelect={it => setViewer(media.findIndex(m => m.path === it.path))}
+      />
+      {(loading || hasMoreOlder) && (
+        <div className="flex h-8 items-center justify-center text-[11px] text-white/20">
+          {loading ? 'Loading…' : ''}
+        </div>
+      )}
 
-      {viewer !== null && (
+      {viewer !== null && viewer >= 0 && (
         <PhotoLightbox
-          items={viewerPhotos}
+          items={media}
           initialIndex={viewer}
           onClose={() => setViewer(null)}
-          onNeedMore={() => {
-            if (!loading && !exhaustedRef.current) fetchPage(personId, offsetRef.current)
-          }}
+          onNeedMore={() => { if (!loadingRef.current && hasMoreOlder) loadOlder() }}
         />
       )}
     </div>

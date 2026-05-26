@@ -194,9 +194,8 @@ export function GalleryPage() {
   return (
     <div className="p-4">
       <h1 className="mb-4 text-2xl font-semibold text-white">Gallery</h1>
-      {media.length > 0 && (
-        <p className="mb-3 text-[12px] text-white/25">{media.length.toLocaleString()} loaded</p>
-      )}
+
+      <GalleryFilters loaded={media.length} />
 
       <div ref={topSentinelRef} className="h-px" />
 
@@ -226,6 +225,49 @@ export function GalleryPage() {
       />
 
       <Outlet context={{ media, hasMore: hasMoreOlder, loadMore: loadOlder }} />
+    </div>
+  )
+}
+
+// Mocked filter chips — sticky under AppHeader (h-12). No behavior yet; the
+// values are placeholders for a future filter spec.
+const FILTERS = [
+  { key: 'all',       label: 'All' },
+  { key: 'photos',    label: 'Photos' },
+  { key: 'videos',    label: 'Videos' },
+  { key: 'people',    label: 'With people' },
+  { key: 'favorites', label: 'Favorites' },
+  { key: 'recent',    label: 'Recent' },
+]
+
+function GalleryFilters({ loaded }) {
+  const [active, setActive] = useState('all')
+  return (
+    <div className="sticky top-12 z-20 -mx-4 mb-3 border-b border-white/5 bg-black/85 px-4 py-2 backdrop-blur">
+      <div className="hide-scrollbar flex items-center gap-2 overflow-x-auto">
+        {FILTERS.map(f => {
+          const isActive = active === f.key
+          return (
+            <button
+              key={f.key}
+              onClick={() => setActive(f.key)}
+              className={
+                'shrink-0 rounded-full px-3 py-1 text-[12px] transition-colors ' +
+                (isActive
+                  ? 'bg-white text-black'
+                  : 'border border-white/10 text-white/60 hover:border-white/25 hover:text-white')
+              }
+            >
+              {f.label}
+            </button>
+          )
+        })}
+        {loaded > 0 && (
+          <span className="ml-auto shrink-0 pl-3 text-[11px] text-white/25">
+            {loaded.toLocaleString()} loaded
+          </span>
+        )}
+      </div>
     </div>
   )
 }
