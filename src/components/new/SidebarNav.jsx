@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
-  Search, Images, MapPin, Users, BookOpen, Album, Heart,
+  Images, MapPin, Users, BookOpen, Album, Heart,
   UserPlus, UserCheck, Users2, Sparkles,
   LayoutDashboard, Activity, Palette,
 } from 'lucide-react'
@@ -10,7 +10,6 @@ const SECTIONS = [
   {
     title: 'Our Kin',
     items: [
-      { to: '/search', label: 'Search', Icon: Search },
       { to: '/gallery', label: 'Gallery', Icon: Images, end: true },
       { to: '/gallery/places', label: 'Places', Icon: MapPin },
       { to: '/gallery/people', label: 'People', Icon: Users },

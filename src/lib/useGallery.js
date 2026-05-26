@@ -69,13 +69,17 @@ export function useGallery({ anchor = null, params = {} } = {}) {
       if (batch.length) {
         const additions = []
         if (skipMs > 0) {
-          // Visualize skipped range. Use oldestIso for the timestamp so all gap
-          // tiles fall in the same day group as the last loaded real item — no
-          // bogus date headers spawn between them.
+          // Visualize skipped range with placeholder tiles. Each gap is tagged
+          // with the range it covers — when these tiles come into view and the
+          // user dwells, MediaGallery calls fillGap() to splice in real items
+          // from that range, replacing the placeholders.
+          const gapFromTs = batch[0].timestamp     // newer side of the skipped slice (= top of fetched batch)
+          const gapToTs   = oldestIso              // older boundary of the previously-loaded items
           for (let i = 0; i < 12; i++) {
             additions.push({
               path: `__gap__${oldestIso}_${i}`,
               __gap: true,
+              gapFromTs, gapToTs,
               width: 1, height: 1,
               dominant_color: '#1d1d1d',
               timestamp: oldestIso,
@@ -90,6 +94,34 @@ export function useGallery({ anchor = null, params = {} } = {}) {
       setHasMoreOlder(batch.length > 0)
     } catch { /* ignore */ }
     finally { loadingRef.current = false; setLoading(false) }
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Replace gap placeholders covering [from, to) with real items fetched from
+  // that range. Called by MediaGallery when gap tiles dwell in view.
+  const fillingGapsRef = useRef(new Set())
+  const fillGap = useCallback(async ({ from, to }) => {
+    const key2 = `${from}|${to}`
+    if (fillingGapsRef.current.has(key2)) return
+    fillingGapsRef.current.add(key2)
+    try {
+      const qs = new URLSearchParams({ limit: 200, sort: 'desc', ...params })
+      qs.set('ts_from', from)
+      qs.set('ts_to', to)
+      const res = await fetch(`/api/gallery?${qs}`)
+      const d = await res.json()
+      const batch = d.media || []
+      const without = mediaRef.current.filter(
+        m => !(m.__gap && m.gapFromTs === from && m.gapToTs === to),
+      )
+      const merged = [...without, ...batch].sort((a, b) => {
+        const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0
+        const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0
+        return tb - ta
+      })
+      mediaRef.current = merged
+      setMedia([...merged])
+    } catch { /* ignore */ }
+    finally { fillingGapsRef.current.delete(key2) }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadNewer = useCallback(async () => {
@@ -113,5 +145,5 @@ export function useGallery({ anchor = null, params = {} } = {}) {
     finally { loadingRef.current = false; setLoading(false) }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer }
+  return { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer, fillGap }
 }

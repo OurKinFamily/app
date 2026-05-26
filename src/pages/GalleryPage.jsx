@@ -3,6 +3,10 @@ import { useNavigate, Outlet, useParams, useLocation } from 'react-router-dom'
 import { useGallery } from '../lib/useGallery'
 import { useFavorites } from '../lib/useFavorites'
 import { MediaGallery } from '../components/new/MediaGallery'
+import { HeaderTrailingPortal } from '../components/new/HeaderTrailingPortal'
+import { Drawer } from '../components/new/Drawer'
+import { Dot } from '../components/new/Dot'
+import { GalleryFiltersBody, FiltersIconButton } from './GalleryFilters'
 
 const ROW_MIN = 50
 const ROW_MAX = 2400
@@ -20,7 +24,7 @@ export function GalleryPage() {
     yearParam && /^\d{4}$/.test(yearParam) ? Number(yearParam) : null
   )
   const [years, setYears] = useState([])
-  const { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer } = useGallery({
+  const { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer, fillGap } = useGallery({
     anchor: yearFilter != null ? { year: yearFilter } : null,
   })
   const { favs, toggle: toggleFav } = useFavorites()
@@ -153,11 +157,20 @@ export function GalleryPage() {
 
   const open = item => navigate(`photo/${item.path}`)
 
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
   return (
     <div className="p-4">
-      <h1 className="mb-4 text-2xl font-semibold text-white">Gallery</h1>
+      <HeaderTrailingPortal>
+        {/* TODO: flip `show` when there are active filters (lifted from drawer state) */}
+        <Dot show={false} color="red">
+          <FiltersIconButton onClick={() => setFiltersOpen(true)} />
+        </Dot>
+      </HeaderTrailingPortal>
 
-      <GalleryFilters loaded={media.length} />
+      <Drawer open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filters">
+        <GalleryFiltersBody />
+      </Drawer>
 
       <div ref={topSentinelRef} className="h-px" />
 
@@ -169,6 +182,7 @@ export function GalleryPage() {
           onFavorite={toggleFav}
           onSelect={open}
           onLoadOlder={loadOlder}
+          onFillGap={fillGap}
           scrubber={{
             years,
             onJump: y => {
@@ -196,45 +210,3 @@ export function GalleryPage() {
   )
 }
 
-// Mocked filter chips — sticky under AppHeader (h-12). No behavior yet; the
-// values are placeholders for a future filter spec.
-const FILTERS = [
-  { key: 'all',       label: 'All' },
-  { key: 'photos',    label: 'Photos' },
-  { key: 'videos',    label: 'Videos' },
-  { key: 'people',    label: 'With people' },
-  { key: 'favorites', label: 'Favorites' },
-  { key: 'recent',    label: 'Recent' },
-]
-
-function GalleryFilters({ loaded }) {
-  const [active, setActive] = useState('all')
-  return (
-    <div className="sticky top-12 z-20 -mx-4 mb-3 border-b border-white/5 bg-black/85 px-4 py-2 backdrop-blur">
-      <div className="hide-scrollbar flex items-center gap-2 overflow-x-auto">
-        {FILTERS.map(f => {
-          const isActive = active === f.key
-          return (
-            <button
-              key={f.key}
-              onClick={() => setActive(f.key)}
-              className={
-                'shrink-0 rounded-full px-3 py-1 text-[12px] transition-colors ' +
-                (isActive
-                  ? 'bg-white text-black'
-                  : 'border border-white/10 text-white/60 hover:border-white/25 hover:text-white')
-              }
-            >
-              {f.label}
-            </button>
-          )
-        })}
-        {loaded > 0 && (
-          <span className="ml-auto shrink-0 pl-3 text-[11px] text-white/25">
-            {loaded.toLocaleString()} loaded
-          </span>
-        )}
-      </div>
-    </div>
-  )
-}

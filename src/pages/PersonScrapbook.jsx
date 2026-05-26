@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import {
+  BookOpen, Image as ImageIcon, GraduationCap, HeartPulse, Newspaper,
+  Notebook, Award, Mail, FileText, Film, Video,
+  X, ChevronLeft, ChevronRight, Volume2, Square, Play,
+} from 'lucide-react'
 import { useEscToClose } from '../lib/hooks'
+import { MediaCard } from '../components/new/MediaCard'
+import { Field } from '../components/new/Field'
+import { DetailSection } from '../components/new/DetailSection'
+import { EntityChip } from '../components/new/EntityChip'
+import { displayName } from '../lib/people'
 
 const TYPE_LABELS = {
   baby_book:      'Baby Book',
@@ -16,16 +26,21 @@ const TYPE_LABELS = {
 }
 
 const TYPE_ICONS = {
-  baby_book:      '📖',
-  photo_album:    '🖼',
-  yearbook:       '🎓',
-  medical_records:'🏥',
-  newspaper:      '📰',
-  school_papers:  '✏️',
-  certificates:   '🏅',
-  letters:        '✉️',
-  documents:      '📄',
-  home_movies:    '🎬',
+  baby_book:       BookOpen,
+  photo_album:     ImageIcon,
+  yearbook:        GraduationCap,
+  medical_records: HeartPulse,
+  newspaper:       Newspaper,
+  school_papers:   Notebook,
+  certificates:    Award,
+  letters:         Mail,
+  documents:       FileText,
+  home_movies:     Film,
+}
+
+function typeIcon(type, size = 14) {
+  const Icon = TYPE_ICONS[type] || FileText
+  return <Icon size={size} />
 }
 
 export function PersonScrapbook() {
@@ -45,28 +60,51 @@ export function PersonScrapbook() {
       .catch(() => setItems([]))
   }, [person.id])
 
-  if (!collections || !items) return <div className="text-white/30 text-sm">Loading…</div>
+  if (!collections || !items) return <p className="text-[13px] text-white/30">Loading…</p>
   if (!collections.length && !items.length)
-    return <div className="text-white/30 text-sm">Nothing in the scrapbook yet.</div>
+    return <p className="text-[13px] text-white/25">Nothing in the scrapbook yet.</p>
 
   return (
-    <div className="p-6 max-w-4xl">
-      <h2 className="text-white/40 uppercase tracking-wider text-xs mb-6">Scrapbook</h2>
-
+    <div className="max-w-5xl">
       {collections.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {collections.map(c => (
-            <CollectionCard key={c.id} collection={c} onClick={() => setOpen({ kind: 'collection', collection: c })} />
-          ))}
-        </div>
+        <>
+          <h2 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-white/50">
+            Collections · {collections.length}
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {collections.map(c => (
+              <MediaCard
+                key={c.id}
+                cover={c.cover_path ? `/api/media/${c.cover_path}` : null}
+                coverBadge={`${c.item_count} ${c.is_series ? 'pages' : 'items'}`}
+                icon={typeIcon(c.type)}
+                text={c.name}
+                subtitle={TYPE_LABELS[c.type] || c.type}
+                description={c.description}
+                onClick={() => setOpen({ kind: 'collection', collection: c })}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {items.length > 0 && (
         <>
-          <h3 className="text-white/40 uppercase tracking-wider text-xs mt-10 mb-4">Appears in</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <h2 className="mt-10 mb-3 text-[10px] font-semibold uppercase tracking-wider text-white/50">
+            Appears in · {items.length}
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map(it => (
-              <ItemCard key={it.path} item={it} onClick={() => setOpen({ kind: 'item', item: it })} />
+              <MediaCard
+                key={it.path}
+                cover={it.thumb_url}
+                coverBadge={it.is_video ? 'video' : null}
+                icon={it.is_video ? <Video size={14} /> : <ImageIcon size={14} />}
+                text={it.context_subject || 'Untitled'}
+                subtitle={[it.content_date, it.place_name].filter(Boolean).join(' · ')}
+                description={it.collection_name}
+                onClick={() => setOpen({ kind: 'item', item: it })}
+              />
             ))}
           </div>
         </>
@@ -79,70 +117,12 @@ export function PersonScrapbook() {
         <CollectionViewer
           collection={{ name: open.item.context_subject || open.item.collection_name || 'Item', type: 'home_movies', is_series: false }}
           presetItems={[open.item]}
-          onClose={() => setOpen(null)} />
+          onClose={() => setOpen(null)}
+        />
       )}
     </div>
   )
 }
-
-// ── Collection card ────────────────────────────────────────────────────────────
-
-function CollectionCard({ collection: c, onClick }) {
-  const label = TYPE_LABELS[c.type] || c.type
-  const icon  = TYPE_ICONS[c.type] || '📄'
-
-  return (
-    <button onClick={onClick}
-      className="group text-left bg-white/3 hover:bg-white/6 border border-white/8 hover:border-white/15 rounded-xl overflow-hidden transition-all">
-      <div className="aspect-[4/3] bg-white/5 overflow-hidden relative">
-        {c.cover_path
-          ? <img src={`/api/media/${c.cover_path}`} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          : <div className="w-full h-full flex items-center justify-center text-4xl opacity-30">{icon}</div>}
-        {c.is_series && (
-          <div className="absolute bottom-2 right-2 bg-black/60 text-white/70 text-[10px] px-1.5 py-0.5 rounded">
-            {c.item_count} pages
-          </div>
-        )}
-        {!c.is_series && (
-          <div className="absolute bottom-2 right-2 bg-black/60 text-white/70 text-[10px] px-1.5 py-0.5 rounded">
-            {c.item_count} items
-          </div>
-        )}
-      </div>
-      <div className="p-3">
-        <p className="text-white/80 text-[13px] font-medium leading-tight">{c.name}</p>
-        <p className="text-white/35 text-[11px] mt-0.5">{icon} {label}</p>
-        {c.description && <p className="text-white/25 text-[11px] mt-1 line-clamp-2">{c.description}</p>}
-      </div>
-    </button>
-  )
-}
-
-// ── Individual item card (appears-in, not owned/grouped) ─────────────────────────
-
-function ItemCard({ item, onClick }) {
-  return (
-    <button onClick={onClick}
-      className="group text-left bg-white/3 hover:bg-white/6 border border-white/8 hover:border-white/15 rounded-xl overflow-hidden transition-all">
-      <div className="aspect-[4/3] bg-white/5 overflow-hidden relative">
-        {item.thumb_url
-          ? <img src={item.thumb_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-          : <div className="w-full h-full flex items-center justify-center text-4xl opacity-30">{item.is_video ? '🎬' : '🖼'}</div>}
-        {item.is_video && (
-          <div className="absolute bottom-2 right-2 bg-black/60 text-white/70 text-[10px] px-1.5 py-0.5 rounded">▶ video</div>
-        )}
-      </div>
-      <div className="p-3">
-        <p className="text-white/80 text-[13px] font-medium leading-tight">{item.context_subject || 'Untitled'}</p>
-        <p className="text-white/35 text-[11px] mt-0.5">
-          {item.content_date}{item.place_name ? ` · ${item.place_name}` : ''}
-        </p>
-        {item.collection_name && <p className="text-white/25 text-[11px] mt-1">{item.collection_name}</p>}
-      </div>
-    </button>
-  )
-}
-
 
 // ── Collection viewer ──────────────────────────────────────────────────────────
 
@@ -166,7 +146,6 @@ function CollectionViewer({ collection, presetItems, onClose }) {
       .catch(() => setItems([]))
   }, [collection.id, presetItems])
 
-  // Fetch people/faces/objects detail for the current item
   useEffect(() => {
     if (!items || selected === null) { setDetail(null); return }
     const path = items[selected]?.path
@@ -188,7 +167,7 @@ function CollectionViewer({ collection, presetItems, onClose }) {
     return () => document.removeEventListener('keydown', onKey)
   }, [items])
 
-  // When page changes while playing, switch src and keep playing
+  // When page changes while playing, switch src and keep playing.
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || !items || selected === null) return
@@ -225,68 +204,97 @@ function CollectionViewer({ collection, presetItems, onClose }) {
   const current = items && selected !== null ? items[selected] : null
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex flex-col" onClick={onClose}>
-      <div className="flex items-center justify-between px-6 py-3 border-b border-white/10 shrink-0" onClick={e => e.stopPropagation()}>
-        <div>
-          <span className="text-white/80 text-[14px] font-medium">{collection.name}</span>
-          <span className="text-white/30 text-[12px] ml-3">{TYPE_LABELS[collection.type] || collection.type}</span>
+    <div className="fixed inset-0 z-[1300] flex flex-col bg-black/90" onClick={onClose}>
+      <div
+        className="flex shrink-0 items-center justify-between border-b border-white/10 px-6 py-3"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-[14px] font-medium text-white/80">{collection.name}</span>
+          <span className="flex items-center gap-1.5 text-[12px] text-white/30">
+            {typeIcon(collection.type, 14)}
+            {TYPE_LABELS[collection.type] || collection.type}
+          </span>
         </div>
-        <button onClick={onClose} className="text-white/30 hover:text-white/70 text-xl leading-none transition-colors">✕</button>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {!items && (
-        <div className="flex-1 flex items-center justify-center text-white/30 text-sm">Loading…</div>
+        <div className="flex flex-1 items-center justify-center text-[13px] text-white/30">Loading…</div>
       )}
 
       {items && items.length === 0 && (
-        <div className="flex-1 flex items-center justify-center text-white/30 text-sm">No items found.</div>
+        <div className="flex flex-1 items-center justify-center text-[13px] text-white/30">No items found.</div>
       )}
 
       {items && items.length > 0 && (
-        <div className="flex flex-col flex-1 min-h-0" onClick={e => e.stopPropagation()}>
-          {/* Main view */}
-          <div className="flex flex-1 min-h-0">
-            {/* Image */}
-            <div className="flex-1 flex flex-col items-center justify-center p-4 min-w-0 min-h-0 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col" onClick={e => e.stopPropagation()}>
+          <div className="flex min-h-0 flex-1">
+            {/* Main view */}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center overflow-hidden p-4">
               {current && (
                 <>
                   <div className="relative inline-block">
                     {current.is_video ? (
-                      <video key={current.path} poster={current.thumb_url} controls autoPlay
-                        className="block max-w-full object-contain rounded-lg shadow-2xl"
-                        style={{ maxHeight: isSeries ? 'calc(100vh - 240px)' : 'calc(100vh - 192px)' }}>
+                      <video
+                        key={current.path}
+                        poster={current.thumb_url}
+                        controls
+                        autoPlay
+                        className="block max-w-full rounded-lg object-contain shadow-2xl"
+                        style={{ maxHeight: isSeries ? 'calc(100vh - 240px)' : 'calc(100vh - 192px)' }}
+                      >
                         <source src={current.url} />
                         {current.subtitle_url && (
                           <track kind="subtitles" src={current.subtitle_url} srcLang="en" label="English" default />
                         )}
                       </video>
                     ) : (
-                      <img src={current.url} alt=""
-                        className="block max-w-full object-contain rounded-lg shadow-2xl"
-                        style={{ maxHeight: isSeries ? 'calc(100vh - 240px)' : 'calc(100vh - 192px)' }} />
+                      <img
+                        src={current.url}
+                        alt=""
+                        className="block max-w-full rounded-lg object-contain shadow-2xl"
+                        style={{ maxHeight: isSeries ? 'calc(100vh - 240px)' : 'calc(100vh - 192px)' }}
+                      />
                     )}
                     {current.audio_url && (
-                      <button onClick={toggleAudio}
+                      <button
+                        onClick={toggleAudio}
                         title={current.audio_description || 'Play audio'}
-                        className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all
-                          ${playing ? 'bg-blue-500/80 text-white' : 'bg-black/60 text-white/70 hover:bg-black/80 hover:text-white'}`}>
-                        {playing ? '⏹' : '🔊'}
+                        className={
+                          'absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-all ' +
+                          (playing ? 'bg-blue-500/80 text-white' : 'bg-black/60 text-white/70 hover:bg-black/80 hover:text-white')
+                        }
+                      >
+                        {playing ? <Square size={16} /> : <Volume2 size={16} />}
                       </button>
                     )}
                   </div>
                   <audio ref={audioRef} onEnded={() => setPlaying(false)} />
                   {isSeries && (
-                    <div className="flex items-center gap-4 mt-3 shrink-0">
-                      <button onClick={prev} disabled={selected === 0}
-                        className="px-3 py-1.5 bg-white/10 hover:bg-white/15 disabled:opacity-20 text-white/60 text-[12px] rounded transition-colors">
-                        ← Prev
+                    <div className="mt-3 flex shrink-0 items-center gap-4">
+                      <button
+                        onClick={prev}
+                        disabled={selected === 0}
+                        className="flex items-center gap-1 rounded bg-white/10 px-3 py-1.5 text-[12px] text-white/60 transition-colors hover:bg-white/15 disabled:opacity-20"
+                      >
+                        <ChevronLeft size={14} /> Prev
                       </button>
-                      <span className="text-white/30 text-[12px]">
+                      <span className="text-[12px] text-white/30">
                         {current.page_number != null ? `Page ${current.page_number}` : `${selected + 1} / ${items.length}`}
                       </span>
-                      <button onClick={next} disabled={selected === items.length - 1}
-                        className="px-3 py-1.5 bg-white/10 hover:bg-white/15 disabled:opacity-20 text-white/60 text-[12px] rounded transition-colors">
-                        Next →
+                      <button
+                        onClick={next}
+                        disabled={selected === items.length - 1}
+                        className="flex items-center gap-1 rounded bg-white/10 px-3 py-1.5 text-[12px] text-white/60 transition-colors hover:bg-white/15 disabled:opacity-20"
+                      >
+                        Next <ChevronRight size={14} />
                       </button>
                     </div>
                   )}
@@ -296,104 +304,101 @@ function CollectionViewer({ collection, presetItems, onClose }) {
 
             {/* Metadata panel */}
             {current && (
-              <div className="w-72 shrink-0 border-l border-white/8 overflow-y-auto p-4 space-y-4 bg-black/20">
-                {current.content_date && (
-                  <div>
-                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Date</p>
-                    <p className="text-white/70 text-[13px]">{current.content_date}</p>
-                    {current.content_date_explanation && (
-                      <p className="text-white/30 text-[10px] mt-0.5 italic">{current.content_date_explanation}</p>
-                    )}
-                  </div>
-                )}
-                {current.context_subject && (
-                  <div>
-                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Subject</p>
-                    <p className="text-white/70 text-[13px]">{current.context_subject}</p>
-                  </div>
-                )}
-                {current.place_name && (
-                  <div>
-                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Place</p>
-                    <p className="text-white/70 text-[13px]">{current.place_name}</p>
-                  </div>
-                )}
+              <div className="w-72 shrink-0 overflow-y-auto border-l border-white/8 bg-black/20 p-4">
+                <DetailSection title="When & where">
+                  <Field label="Date" value={current.content_date} />
+                  {current.content_date_explanation && (
+                    <p className="mt-0.5 text-[10px] italic text-white/30">{current.content_date_explanation}</p>
+                  )}
+                  <Field label="Place" value={current.place_name} />
+                  <Field label="Subject" value={current.context_subject} />
+                </DetailSection>
 
-                {/* People — assigned */}
                 {detail?.people?.length > 0 && (
-                  <div>
-                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1.5">People</p>
+                  <DetailSection title={`People · ${detail.people.length}`}>
                     <div className="flex flex-wrap gap-1.5">
                       {detail.people.map(p => (
-                        <a key={p.id} href={`/manage/people/${p.id}`}
-                          className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 rounded-full pl-0.5 pr-2 py-0.5 transition-colors">
-                          {p.crop_url
-                            ? <img src={p.crop_url} alt="" className="w-5 h-5 rounded-full object-cover" />
-                            : <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[9px] text-white/40">{(p.known_as || p.name || '?')[0]}</span>}
-                          <span className="text-white/60 text-[11px]">{p.known_as || p.name}</span>
-                        </a>
+                        <EntityChip
+                          key={p.id}
+                          to={`/manage/people/${p.id}`}
+                          avatar={p.crop_url || null}
+                          initials
+                          text={displayName(p)}
+                        />
                       ))}
                     </div>
-                  </div>
+                  </DetailSection>
                 )}
 
-                {/* Unidentified faces */}
                 {detail?.unidentified?.length > 0 && (
-                  <div>
-                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1.5">
-                      Unidentified faces ({detail.unidentified.length})
-                    </p>
+                  <DetailSection title={`Unidentified · ${detail.unidentified.length}`}>
                     <div className="flex flex-wrap gap-1">
                       {detail.unidentified.map(f => (
-                        <img key={f.face_index} src={f.crop_url} alt=""
+                        <img
+                          key={f.face_index}
+                          src={f.crop_url}
+                          alt=""
                           title={`Face ${f.face_index}`}
-                          className="w-9 h-9 rounded object-cover border border-white/10" loading="lazy" />
+                          className="h-9 w-9 rounded border border-white/10 object-cover"
+                          loading="lazy"
+                        />
                       ))}
                     </div>
-                  </div>
+                  </DetailSection>
                 )}
 
                 {current.context_notes && (
-                  <div>
-                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Notes</p>
-                    <p className="text-white/50 text-[12px] leading-relaxed">{current.context_notes}</p>
-                  </div>
+                  <DetailSection title="Notes">
+                    <p className="text-[12px] leading-relaxed text-white/50">{current.context_notes}</p>
+                  </DetailSection>
                 )}
+
                 {current.description && (
-                  <div>
-                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Description</p>
-                    <p className="text-white/50 text-[12px] leading-relaxed">{current.description}</p>
-                  </div>
+                  <DetailSection title="Description">
+                    <p className="text-[12px] leading-relaxed text-white/50">{current.description}</p>
+                  </DetailSection>
                 )}
+
                 {current.transcription && (
-                  <div>
-                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Transcription</p>
-                    <p className="text-white/40 text-[11px] leading-relaxed whitespace-pre-wrap font-mono">{current.transcription}</p>
-                  </div>
+                  <DetailSection title="Transcription">
+                    <p className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-white/40">{current.transcription}</p>
+                  </DetailSection>
                 )}
+
                 {(current.physical_status || current.physical_condition) && (
-                  <div>
-                    <p className="text-white/30 uppercase tracking-wider text-[10px] mb-1">Physical original</p>
-                    <p className="text-white/50 text-[12px]">
-                      {current.physical_status}{current.physical_condition ? ` · ${current.physical_condition}` : ''}
-                    </p>
-                  </div>
+                  <DetailSection title="Physical original">
+                    <Field label="Status" value={current.physical_status} />
+                    <Field label="Condition" value={current.physical_condition} />
+                  </DetailSection>
                 )}
               </div>
             )}
           </div>
 
-          {/* Thumbnail strip — bottom */}
-          <div className="h-24 shrink-0 border-t border-white/8 bg-black/40 flex gap-0.5 overflow-x-auto">
+          {/* Thumbnail strip */}
+          <div className="flex h-24 shrink-0 gap-0.5 overflow-x-auto border-t border-white/8 bg-black/40">
             {items.map((item, i) => (
-              <button key={i} onClick={() => setSelected(i)}
-                className={`h-full aspect-square shrink-0 overflow-hidden relative transition-all ${selected === i ? 'ring-2 ring-inset ring-blue-400' : 'opacity-50 hover:opacity-80'}`}>
-                <img src={item.is_video ? item.thumb_url : item.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+              <button
+                key={i}
+                onClick={() => setSelected(i)}
+                className={
+                  'relative aspect-square h-full shrink-0 overflow-hidden transition-all ' +
+                  (selected === i ? 'ring-2 ring-inset ring-blue-400' : 'opacity-50 hover:opacity-80')
+                }
+              >
+                <img
+                  src={item.is_video ? item.thumb_url : item.url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
                 {item.is_video && (
-                  <div className="absolute inset-0 flex items-center justify-center text-white/80 text-lg pointer-events-none drop-shadow">▶</div>
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white/80 drop-shadow">
+                    <Play size={16} className="fill-white" />
+                  </span>
                 )}
                 {isSeries && item.page_number != null && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-[9px] text-white/60 text-center py-0.5">
+                  <div className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-[9px] text-white/60">
                     {item.page_number}
                   </div>
                 )}
@@ -405,4 +410,3 @@ function CollectionViewer({ collection, presetItems, onClose }) {
     </div>
   )
 }
-

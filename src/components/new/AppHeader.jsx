@@ -4,7 +4,7 @@ import { Menu } from 'lucide-react'
 // In-flow header for AppShell. `onMenu` shows a hamburger on mobile (top-right).
 export function AppHeader({ onMenu }) {
   return (
-    <header className="flex h-12 items-center border-b border-white/5 bg-black/60 px-4 backdrop-blur">
+    <header className="flex h-12 items-center border-b border-white/5 bg-black/60 pl-4 backdrop-blur">
       <Link
         to="/"
         title="Home"
@@ -12,11 +12,14 @@ export function AppHeader({ onMenu }) {
       >
         OK
       </Link>
+      {/* Trailing slot — pages portal icon buttons in here (filters, etc.).
+          ml-auto pushes both this and the hamburger to the right edge. */}
+      <div id="layout-header-trailing" className="ml-auto flex items-center gap-1" />
       {onMenu && (
         <button
           onClick={onMenu}
           aria-label="Open menu"
-          className="ml-auto flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white md:hidden"
+          className="ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white md:hidden"
         >
           <Menu size={20} />
         </button>

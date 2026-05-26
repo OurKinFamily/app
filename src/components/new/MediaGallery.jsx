@@ -41,7 +41,7 @@ function citiesFor(items) {
 // Gap items (item.__gap === true) render as gray placeholders, no interactions.
 export function MediaGallery({
   items, onSelect, favorites, onFavorite, rowHeight = 200, gap = 4,
-  onLoadOlder, scrubber,
+  onLoadOlder, onFillGap, scrubber,
 }) {
   const ref = useRef(null)
   const [width, setWidth] = useState(0)
@@ -80,6 +80,33 @@ export function MediaGallery({
     return () => window.removeEventListener('scroll', onScroll)
   }, [onLoadOlder])
 
+  // Gap-fill on dwell: when scroll settles, look for any gap-placeholder tiles
+  // currently in viewport and ask onFillGap to fetch their range. Each unique
+  // (from,to) range is requested at most once (the fill side dedupes too).
+  useEffect(() => {
+    if (!onFillGap) return
+    let timer
+    const checkGaps = () => {
+      const els = document.querySelectorAll('[data-gap-from]')
+      const seen = new Set()
+      for (const el of els) {
+        const r = el.getBoundingClientRect()
+        if (r.bottom <= 0 || r.top >= window.innerHeight) continue
+        const k = `${el.dataset.gapFrom}|${el.dataset.gapTo}`
+        if (seen.has(k)) continue
+        seen.add(k)
+        onFillGap({ from: el.dataset.gapFrom, to: el.dataset.gapTo })
+      }
+    }
+    const onScroll = () => {
+      clearTimeout(timer)
+      timer = setTimeout(checkGaps, 500)
+    }
+    checkGaps()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); clearTimeout(timer) }
+  }, [onFillGap, items])
+
   // Track "current year" via topmost element with data-year (used by scrubber).
   useEffect(() => {
     if (!scrubber) return
@@ -110,7 +137,7 @@ export function MediaGallery({
         return (
           <section key={group.day}>
             {showHeader && (
-              <h3 className="sticky top-12 z-10 mb-2 bg-[#0f0f0f] py-2 text-[13px] font-medium text-white/75">
+              <h3 className="sticky top-[var(--app-header-h,3rem)] z-10 mb-2 bg-[#0f0f0f] py-2 text-[13px] font-medium text-white/75">
                 {formatDay(group.day)}
                 {cities.length > 0 && (
                   <span className="ml-2 text-white/40">{cities.join(' & ')}</span>
@@ -124,6 +151,8 @@ export function MediaGallery({
                     <div
                       key={item.path}
                       data-year={item.timestamp ? new Date(item.timestamp).getFullYear() : undefined}
+                      data-gap-from={item.__gap ? item.gapFromTs : undefined}
+                      data-gap-to={item.__gap ? item.gapToTs : undefined}
                       style={{ flex: row.last ? `0 0 ${Math.round(item.aspect * row.height)}px` : `${item.aspect} 1 0` }}
                     >
                       <Media

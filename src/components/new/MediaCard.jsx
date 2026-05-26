@@ -22,21 +22,21 @@ export function MediaCard({ cover, coverBadge, icon, text, subtitle, description
         ) : (
           <div className="flex h-full w-full items-center justify-center text-white/15 [&_svg]:h-7 [&_svg]:w-7">{icon}</div>
         )}
+        {icon && cover && (
+          <span className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-md bg-black/60 text-white/80 backdrop-blur">
+            {icon}
+          </span>
+        )}
         {coverBadge && (
-          <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] text-white/80">
+          <span className="absolute right-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] text-white/80">
             {coverBadge}
           </span>
         )}
       </div>
-      <div className="p-4">
-        <div className="text-white">{text}</div>
-        {subtitle && (
-          <div className="mt-0.5 flex items-center gap-1.5 text-sm text-white/40">
-            {icon}
-            {subtitle}
-          </div>
-        )}
-        {description && <p className="mt-1.5 line-clamp-2 text-sm text-white/40">{description}</p>}
+      <div className="p-3">
+        <div className="text-[13px] font-medium leading-tight text-white">{text}</div>
+        {subtitle && <div className="mt-1 text-[11px] text-white/40">{subtitle}</div>}
+        {description && <p className="mt-1 line-clamp-2 text-[11px] text-white/35">{description}</p>}
       </div>
     </Comp>
   )

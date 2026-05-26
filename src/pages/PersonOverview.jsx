@@ -221,7 +221,7 @@ export function PersonOverview() {
 // ── Inline gallery ────────────────────────────────────────────────────────────
 
 function PersonGalleryInline({ personId }) {
-  const { media, loading, hasMoreOlder, loadOlder } = useGallery({
+  const { media, loading, hasMoreOlder, loadOlder, fillGap } = useGallery({
     params: { person_ids: personId },
   })
   const { favs, toggle: toggleFav } = useFavorites()
@@ -248,6 +248,7 @@ function PersonGalleryInline({ personId }) {
         onFavorite={it => toggleFav(it.path)}
         onSelect={it => setViewer(media.findIndex(m => m.path === it.path))}
         onLoadOlder={loadOlder}
+        onFillGap={fillGap}
       />
       {(loading || hasMoreOlder) && (
         <div className="flex h-8 items-center justify-center text-[11px] text-white/20">

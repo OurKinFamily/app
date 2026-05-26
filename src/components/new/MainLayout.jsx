@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { cn } from '../../lib/cn'
@@ -6,20 +6,53 @@ import { AppShell } from './AppShell'
 import { AppHeader } from './AppHeader'
 import { SidebarNav } from './SidebarNav'
 import { BottomBar } from './BottomBar'
+import { ScrollTopButton } from './ScrollTopButton'
 
 // The one app-wide layout. Replaces HomeLayout / ManageLayout / AdminLayout.
 // Mobile: bottom bar + hamburger-drawer for the full nav tree.
 // Desktop: persistent left sidebar.
+//
+// The sticky header is AppHeader + a #layout-subheader portal slot. Pages can
+// inject a sub-bar (filters, page tabs) via SubheaderPortal. ResizeObserver
+// publishes the combined header height as `--app-header-h` on :root so other
+// sticky elements (sidebar, MediaGallery day headers, DateScrubber) stack
+// below the header regardless of whether a subheader is mounted.
 export function MainLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const closeDrawer = () => setDrawerOpen(false)
+  const headerRef = useRef(null)
+
+  useEffect(() => {
+    if (!headerRef.current) return
+    const ro = new ResizeObserver(entries => {
+      const h = Math.round(entries[0].contentRect.height)
+      document.documentElement.style.setProperty('--app-header-h', `${h}px`)
+    })
+    ro.observe(headerRef.current)
+    return () => {
+      ro.disconnect()
+      document.documentElement.style.removeProperty('--app-header-h')
+    }
+  }, [])
 
   return (
     <>
       <AppShell
-        header={<AppHeader onMenu={() => setDrawerOpen(true)} />}
+        header={
+          <div ref={headerRef} className="relative">
+            <AppHeader onMenu={() => setDrawerOpen(true)} />
+            {/* Mobile: stacked bar below AppHeader (own bg + border).
+                Desktop: absolute-positioned inside the AppHeader row,
+                starting right of the OK logo. Wrapper height stays the
+                AppHeader's height on desktop (absolute child doesn't contribute). */}
+            <div
+              id="layout-subheader"
+              className="border-b border-white/5 bg-black/85 px-4 py-2 backdrop-blur md:absolute md:inset-y-0 md:left-14 md:right-12 md:border-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none"
+            />
+          </div>
+        }
         sidebar={
-          <div className="sticky top-12 h-[calc(100vh-3rem)] w-56 overflow-y-auto border-r border-white/5 p-3">
+          <div className="sticky top-[var(--app-header-h,3rem)] h-[calc(100vh-var(--app-header-h,3rem))] w-56 overflow-y-auto border-r border-white/5 p-3">
             <SidebarNav />
           </div>
         }
@@ -27,6 +60,8 @@ export function MainLayout() {
       >
         <Outlet />
       </AppShell>
+
+      <ScrollTopButton />
 
       {/* mobile drawer */}
       <div

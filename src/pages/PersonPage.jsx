@@ -67,7 +67,7 @@ export function PersonPage() {
         </Button>
       </div>
 
-      <nav className="hide-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-white/10">
+      <nav className="hide-scrollbar mb-6 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-white/10">
         {TABS.map(t => (
           <NavLink
             key={t.to}
