@@ -64,9 +64,24 @@ export function MediaLightbox({
     setAssignAt(null)
   }, [items.length, onNeedMore])
 
+  // Lock body scroll while the lightbox is open. `overflow: hidden` alone
+  // doesn't stop iOS Safari — pin body with position:fixed + restore scroll on close.
   useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    const y = window.scrollY
+    const b = document.body.style
+    b.position = 'fixed'
+    b.top = `-${y}px`
+    b.left = '0'
+    b.right = '0'
+    b.overflow = 'hidden'
+    return () => {
+      b.position = ''
+      b.top = ''
+      b.left = ''
+      b.right = ''
+      b.overflow = ''
+      window.scrollTo(0, y)
+    }
   }, [])
 
   useEffect(() => {
