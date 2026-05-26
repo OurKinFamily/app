@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { MapPin, Camera, ShieldCheck } from 'lucide-react'
+import { MapPin, Camera, ShieldCheck, GraduationCap, Briefcase, Heart } from 'lucide-react'
 import { EntityChip } from '../components/new/EntityChip'
 import { EntityItem } from '../components/new/EntityItem'
-import { MediaCard } from '../components/new/MediaCard'
+import { MediaCard, MediaRow } from '../components/new/MediaCard'
 import { BottomBar } from '../components/new/BottomBar'
 import { SidebarNav } from '../components/new/SidebarNav'
 import { Media } from '../components/new/Media'
@@ -20,6 +20,8 @@ import { Container } from '../components/new/Container'
 import { DetailSection } from '../components/new/DetailSection'
 import { Field } from '../components/new/Field'
 import { Tag } from '../components/new/Tag'
+
+const TAG_TONES = ['default', 'green', 'amber', 'red', 'blue', 'purple', 'pink', 'orange', 'slate', 'cyan']
 import { MiniMap } from '../components/new/MiniMap'
 import { Swatch } from '../components/new/Swatch'
 import { mediaUrl } from '../lib/media'
@@ -169,6 +171,51 @@ export function DesignPage() {
         </div>
       </Section>
 
+      <Section title="Tag — pill variant (all tones)">
+        <div className="flex flex-wrap gap-2">
+          {TAG_TONES.map(t => <Tag key={t} tone={t}>{t}</Tag>)}
+        </div>
+      </Section>
+
+      <Section title="Tag — plain variant (color-only text, no pill bg — replaces old Badge)">
+        <div className="flex flex-wrap gap-3">
+          {TAG_TONES.map(t => <Tag key={t} tone={t} variant="plain">{t}</Tag>)}
+        </div>
+      </Section>
+
+      <Section title="Tag — custom color (pass any hex / css color)">
+        <div className="flex flex-wrap gap-2">
+          <Tag color="#f43f5e">#f43f5e</Tag>
+          <Tag color="#14b8a6">#14b8a6</Tag>
+          <Tag color="#facc15">#facc15</Tag>
+          <Tag color="#a78bfa">#a78bfa</Tag>
+          <Tag color="#84cc16">#84cc16</Tag>
+          <Tag color="#fb923c">#fb923c</Tag>
+          <Tag color="rebeccapurple">rebeccapurple</Tag>
+        </div>
+      </Section>
+
+      <Section title="Tag — example usage (status chip + inline meta)">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-white/70">
+            Confidence: <Tag tone="green" className="ml-1 uppercase">high</Tag>
+          </p>
+          <p className="text-sm text-white/70">
+            John Smith <Tag tone="amber" variant="plain" className="ml-2">Workplace</Tag>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Tag tone="green">Sports Team</Tag>
+            <Tag tone="blue">School</Tag>
+            <Tag tone="amber">Workplace</Tag>
+            <Tag tone="orange">Neighborhood</Tag>
+            <Tag tone="purple">Religious</Tag>
+            <Tag tone="pink">Family Friend</Tag>
+            <Tag tone="cyan">Hobby / Club</Tag>
+            <Tag tone="slate">Civic</Tag>
+          </div>
+        </div>
+      </Section>
+
       <Section title="Select — single (avatar / initials / icon options)">
         <div className="flex max-w-sm flex-col gap-4">
           <Select options={PERSON_OPTIONS} value={selPerson?.value} onChange={setSelPerson} placeholder="Search people…" />
@@ -258,6 +305,55 @@ export function DesignPage() {
         </div>
       </Section>
 
+      <Section title="EntityChip · with caption (small dim line below text)">
+        <div className="flex flex-wrap gap-2">
+          {PEOPLE.slice(0, 4).map((p, i) => (
+            <EntityChip
+              key={p.id}
+              avatar={avatarSrc(p)}
+              initials
+              text={displayName(p)}
+              caption={['Parent', 'Spouse', 'Sibling', 'Child'][i]}
+              onClick={noop}
+            />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="EntityChip · removable (hover to reveal × in top-right corner)">
+        <div className="flex flex-wrap gap-2">
+          {PEOPLE.slice(0, 4).map(p => (
+            <EntityChip
+              key={p.id}
+              avatar={avatarSrc(p)}
+              initials
+              text={displayName(p)}
+              onClick={noop}
+              onRemove={noop}
+            />
+          ))}
+          {GROUPS.slice(0, 2).map(g => (
+            <EntityChip key={g.id} text={g.name} onClick={noop} onRemove={noop} />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="EntityChip · caption + removable (combined)">
+        <div className="flex flex-wrap gap-2">
+          {PEOPLE.slice(0, 3).map((p, i) => (
+            <EntityChip
+              key={p.id}
+              avatar={avatarSrc(p)}
+              initials
+              text={displayName(p)}
+              caption={['Parent', 'Sibling', 'Child'][i]}
+              onClick={noop}
+              onRemove={noop}
+            />
+          ))}
+        </div>
+      </Section>
+
       <Section title="EntityItem · person card (in a grid)">
         <div className="grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
           {PEOPLE.map(p => (
@@ -300,6 +396,63 @@ export function DesignPage() {
         </div>
       </Section>
 
+      <Section title='EntityItem · variant="card" — people grid (avatar + initials)'>
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
+          {PEOPLE.slice(0, 6).map(p => (
+            <EntityItem
+              key={p.id}
+              variant="card"
+              avatar={avatarSrc(p)}
+              initials
+              text={displayName(p)}
+              secondary={otherName(p)}
+              onClick={noop}
+            />
+          ))}
+        </div>
+      </Section>
+
+      <Section title='EntityItem · variant="card" — group grid (icon + Tag badge + trailing)'>
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
+          {GROUPS.map(g => {
+            const tone = g.type === 'school' ? 'blue' : g.type === 'workplace' ? 'amber' : 'green'
+            const Icon = g.type === 'school' ? GraduationCap : g.type === 'workplace' ? Briefcase : Heart
+            const memberCount = (g.id * 3) + 1
+            return (
+              <EntityItem
+                key={g.id}
+                variant="card"
+                icon={<Icon size={24} />}
+                text={g.name}
+                secondary={g.location_name}
+                trailing={
+                  <span className="flex items-center gap-2">
+                    <Tag tone={tone}>{g.type.replace('_', ' ')}</Tag>
+                    <span className="text-[11px] text-white/30">{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
+                  </span>
+                }
+                onClick={noop}
+              />
+            )
+          })}
+        </div>
+      </Section>
+
+      <Section title='EntityItem · variant="card" — text-only (no leading)'>
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
+          {GROUPS.map(g => (
+            <EntityItem
+              key={g.id}
+              variant="card"
+              text={g.name}
+              secondary={g.location_name}
+              badge={g.role}
+              onClick={noop}
+            />
+          ))}
+        </div>
+      </Section>
+
       <Section title="MediaCard · collection (grid). 'Other Documents' has no cover → muted-box fallback">
         <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
           {COLLECTIONS.map(c => {
@@ -319,6 +472,27 @@ export function DesignPage() {
           })}
         </div>
       </Section>
+
+      <Section title="MediaRow · collection (row). Same props as MediaCard — drop-in swap for list view.">
+        <div className="flex max-w-2xl flex-col gap-2">
+          {COLLECTIONS.map(c => {
+            const Icon = categoryIcon(c.category)
+            return (
+              <MediaRow
+                key={c.id}
+                cover={c.cover_path ? mediaUrl(c.cover_path) : null}
+                coverBadge={collectionCount(c)}
+                icon={<Icon size={18} />}
+                text={c.name}
+                subtitle={categoryLabel(c.category)}
+                description={c.description}
+                onClick={() => openCollection(c)}
+              />
+            )
+          })}
+        </div>
+      </Section>
+
 
       <Section title="Media (single tile — fills its box; hover for heart)">
         <div className="grid w-full max-w-md grid-cols-4 gap-1.5">

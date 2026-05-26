@@ -5,6 +5,6 @@ import { Avatar } from './Avatar'
 export function Leading({ avatar, icon, initials, text, size = 'md' }) {
   if (avatar) return <Avatar src={avatar} name={text} size={size} />
   if (initials) return <Avatar name={text} size={size} />
-  if (icon) return <span className="shrink-0 text-white/40">{icon}</span>
+  if (icon) return <span className="shrink-0 text-zinc-400">{icon}</span>
   return null
 }

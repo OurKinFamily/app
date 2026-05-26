@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { X, ChevronLeft, ChevronRight, Heart, RotateCw, Download, Trash2, Album } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Heart, RotateCw, Download, Trash2, Album, Volume2, Square } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { IconButton } from './IconButton'
 import { FaceAssignPopover } from './FaceAssignPopover'
+import { MediaLightboxSheet } from './MediaLightboxSheet'
 
 // Maps a bbox in natural-media coords to a CSS rect over the rendered <img> or <video>.
 function bboxRect(el, bbox, pad = 0) {
@@ -39,16 +40,29 @@ export function MediaLightbox({
   const [assignAt, setAssignAt] = useState(null)
   const [detailV, setDetailV] = useState(0)
   const [, setImgTick] = useState(0)
+  // audio: { url, description } | null — published by MediaDetail when the
+  // current item carries heritage.audio_url. Lightbox renders a toggle action
+  // when set; playback is managed by the lightbox so it survives detail
+  // re-renders but stops on item navigation.
+  const [audio, setAudio] = useState(null)
+  const [audioPlaying, setAudioPlaying] = useState(false)
+  const audioRef = useRef(null)
   const touch = useRef(null)
-  const sheetTouch = useRef(null)
   const mediaRef = useRef(null)
 
   const bumpDetail = useCallback(() => setDetailV(v => v + 1), [])
   const openAssign = useCallback((face, x, y) => setAssignAt({ face, x, y }), [])
   const ctx = useMemo(
-    () => ({ setHighlight, setFaces, openAssign, setSheetOpen, bumpDetail }),
+    () => ({ setHighlight, setFaces, openAssign, setSheetOpen, bumpDetail, setAudio }),
     [openAssign, bumpDetail],
   )
+
+  const toggleAudio = () => {
+    const el = audioRef.current
+    if (!el || !audio?.url) return
+    if (audioPlaying) { el.pause(); el.currentTime = 0; setAudioPlaying(false) }
+    else { el.src = audio.url; el.play().catch(() => setAudioPlaying(false)); setAudioPlaying(true) }
+  }
 
   const go = useCallback(delta => {
     setIndex(i => {
@@ -62,6 +76,9 @@ export function MediaLightbox({
     setHighlight(null)
     setFaces([])
     setAssignAt(null)
+    audioRef.current?.pause()
+    setAudioPlaying(false)
+    setAudio(null)
   }, [items.length, onNeedMore])
 
   // Lock body scroll while the lightbox is open. `overflow: hidden` alone
@@ -154,9 +171,19 @@ export function MediaLightbox({
             {onRotate && <IconButton label="Rotate" onClick={rotate}><RotateCw size={18} /></IconButton>}
             {onAlbum && <IconButton label="Add to album" onClick={() => onAlbum(item)}><Album size={18} /></IconButton>}
             {onDownload && <IconButton label="Download" onClick={() => onDownload(item)}><Download size={18} /></IconButton>}
+            {audio?.url && (
+              <IconButton
+                label={audio.description || 'Play audio'}
+                active={audioPlaying}
+                onClick={toggleAudio}
+              >
+                {audioPlaying ? <Square size={18} /> : <Volume2 size={18} />}
+              </IconButton>
+            )}
             {onDelete && <IconButton label="Delete" onClick={() => setConfirmDelete(true)}><Trash2 size={18} /></IconButton>}
           </div>
         </div>
+        <audio ref={audioRef} onEnded={() => setAudioPlaying(false)} className="hidden" />
 
         {canPrev && (
           <button onClick={e => { e.stopPropagation(); go(-1) }} aria-label="Previous"
@@ -236,30 +263,7 @@ export function MediaLightbox({
 
       <aside className="hidden w-[340px] shrink-0 overflow-y-auto border-l border-white/10 p-4 md:block">{detail}</aside>
 
-      <div
-        className={cn(
-          'absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-2xl border-t border-white/10 bg-zinc-900 transition-transform duration-300 md:hidden',
-          sheetOpen ? 'translate-y-0' : 'translate-y-[calc(100%-3.5rem)]',
-        )}
-        style={{ height: '78vh' }}
-      >
-        <button
-          onClick={() => setSheetOpen(o => !o)}
-          onTouchStart={e => { sheetTouch.current = e.touches[0].clientY }}
-          onTouchEnd={e => {
-            if (sheetTouch.current == null) return
-            const dy = e.changedTouches[0].clientY - sheetTouch.current
-            sheetTouch.current = null
-            if (dy < -40 && !sheetOpen) setSheetOpen(true)
-            else if (dy > 40 && sheetOpen) setSheetOpen(false)
-          }}
-          aria-label={sheetOpen ? 'Collapse details' : 'Expand details'}
-          className="flex h-14 shrink-0 items-center justify-center"
-        >
-          <span className="h-1 w-10 rounded-full bg-white/25" />
-        </button>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">{detail}</div>
-      </div>
+      <MediaLightboxSheet open={sheetOpen} setOpen={setSheetOpen}>{detail}</MediaLightboxSheet>
 
       {assignAt && (
         <FaceAssignPopover

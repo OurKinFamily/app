@@ -61,6 +61,7 @@ export default function App() {
               <Route path="overview"  element={<PersonOverview />} />
               <Route path="ancestry"  element={<PersonAncestry />} />
               <Route path="scrapbook" element={<PersonScrapbook />} />
+              <Route path="scrapbook/:collectionId" element={<PersonScrapbook />} />
               <Route path="travel"    element={<PersonTravel />} />
               <Route path="ai"        element={<PersonAI />} />
             </Route>

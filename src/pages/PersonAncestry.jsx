@@ -1,9 +1,11 @@
 import { useMemo, useCallback, useEffect, useState, startTransition, createContext, useContext } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import { ReactFlow, Handle, Position, Background } from '@xyflow/react'
-import { Plus, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import '@xyflow/react/dist/base.css'
 import { getRelatives } from '../lib/api'
+import { mediaUrl } from '../lib/media'
+import { EntityChip } from '../components/new/EntityChip'
 import { AddRelativeModal } from '../components/AddRelativeModal'
 
 const NODE_W = 128
@@ -321,33 +323,36 @@ const REL_TYPE_MAP = { Parent: 'parent', Spouse: 'spouse', Child: 'child' }
 function PersonNode({ data }) {
   const onRemove = useContext(RemoveCtx)
   const label = data.known_as || data.name
-  const base = data.small ? 'w-24 h-16 text-xs' : 'w-32 h-24 text-sm'
-  const style = data.isSelf
-    ? 'border border-white/40 bg-white/10 text-white'
-    : 'border border-white/25 bg-white/5 text-white/80 cursor-pointer hover:bg-white/10 hover:border-white/40 transition-colors'
   const relType = REL_TYPE_MAP[data.relationship]
+  const small = data.small
+  const baseSize = small ? 'w-24 h-16' : 'w-32 h-24'
+  const avatarSrc = data.avatar ? mediaUrl(data.avatar) : null
+
+  const caption = data.relationship && !data.isSelf ? data.relationship : null
 
   return (
-    <div className={`${base} ${style} rounded-xl flex flex-col items-center justify-center px-2 text-center relative group/node`}>
+    <div className={`${baseSize} group/node relative flex items-center justify-center`}>
       <Handle type="target" id="top"    position={Position.Top}    className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
       <Handle type="source" id="bottom" position={Position.Bottom} className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
       <Handle type="target" id="left"   position={Position.Left}   className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
       <Handle type="source" id="right"  position={Position.Right}  className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
-      {!data.isSelf && relType && onRemove && (
-        <button
-          onClick={e => { e.stopPropagation(); onRemove(data.personId, relType) }}
-          className="absolute top-1 right-1 opacity-0 group-hover/node:opacity-100 w-4 h-4 flex items-center justify-center rounded-full bg-white/10 hover:bg-red-500/30 text-white/30 hover:text-red-400 transition-all"
-        >
-          <X size={8} />
-        </button>
-      )}
-      <span className="font-medium leading-tight">{label}</span>
-      {data.birth_date && (
-        <span className="text-white/30 text-xs mt-0.5">{data.birth_date.slice(0, 4)}</span>
-      )}
-      {data.relationship && !data.isSelf && (
-        <span className="text-white/25 text-xs mt-0.5 uppercase tracking-wider">{data.relationship}</span>
-      )}
+
+      {/* Wrap in nodrag/stopPropagation so React Flow doesn't swallow the click as a pan start.
+          `w-full` makes the chip fill the fixed node container so React Flow's edge handles
+          (at the node-wrapper edges) line up with the chip's visible edges. */}
+      <div className="nodrag w-full px-1" onMouseDown={e => e.stopPropagation()}>
+        <EntityChip
+          className="w-full justify-center"
+          avatar={avatarSrc}
+          initials={!avatarSrc}
+          text={<span className="truncate">{label}</span>}
+          caption={caption}
+          to={data.isSelf ? undefined : `/manage/people/${data.personId}`}
+          onRemove={!data.isSelf && relType && onRemove
+            ? () => onRemove(data.personId, relType)
+            : undefined}
+        />
+      </div>
     </div>
   )
 }

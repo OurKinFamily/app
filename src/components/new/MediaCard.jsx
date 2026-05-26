@@ -1,8 +1,18 @@
 import { cn } from '../../lib/cn'
 
-// Generic cover card: anything with a cover image (collections, albums, photos, videos).
-// Domain-blind — caller maps data into slots. No cover -> muted placeholder box with the icon.
-export function MediaCard({ cover, coverBadge, icon, text, subtitle, description, onClick, className }) {
+// MediaCard + MediaRow — two layouts of the same data.
+//
+// They live in one file so changes propagate. Both consume identical props:
+//   { cover, coverBadge, icon, text, subtitle, description, trailing, onClick, className }
+// The view-toggle code can then read:
+//   const Comp = viewMode === 'grid' ? MediaCard : MediaRow
+//   <Comp { ...sameProps } />
+//
+// `cover` is an image URL (or null). When null, the cover area falls back to
+// the muted-box rendering of `icon`. `icon` also overlays the top-left of the
+// cover when present. `coverBadge` sits top-right.
+
+export function MediaCard({ cover, coverBadge, icon, text, subtitle, description, trailing, onClick, className }) {
   const Comp = onClick ? 'button' : 'div'
   return (
     <Comp
@@ -37,7 +47,43 @@ export function MediaCard({ cover, coverBadge, icon, text, subtitle, description
         <div className="text-[13px] font-medium leading-tight text-white">{text}</div>
         {subtitle && <div className="mt-1 text-[11px] text-white/40">{subtitle}</div>}
         {description && <p className="mt-1 line-clamp-2 text-[11px] text-white/35">{description}</p>}
+        {trailing && <div className="mt-1 text-[11px] text-white/40">{trailing}</div>}
       </div>
+    </Comp>
+  )
+}
+
+export function MediaRow({ cover, coverBadge, icon, text, subtitle, description, trailing, onClick, className }) {
+  const Comp = onClick ? 'button' : 'div'
+  return (
+    <Comp
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center gap-3 rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-left transition-colors',
+        onClick && 'cursor-pointer hover:bg-white/8',
+        className,
+      )}
+    >
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/5">
+        {cover
+          ? <img src={cover} alt="" className="h-full w-full object-cover" />
+          : <span className="text-white/30 [&_svg]:h-5 [&_svg]:w-5">{icon}</span>}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-medium text-white">{text}</span>
+        {(subtitle || description) && (
+          <span className="block truncate text-[11px] text-white/40">
+            {subtitle}
+            {subtitle && description && <span className="text-white/30"> · </span>}
+            {description && <span className="text-white/35">{description}</span>}
+          </span>
+        )}
+      </span>
+      {/* Row trailing slot: explicit `trailing` prop wins; otherwise fall back
+          to coverBadge so the same prop set as MediaCard yields a sensible row. */}
+      {(trailing || coverBadge) && (
+        <span className="shrink-0 text-[11px] text-white/40">{trailing || coverBadge}</span>
+      )}
     </Comp>
   )
 }

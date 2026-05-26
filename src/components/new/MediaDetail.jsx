@@ -2,27 +2,13 @@ import { useState, useEffect } from 'react'
 import { mediaUrl } from '../../lib/media'
 import { searchPeople } from '../../lib/api'
 import { DetailSection } from './DetailSection'
-import { Field } from './Field'
 import { Tag } from './Tag'
-import { Swatch } from './Swatch'
-import { MiniMap } from './MiniMap'
 import { Thumb } from './Thumb'
 import { EntityChip } from './EntityChip'
 import { Button } from './Button'
 import { Select } from './Select'
+import { MediaDetailMeta } from './MediaDetailMeta'
 
-function formatDate(ts) {
-  if (!ts) return null
-  return new Date(ts).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-}
-
-function formatSize(bytes) {
-  if (bytes == null) return null
-  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`
-  return `${Math.round(bytes / 1e3)} KB`
-}
-
-const CONF_TONE = { high: 'green', medium: 'amber', low: 'red' }
 const FACE_PREVIEW = 6
 
 function personToOption(p) {
@@ -81,6 +67,16 @@ export function MediaDetail({ item, ctx }) {
     return () => { alive = false }
   }, [item?.path])
 
+  // Publish heritage audio so the lightbox can render its toggle button.
+  useEffect(() => {
+    if (!ctx?.setAudio) return
+    if (detail?.heritage?.audio_url) {
+      ctx.setAudio({ url: detail.heritage.audio_url, description: detail.heritage.audio_description })
+    } else {
+      ctx.setAudio(null)
+    }
+  }, [detail, ctx])
+
   // Push the face list up so the lightbox can draw interactive bboxes over the image.
   useEffect(() => {
     if (!ctx?.setFaces) return
@@ -97,12 +93,20 @@ export function MediaDetail({ item, ctx }) {
   }, [detail, ctx])
 
 
-  const cameraLabel = detail ? [detail.camera?.make, detail.camera?.model].filter(Boolean).join(' ') : ''
-  const orientation = detail?.media?.orientation
-
+  const heritage = detail?.heritage
   return (
     <div>
       <p className="mb-3 break-all text-[12px] font-medium leading-snug text-white/55">{item.filename || item.path}</p>
+      {(heritage?.context_subject || heritage?.context_type) && (
+        <DetailSection title="Subject">
+          {heritage.context_subject && (
+            <p className="mb-1 text-[13px] font-medium text-white/80">{heritage.context_subject}</p>
+          )}
+          {heritage.context_type && (
+            <Tag>{String(heritage.context_type).replace(/_/g, ' ')}</Tag>
+          )}
+        </DetailSection>
+      )}
       {loading && <p className="text-[11px] text-white/20">Loading…</p>}
       {detail && (
         <>
@@ -141,8 +145,13 @@ export function MediaDetail({ item, ctx }) {
 
           {detail.unidentified?.length > 0 && (() => {
             const all = detail.unidentified
-            const visible = showAllFaces ? all : all.slice(0, FACE_PREVIEW)
-            const hidden = all.length - visible.length
+            // When collapsed and there's overflow, show FACE_PREVIEW-1 real tiles
+            // and a "+N more" tile in the last slot. Click it to expand.
+            const overflowing = !showAllFaces && all.length > FACE_PREVIEW
+            const visible = showAllFaces
+              ? all
+              : (overflowing ? all.slice(0, FACE_PREVIEW - 1) : all)
+            const moreCount = overflowing ? all.length - visible.length : 0
             return (
               <DetailSection title={`Unidentified · ${all.length}`}>
                 <div className="flex flex-wrap gap-1.5">
@@ -154,17 +163,27 @@ export function MediaDetail({ item, ctx }) {
                       className="h-10 w-10"
                     />
                   ))}
+                  {moreCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllFaces(true)}
+                      className="flex h-10 w-10 items-center justify-center rounded border border-white/10 bg-white/5 text-[11px] font-medium text-white/55 transition-colors hover:bg-white/10 hover:text-white"
+                      aria-label={`Show ${moreCount} more`}
+                    >
+                      +{moreCount}
+                    </button>
+                  )}
+                  {showAllFaces && all.length > FACE_PREVIEW && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllFaces(false)}
+                      className="flex h-10 w-10 items-center justify-center rounded border border-white/10 bg-white/5 text-[10px] font-medium text-white/55 transition-colors hover:bg-white/10 hover:text-white"
+                      aria-label="Show less"
+                    >
+                      less
+                    </button>
+                  )}
                 </div>
-                {hidden > 0 && (
-                  <Button variant="secondary" size="sm" className="mt-2" onClick={() => setShowAllFaces(true)}>
-                    Show {hidden} more
-                  </Button>
-                )}
-                {showAllFaces && all.length > FACE_PREVIEW && (
-                  <Button variant="secondary" size="sm" className="ml-2 mt-2" onClick={() => setShowAllFaces(false)}>
-                    Show less
-                  </Button>
-                )}
               </DetailSection>
             )
           })()}
@@ -177,71 +196,7 @@ export function MediaDetail({ item, ctx }) {
             </DetailSection>
           )}
 
-          {detail.timestamp?.value && (
-            <DetailSection title="Date">
-              <p className="mb-2 text-[13px] text-white/80">{formatDate(detail.timestamp.value)}</p>
-              <Field label="Source" value={detail.timestamp.source} />
-              <Field
-                label="Confidence"
-                value={detail.timestamp.confidence
-                  ? <Tag tone={CONF_TONE[detail.timestamp.confidence] || 'default'} className="uppercase">{detail.timestamp.confidence}</Tag>
-                  : null}
-              />
-            </DetailSection>
-          )}
-
-          {detail.location && (detail.location.latitude != null || detail.location.city) && (
-            <DetailSection title="Location">
-              {detail.location.city && (detail.location.city_confidence ?? 0) >= 0.5 && (
-                <Field label="City" value={`${detail.location.city}${detail.location.state ? `, ${detail.location.state}` : ''}`} />
-              )}
-              {detail.location.latitude != null && (
-                <>
-                  <Field label="GPS" value={`${detail.location.latitude.toFixed(5)}, ${detail.location.longitude.toFixed(5)}`} />
-                  <div className="mt-2"><MiniMap lat={detail.location.latitude} lng={detail.location.longitude} /></div>
-                </>
-              )}
-            </DetailSection>
-          )}
-
-          {cameraLabel && (
-            <DetailSection title={`Camera — ${cameraLabel}`}>
-              {detail.camera?.lens && detail.camera.lens !== cameraLabel && <Field label="Lens" value={detail.camera.lens} />}
-            </DetailSection>
-          )}
-
-          {detail.settings && (
-            <DetailSection title="Exposure">
-              <Field label="ISO" value={detail.settings.iso} />
-              <Field label="Aperture" value={detail.settings.aperture != null ? `f/${detail.settings.aperture}` : null} />
-              <Field label="Shutter" value={detail.settings.shutterSpeed} />
-              <Field label="Focal length" value={detail.settings.focalLength} />
-              <Field label="Flash" value={detail.settings.flash} />
-            </DetailSection>
-          )}
-
-          <DetailSection title="File">
-            <Field label="Size" value={formatSize(detail.file?.size)} />
-            {detail.media?.width && <Field label="Dimensions" value={`${detail.media.width} × ${detail.media.height}`} />}
-            <Field label="Megapixels" value={detail.media?.megapixels ? `${detail.media.megapixels} MP` : null} />
-            <Field label="Format" value={detail.media?.format} />
-            <Field label="Orientation" value={orientation && !/unknown/i.test(orientation) ? orientation : null} />
-          </DetailSection>
-
-          {(detail.media?.dominantColor || detail.media?.meanColor || detail.media?.salientColor) && (
-            <DetailSection title="Colors">
-              <Swatch color={detail.media.dominantColor} label="Dominant" />
-              <Swatch color={detail.media.meanColor} label="Mean" />
-              <Swatch color={detail.media.salientColor} label="Salient" />
-            </DetailSection>
-          )}
-
-          {detail.processing?.processor && (
-            <DetailSection title="Processing">
-              <Field label="Processor" value={detail.processing.processor} />
-              <Field label="Extracted" value={formatDate(detail.processing.extractedAt)} />
-            </DetailSection>
-          )}
+          <MediaDetailMeta sidecar={detail.sidecar} heritage={detail.heritage} />
         </>
       )}
     </div>
