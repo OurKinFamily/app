@@ -38,6 +38,9 @@ export function LightboxPage() {
 
   return (
     <MediaLightbox
+      // Remount when items transitions from the single-item fallback to the loaded
+      // gallery list, so initialIndex actually points at the right photo.
+      key={items.length > 1 ? `list-${photoPath}` : `single-${photoPath}`}
       items={items}
       initialIndex={index}
       onClose={close}
