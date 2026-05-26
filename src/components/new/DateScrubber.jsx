@@ -1,30 +1,28 @@
 import { cn } from '../../lib/cn'
 
-const NEWEST = new Date().getFullYear()
-const OLDEST = 1900
-const YEARS = Array.from({ length: NEWEST - OLDEST + 1 }, (_, i) => NEWEST - i)
-
-// Right-edge clickable year list. Highlights the active (filtered) year and the
-// "current" year (the year of whatever's currently in view from the parent's scroll tracking).
+// Right-edge clickable year list. `years` is an array of {year, count} from
+// /api/gallery/years — only years that actually exist in the catalog. Highlights
+// the active (filtered) year and the "current" year (visible in viewport).
 // Desktop only — mobile chrome is too tight.
-export function DateScrubber({ activeYear, currentYear, onJump }) {
+export function DateScrubber({ years = [], activeYear, currentYear, onJump }) {
+  if (!years.length) return null
   return (
-    <div className="hide-scrollbar fixed right-0 top-12 z-20 hidden h-[calc(100vh-3rem)] w-14 flex-col items-end overflow-y-auto py-2 md:flex">
-      {YEARS.map(y => {
-        const isActive = activeYear === y
-        const isCurrent = currentYear === y && !isActive
+    <div className="hide-scrollbar fixed right-0 top-12 z-20 hidden h-[calc(100vh-3rem)] w-14 flex-col items-stretch overflow-y-auto bg-black/20 py-2 md:flex">
+      {years.map(({ year }) => {
+        const isActive = activeYear === year
+        const isCurrent = currentYear === year && !isActive
         return (
           <button
-            key={y}
-            onClick={() => onJump(y === activeYear ? null : y)}
+            key={year}
+            onClick={() => onJump(year === activeYear ? null : year)}
             className={cn(
-              'w-full px-2 py-0.5 text-right text-[10px] tabular-nums transition-colors',
+              'w-full px-2 py-0.5 text-right text-[10px] tabular-nums transition-colors hover:bg-black/70',
               isActive ? 'text-white font-medium'
                 : isCurrent ? 'text-white/80'
-                : 'text-white/25 hover:text-white/60',
+                : 'text-white/40',
             )}
           >
-            {y}
+            {year}
           </button>
         )
       })}

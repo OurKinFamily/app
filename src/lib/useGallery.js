@@ -2,79 +2,96 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 const LIMIT = 48
 
-// Paginated gallery fetch. params (filters) reset the list when they change.
-// Optional opts.seed = { items, offset } skips the initial fetch (used when another page
-// already loaded these and we want to continue paging from where they left off).
-// Returns: { media, loading, hasMore, loadMore }
-export function useGallery(params = {}, opts = {}) {
-  const seed = opts.seed
-  const [media, setMedia] = useState(seed?.items || [])
+// Bidirectional gallery hook with timestamp-cursor pagination.
+// anchor: { year } | null — on change, resets and loads that year (DESC).
+//   When unanchored, starts from the newest items (no upward direction).
+// Returns: media (DESC by timestamp), loading, hasMoreOlder, hasMoreNewer,
+//          loadOlder, loadNewer.
+export function useGallery({ anchor = null, params = {} } = {}) {
+  const [media, setMedia] = useState([])
   const [loading, setLoading] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
+  const [hasMoreOlder, setHasMoreOlder] = useState(true)
+  const [hasMoreNewer, setHasMoreNewer] = useState(false)
 
   const loadingRef = useRef(false)
-  const offsetRef = useRef(seed?.offset ?? (seed?.items?.length || 0))
-  const hasMoreRef = useRef(true)
-  const mediaRef = useRef(seed?.items ? [...seed.items] : [])
-  const paramsKey = JSON.stringify(params)
+  const newestRef = useRef(null)
+  const oldestRef = useRef(null)
+  const mediaRef = useRef([])
+  const key = JSON.stringify({ anchor, params })
 
-  const loadMore = useCallback(async () => {
-    if (loadingRef.current || !hasMoreRef.current) return
+  useEffect(() => {
+    let alive = true
+    mediaRef.current = []
+    newestRef.current = null
+    oldestRef.current = null
+    loadingRef.current = true
+    // State (media, loading) updated by the async callback below to avoid
+    // synchronous setState in the effect body.
+
+    const qs = new URLSearchParams({ limit: LIMIT, sort: 'desc', ...params })
+    if (anchor?.year != null) { qs.set('year_from', anchor.year); qs.set('year_to', anchor.year) }
+
+    fetch(`/api/gallery?${qs}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (!alive || !d) return
+        const batch = d.media || []
+        mediaRef.current = batch
+        if (batch.length) {
+          newestRef.current = batch[0].timestamp
+          oldestRef.current = batch[batch.length - 1].timestamp
+        }
+        setMedia(batch)
+        setLoading(false)
+        setHasMoreOlder(batch.length >= LIMIT || !!d.has_more)
+        setHasMoreNewer(anchor != null)
+      })
+      .catch(() => {})
+      .finally(() => { if (alive) { loadingRef.current = false; setLoading(false) } })
+
+    return () => { alive = false }
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadOlder = useCallback(async () => {
+    if (loadingRef.current || !oldestRef.current) return
     loadingRef.current = true
     setLoading(true)
     try {
-      const qs = new URLSearchParams({ limit: LIMIT, offset: offsetRef.current, ...params }).toString()
+      const qs = new URLSearchParams({ limit: LIMIT, sort: 'desc', ...params })
+      qs.set('ts_to', oldestRef.current)
       const res = await fetch(`/api/gallery?${qs}`)
-      const data = await res.json()
-      const batch = Array.isArray(data.media) ? data.media : []
-      mediaRef.current = [...mediaRef.current, ...batch]
-      setMedia([...mediaRef.current])
-      offsetRef.current += batch.length
-      hasMoreRef.current = !!data.has_more
-      setHasMore(!!data.has_more)
-    } catch (e) {
-      console.error('Gallery fetch failed', e)
-    } finally {
-      loadingRef.current = false
-      setLoading(false)
-    }
-  }, [paramsKey]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reset + first load on mount and when params change.
-  // When seeded, keep the seed items and skip the initial fetch.
-  useEffect(() => {
-    let alive = true
-    if (seed?.items?.length) {
-      mediaRef.current = [...seed.items]
-      offsetRef.current = seed.offset ?? seed.items.length
-      hasMoreRef.current = true
-      loadingRef.current = false
-      return () => { alive = false }
-    }
-    mediaRef.current = []
-    offsetRef.current = 0
-    hasMoreRef.current = true
-    loadingRef.current = false
-
-    const load = async () => {
-      const qs = new URLSearchParams({ limit: LIMIT, offset: 0, ...params }).toString()
-      try {
-        const res = await fetch(`/api/gallery?${qs}`)
-        const data = await res.json()
-        if (!alive) return
-        const batch = Array.isArray(data.media) ? data.media : []
-        mediaRef.current = batch
-        offsetRef.current = batch.length
-        hasMoreRef.current = !!data.has_more
-        setMedia(batch)
-        setHasMore(!!data.has_more)
-      } catch (e) {
-        console.error('Gallery fetch failed', e)
+      const d = await res.json()
+      const batch = (d.media || []).filter(m => m.timestamp !== oldestRef.current)
+      if (batch.length) {
+        mediaRef.current = [...mediaRef.current, ...batch]
+        oldestRef.current = batch[batch.length - 1].timestamp
+        setMedia([...mediaRef.current])
       }
-    }
-    load()
-    return () => { alive = false }
-  }, [paramsKey]) // eslint-disable-line react-hooks/exhaustive-deps
+      setHasMoreOlder(batch.length >= LIMIT - 1)
+    } catch { /* ignore */ }
+    finally { loadingRef.current = false; setLoading(false) }
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { media, loading, hasMore, loadMore }
+  const loadNewer = useCallback(async () => {
+    if (loadingRef.current || !newestRef.current) return
+    loadingRef.current = true
+    setLoading(true)
+    try {
+      const qs = new URLSearchParams({ limit: LIMIT, sort: 'asc', ...params })
+      qs.set('ts_from', newestRef.current)
+      const res = await fetch(`/api/gallery?${qs}`)
+      const d = await res.json()
+      const batch = (d.media || []).filter(m => m.timestamp !== newestRef.current)
+      if (batch.length) {
+        const reversed = [...batch].reverse() // ASC → DESC for prepend
+        mediaRef.current = [...reversed, ...mediaRef.current]
+        newestRef.current = reversed[0].timestamp
+        setMedia([...mediaRef.current])
+      }
+      setHasMoreNewer(batch.length >= LIMIT - 1)
+    } catch { /* ignore */ }
+    finally { loadingRef.current = false; setLoading(false) }
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer }
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useMemo } from 'react'
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { useFavorites } from '../lib/useFavorites'
 import { MediaLightbox } from '../components/new/MediaLightbox'
@@ -6,6 +6,8 @@ import { MediaDetail } from '../components/new/MediaDetail'
 
 // Renders as the gallery's nested route so GalleryPage stays mounted underneath
 // (scroll position + loaded pages survive). Reads media from the outlet context.
+// If the target photo isn't in the loaded gallery yet (direct URL visit), falls
+// back to a single-item array so the lightbox opens immediately — no paging cascade.
 export function LightboxPage() {
   const params = useParams()
   const navigate = useNavigate()
@@ -13,15 +15,20 @@ export function LightboxPage() {
   const { favs, toggle: toggleFav } = useFavorites()
 
   const photoPath = params['*'] || ''
-  const index = media.findIndex(m => m.path === photoPath)
 
-  useEffect(() => {
-    if (index < 0 && hasMore) loadMore()
-  }, [media, index, hasMore, loadMore])
-
-  if (index < 0) {
-    return <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black text-white/30">Loading…</div>
-  }
+  const { items, index } = useMemo(() => {
+    const i = media.findIndex(m => m.path === photoPath)
+    if (i >= 0) return { items: media, index: i }
+    // Fallback: synthesize a minimal item from the URL so we can show this photo
+    // without paging through the entire gallery to find it.
+    const stripped = photoPath.replace(/^archive\//, '')
+    const single = {
+      path: photoPath,
+      url: `/api/media/${photoPath}`,
+      thumbnail_url: `/api/media/thumb/${stripped}`,
+    }
+    return { items: [single], index: 0 }
+  }, [media, photoPath])
 
   const close = () => {
     if (window.history.length > 1) navigate(-1)
@@ -31,11 +38,11 @@ export function LightboxPage() {
 
   return (
     <MediaLightbox
-      items={media}
+      items={items}
       initialIndex={index}
       onClose={close}
       onNavigate={onNav}
-      onNeedMore={loadMore}
+      onNeedMore={hasMore ? loadMore : undefined}
       favorites={favs}
       onFavorite={toggleFav}
       onRotate={(it, deg) => console.log('rotate (mock — needs API)', it.path, deg)}
