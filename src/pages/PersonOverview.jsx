@@ -6,8 +6,7 @@ import { displayName } from '../lib/people'
 import { EntityChip } from '../components/new/EntityChip'
 import { EntityItem } from '../components/new/EntityItem'
 import { Media } from '../components/new/Media'
-import { MediaLightbox } from '../components/new/MediaLightbox'
-import { MediaDetail } from '../components/new/MediaDetail'
+import { PhotoLightbox } from '../components/new/PhotoLightbox'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -50,9 +49,8 @@ const INPUT_CLS = "w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export function PersonOverview() {
-  const { person, relatives, reloadRelatives, setPerson } = useOutletContext()
+  const { person, relatives, reloadRelatives, setPerson, editing, setEditing } = useOutletContext()
   const navigateOverview = useNavigate()
-  const [editing, setEditing]           = useState(false)
   const [groups, setGroups]             = useState([])
   const [connections, setConnections]   = useState([])
   const [addingGroup, setAddingGroup]   = useState(false)
@@ -95,15 +93,11 @@ export function PersonOverview() {
     <>
       {/* Personal info */}
       <div className="max-w-xl space-y-8 mb-8">
-        <div className="flex justify-end gap-3">
+        <div>
           <Link to={`/manage/faces/similar?person_id=${person.id}`} title="Find faces that look like this person's avatar"
-            className="text-[11px] text-white/30 hover:text-white/60 transition-colors px-2 py-1">
-            Find similar faces
+            className="text-[11px] text-white/40 hover:text-white/70 transition-colors">
+            Find similar faces →
           </Link>
-          <button onClick={() => setEditing(v => !v)}
-            className="text-[11px] text-white/30 hover:text-white/60 transition-colors px-2 py-1">
-            {editing ? 'Cancel' : 'Edit'}
-          </button>
         </div>
 
         {editing ? (
@@ -124,6 +118,7 @@ export function PersonOverview() {
                 <RelGroup label="Parents"  people={relatives.parents}  relType="parent"  onRemove={removeRel} />
                 <RelGroup label="Spouses"  people={relatives.spouses}  relType="spouse"  onRemove={removeRel} />
                 <RelGroup label="Children" people={relatives.children} relType="child"   onRemove={removeRel} />
+                <RelGroup label="Siblings" people={relatives.siblings} relType="sibling" onRemove={removeRel} />
               </div>
             )}
 
@@ -297,14 +292,13 @@ function PersonGalleryInline({ personId }) {
       </div>}
 
       {viewer !== null && (
-        <MediaLightbox
+        <PhotoLightbox
           items={viewerPhotos}
           initialIndex={viewer}
           onClose={() => setViewer(null)}
           onNeedMore={() => {
             if (!loading && !exhaustedRef.current) fetchPage(personId, offsetRef.current)
           }}
-          renderDetail={(it, ctx, v) => <MediaDetail key={`${it.path}-${v}`} item={it} ctx={ctx} />}
         />
       )}
     </div>

@@ -3,8 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { getPhotos } from '../lib/api'
 import { isVideo, mediaUrl } from '../lib/media'
 import { Media } from '../components/new/Media'
-import { MediaLightbox } from '../components/new/MediaLightbox'
-import { MediaDetail } from '../components/new/MediaDetail'
+import { PhotoLightbox } from '../components/new/PhotoLightbox'
 
 const PAGE_SIZE = 48
 
@@ -58,12 +57,11 @@ export function PersonGallery() {
       {shown < all.length && <div ref={sentinelRef} className="h-8" />}
 
       {viewer !== null && (
-        <MediaLightbox
+        <PhotoLightbox
           items={items}
           initialIndex={viewer}
           onClose={() => setViewer(null)}
           onNeedMore={() => setShown(n => Math.min(n + PAGE_SIZE, all.length))}
-          renderDetail={(it, ctx, v) => <MediaDetail key={`${it.path}-${v}`} item={it} ctx={ctx} />}
         />
       )}
     </div>

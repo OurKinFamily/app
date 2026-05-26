@@ -6,6 +6,7 @@ import { mediaUrl } from '../lib/media'
 import { cn } from '../lib/cn'
 import { Container } from '../components/new/Container'
 import { Avatar } from '../components/new/Avatar'
+import { Button } from '../components/new/Button'
 import { AvatarPicker } from '../components/AvatarPicker'
 
 const TABS = [
@@ -22,6 +23,7 @@ export function PersonPage() {
   const [person, setPerson] = useState(null)
   const [relatives, setRelatives] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const reloadRelatives = useCallback(() => { getRelatives(id).then(setRelatives) }, [id])
 
@@ -54,12 +56,15 @@ export function PersonPage() {
             <Pencil size={18} className="text-white" />
           </span>
         </button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="truncate text-3xl font-semibold text-white">{person.name}</h1>
           {person.known_as && person.known_as !== person.name && (
             <p className="mt-1 text-white/50">Known as &ldquo;{person.known_as}&rdquo;</p>
           )}
         </div>
+        <Button variant="secondary" size="sm" onClick={() => setEditing(v => !v)}>
+          {editing ? 'Cancel' : 'Edit'}
+        </Button>
       </div>
 
       <nav className="hide-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-white/10">
@@ -79,7 +84,7 @@ export function PersonPage() {
         ))}
       </nav>
 
-      <Outlet context={{ person, setPerson, relatives, reloadRelatives }} />
+      <Outlet context={{ person, setPerson, relatives, reloadRelatives, editing, setEditing }} />
 
       {pickerOpen && (
         <AvatarPicker
