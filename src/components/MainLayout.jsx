@@ -60,12 +60,12 @@ export function MainLayout() {
                 AppHeader's height on desktop (absolute child doesn't contribute). */}
             <div
               id="layout-subheader"
-              className="border-b border-white/5 bg-black/85 px-4 py-2 backdrop-blur md:absolute md:inset-y-0 md:left-14 md:right-12 md:border-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none"
+              className="border-b border-white/5 bg-black/85 px-4 py-2 backdrop-blur md:pointer-events-none md:absolute md:inset-y-0 md:left-14 md:right-12 md:border-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none md:[&>*]:pointer-events-auto"
             />
           </div>
         }
         sidebar={
-          <div className="sticky top-[var(--app-header-h,3rem)] h-[calc(100vh-var(--app-header-h,3rem))] w-56 overflow-y-auto border-r border-white/5 p-3">
+          <div className="sticky top-[var(--app-header-h,3rem)] h-[calc(100vh-var(--app-header-h,3rem))] w-48 overflow-y-auto border-r border-white/5 p-3">
             <SidebarNav />
           </div>
         }

@@ -5,7 +5,7 @@ import { MediaDetail } from './MediaDetail'
 // Standard photo lightbox: MediaLightbox + favorites + the usual mocked actions
 // (rotate / album / download / delete) + MediaDetail in the detail slot.
 // Use this anywhere you want the same lightbox UX as the main gallery.
-export function PhotoLightbox({ items, initialIndex = 0, onClose, onNavigate, onNeedMore, title }) {
+export function PhotoLightbox({ items, initialIndex = 0, onClose, onNavigate, onNeedMore, onSetCover, currentCoverPath, title }) {
   const { favs, toggle: toggleFav } = useFavorites()
   return (
     <MediaLightbox
@@ -18,6 +18,8 @@ export function PhotoLightbox({ items, initialIndex = 0, onClose, onNavigate, on
       onAlbum={it => console.log('add to album (mock)', it.path)}
       onDownload={it => console.log('download (mock)', it.path)}
       onDelete={() => { console.log('delete (mock)'); onClose?.() }}
+      onSetCover={onSetCover}
+      currentCoverPath={currentCoverPath}
       onClose={onClose}
       onNavigate={onNavigate}
       onNeedMore={onNeedMore}

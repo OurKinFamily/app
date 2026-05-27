@@ -59,6 +59,10 @@ export function MediaGallery({
   useEffect(() => {
     if (!onLoadOlder) return
     const onScroll = () => {
+      // Skip while a modal (lightbox) has locked body scroll — otherwise the
+      // shrunken scrollHeight makes the bottom-edge check evaluate true and
+      // triggers a runaway loadOlder chain.
+      if (document.body.style.position === 'fixed') return
       const now = performance.now()
       const y = window.scrollY
       const dt = now - velocityRef.current.t

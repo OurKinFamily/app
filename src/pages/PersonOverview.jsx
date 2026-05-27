@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useOutletContext, useNavigate, Link } from 'react-router-dom'
-import { searchPeople, getPeople } from '../lib/api'
+import { searchPeople, getPeople, setCover } from '../lib/api'
 import { mediaUrl } from '../lib/media'
 import { displayName } from '../lib/people'
 import { useGallery } from '../lib/useGallery'
@@ -12,7 +12,7 @@ import { PhotoLightbox } from '../components/PhotoLightbox'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const TYPE_LABELS = {
+export const TYPE_LABELS = {
   sports_team: 'Sports Team', fitness: 'Fitness', hobby_club: 'Hobby / Club',
   school_class: 'School Class', school: 'School', extracurricular: 'Extracurricular',
   workplace: 'Workplace', professional_org: 'Professional Org',
@@ -51,166 +51,28 @@ const INPUT_CLS = "w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export function PersonOverview() {
-  const { person, relatives, reloadRelatives, setPerson, editing, setEditing } = useOutletContext()
-  const navigateOverview = useNavigate()
-  const [groups, setGroups]             = useState([])
-  const [connections, setConnections]   = useState([])
-  const [addingGroup, setAddingGroup]   = useState(false)
-  const [addingConn, setAddingConn]     = useState(false)
-  const [suggestions, setSuggestions]   = useState([])
-
-  function loadGroups() {
-    fetch(`/api/people/${person.id}/groups`).then(r => r.json()).then(setGroups).catch(() => {})
-  }
-  function loadConnections() {
-    fetch(`/api/people/${person.id}/connections`).then(r => r.json()).then(setConnections).catch(() => {})
-  }
-  function loadSuggestions() {
-    fetch(`/api/suggestions/?person_id=${person.id}`)
-      .then(r => r.ok ? r.json() : []).then(setSuggestions).catch(() => {})
-  }
-
-  useEffect(() => { loadGroups(); loadConnections(); loadSuggestions() }, [person.id])
-
-  async function dismissSuggestion(id, accept) {
-    await fetch(`/api/suggestions/${id}/${accept ? 'accept' : 'reject'}`, { method: 'POST' })
-    loadSuggestions()
-  }
-
-  async function removeRel(targetId, relType) {
-    await fetch(`/api/people/${person.id}/relationships`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target_id: targetId, rel_type: relType }),
-    })
-    reloadRelatives()
-  }
-
-  async function removeConnection(otherId) {
-    await fetch(`/api/people/${person.id}/connections/${otherId}`, { method: 'DELETE' })
-    loadConnections()
-  }
+  const { person, setPerson, editing, setEditing } = useOutletContext()
 
   return (
     <>
       {/* Personal info */}
       <div className="max-w-xl space-y-8 mb-8">
-        <div>
-          <Link to={`/manage/faces/similar?person_id=${person.id}`} title="Find faces that look like this person's avatar"
-            className="text-[11px] text-white/40 hover:text-white/70 transition-colors">
-            Find similar faces →
-          </Link>
-        </div>
-
         {editing ? (
           <EditForm person={person} onSaved={updated => { setPerson(updated); setEditing(false) }} onCancel={() => setEditing(false)} />
         ) : (
           <>
             {person.maiden_name && <p className="text-white/40 text-sm">Née {person.maiden_name}</p>}
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              {person.birth_date  && <Field label="Born"           value={formatDate(person.birth_date,  person.birth_date_precision)} />}
-              {person.birth_place && <Field label="Birthplace"     value={person.birth_place} />}
-              {person.death_date  && <Field label="Died"           value={formatDate(person.death_date,  person.death_date_precision)} />}
-              {person.death_place && <Field label="Place of death" value={person.death_place} />}
-            </div>
-
-            {relatives && (
-              <div className="space-y-5">
-                <RelGroup label="Parents"  people={relatives.parents}  relType="parent"  onRemove={removeRel} />
-                <RelGroup label="Spouses"  people={relatives.spouses}  relType="spouse"  onRemove={removeRel} />
-                <RelGroup label="Children" people={relatives.children} relType="child"   onRemove={removeRel} />
-                <RelGroup label="Siblings" people={relatives.siblings} relType="sibling" onRemove={removeRel} />
+            {(person.death_date || person.death_place) && (
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {person.death_date  && <Field label="Died"           value={formatDate(person.death_date,  person.death_date_precision)} />}
+                {person.death_place && <Field label="Place of death" value={person.death_place} />}
               </div>
             )}
 
             {person.notes && <p className="text-white/50 text-sm">{person.notes}</p>}
           </>
         )}
-      </div>
-
-      {/* Groups + Connections: side by side on md+, stacked on mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-        {/* ── Groups ── */}
-        <Section label="Groups" count={groups.length} action="+ Add" onAction={() => setAddingGroup(v => !v)} actionActive={addingGroup}>
-          {addingGroup && (
-            <AddGroupPanel personId={person.id} onAdded={() => { setAddingGroup(false); loadGroups() }} />
-          )}
-          {suggestions.filter(s => s.type === 'group_membership' && s.person_id === person.id).map(s => (
-            <InlineSuggestion key={s.id} suggestion={s} onYes={async (_ctx) => {
-              await fetch(`/api/groups/${s.target?.id}/members`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ person_id: person.id, role: null }),
-              })
-              await dismissSuggestion(s.id, true)
-              loadGroups()
-            }} onNo={() => dismissSuggestion(s.id, false)} />
-          ))}
-          {groups.map(g => (
-            <Link key={g.id} to={`/manage/groups/${g.id}`}
-              className="flex items-center gap-3 p-2.5 bg-white/3 hover:bg-white/6 border border-white/6 rounded-lg transition-colors group">
-              <div className="flex-1 min-w-0">
-                <span className="text-[13px] text-white/70 group-hover:text-white">{g.name}</span>
-                {g.role && <span className="text-[11px] text-white/30 ml-2">{g.role}</span>}
-                <div className="text-[11px] text-white/25 mt-0.5">
-                  {TYPE_LABELS[g.type] || g.type}{g.year ? ` · ${g.year}` : ''}{g.location_name ? ` · ${g.location_name}` : ''}
-                </div>
-              </div>
-            </Link>
-          ))}
-          {groups.length === 0 && !addingGroup && <p className="text-[12px] text-white/25">No groups yet.</p>}
-        </Section>
-
-        {/* ── Connections ── */}
-        <Section label="Connections" count={connections.length} action="+ Add" onAction={() => setAddingConn(v => !v)} actionActive={addingConn}>
-          {addingConn && (
-            <AddConnectionPanel
-              personId={person.id}
-              existingIds={new Set(connections.map(c => c.id))}
-              onAdded={() => { setAddingConn(false); loadConnections() }}
-            />
-          )}
-          {suggestions.filter(s => s.type === 'connection' && (s.person_id === person.id || s.target_id === person.id)).map(s => {
-            const otherId   = s.person_id === person.id ? s.target_id : s.person_id
-            const otherNode = s.person_id === person.id ? s.target    : s.person
-            return (
-              <InlineSuggestion key={s.id} suggestion={s} otherPerson={otherNode} onYes={async (context) => {
-                await fetch(`/api/people/${person.id}/connections`, {
-                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ target_id: otherId, context: context || null }),
-                })
-                await dismissSuggestion(s.id, true)
-                loadConnections()
-              }} onNo={() => dismissSuggestion(s.id, false)} />
-            )
-          })}
-          {connections.map(c => (
-            <div key={c.id} className="group relative">
-              <EntityItem
-                avatar={c.avatar ? mediaUrl(c.avatar) : null}
-                initials
-                text={displayName(c)}
-                secondary={
-                  <span>
-                    {c.context && <span>{c.context}</span>}
-                    {c.through_groups?.map(g => (
-                      <Link key={g.id} to={`/manage/groups/${g.id}`} className="ml-2 text-white/30 hover:text-white/60">via {g.name}</Link>
-                    ))}
-                  </span>
-                }
-                trailing={c.since || undefined}
-                onClick={() => navigateOverview(`/manage/people/${c.id}`)}
-              />
-              <button
-                onClick={e => { e.preventDefault(); removeConnection(c.id) }}
-                className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded px-2 text-[11px] text-white/30 hover:text-red-400 group-hover:block"
-              >Remove</button>
-            </div>
-          ))}
-          {connections.length === 0 && !addingConn && <p className="text-[12px] text-white/25">No connections yet.</p>}
-        </Section>
-
       </div>
 
       <PersonGalleryInline personId={person.id} />
@@ -221,7 +83,8 @@ export function PersonOverview() {
 // ── Inline gallery ────────────────────────────────────────────────────────────
 
 function PersonGalleryInline({ personId }) {
-  const { media, loading, hasMoreOlder, loadOlder, fillGap } = useGallery({
+  const { person, setPerson } = useOutletContext()
+  const { media, total, loading, hasMoreOlder, loadOlder, fillGap } = useGallery({
     params: { person_ids: personId },
   })
   const { favs, toggle: toggleFav } = useFavorites()
@@ -239,8 +102,15 @@ function PersonGalleryInline({ personId }) {
 
   return (
     <div className="mt-10">
-      <p className="text-white/40 uppercase tracking-wider text-xs mb-3">
-        Photos · {media.length.toLocaleString()}{hasMoreOlder ? '+' : ''}
+      <p className="mb-3 flex items-baseline justify-end gap-2 text-xs uppercase tracking-wider text-white/40">
+        <span>Gallery · {(total ?? media.length).toLocaleString()}</span>
+        <Link
+          to={`/manage/faces/similar?person_id=${personId}`}
+          title="Find similar faces across the archive"
+          className="text-[11px] normal-case tracking-normal text-blue-400/70 transition-colors hover:text-blue-300"
+        >
+          Find more →
+        </Link>
       </p>
       <MediaGallery
         items={media}
@@ -262,6 +132,12 @@ function PersonGalleryInline({ personId }) {
           initialIndex={viewer}
           onClose={() => setViewer(null)}
           onNeedMore={() => { if (!loading && hasMoreOlder) loadOlder() }}
+          currentCoverPath={person.cover_image}
+          onSetCover={async it => {
+            const path = it.path
+            await setCover(person.id, path, person.cover_position || 'center')
+            setPerson(p => ({ ...p, cover_image: path }))
+          }}
         />
       )}
     </div>
@@ -270,7 +146,7 @@ function PersonGalleryInline({ personId }) {
 
 // ── Inline suggestion chip ────────────────────────────────────────────────────
 
-function InlineSuggestion({ suggestion: s, otherPerson, onYes, onNo }) {
+export function InlineSuggestion({ suggestion: s, otherPerson, onYes, onNo }) {
   const [busy, setBusy]       = useState(false)
   const [showCtx, setShowCtx] = useState(false)
   const [context, setContext] = useState('')
@@ -323,7 +199,7 @@ function InlineSuggestion({ suggestion: s, otherPerson, onYes, onNo }) {
 
 // ── Section wrapper ───────────────────────────────────────────────────────────
 
-function Section({ label, count, action, onAction, actionActive, children }) {
+export function Section({ label, count, action, onAction, actionActive, children }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -340,7 +216,7 @@ function Section({ label, count, action, onAction, actionActive, children }) {
 
 // ── Add group panel ───────────────────────────────────────────────────────────
 
-function AddGroupPanel({ personId, onAdded }) {
+export function AddGroupPanel({ personId, onAdded }) {
   const [query, setQuery]       = useState('')
   const [results, setResults]   = useState([])
   const [selected, setSelected] = useState(null)
@@ -472,7 +348,7 @@ function GroupSearch({ value, onChange }) {
   )
 }
 
-function AddConnectionPanel({ personId, existingIds, onAdded }) {
+export function AddConnectionPanel({ personId, existingIds, onAdded }) {
   const [query, setQuery]               = useState('')
   const [results, setResults]           = useState([])
   const [selected, setSelected]         = useState([])

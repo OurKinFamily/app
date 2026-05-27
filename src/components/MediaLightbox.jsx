@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { X, ChevronLeft, ChevronRight, Heart, RotateCw, Download, Trash2, Album, Volume2, Square } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Heart, RotateCw, Download, Trash2, Album, Volume2, Square, Image as ImageIcon } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { IconButton } from './IconButton'
 import { FaceAssignPopover } from './FaceAssignPopover'
@@ -11,7 +11,7 @@ import { bboxRect, onMediaError } from './mediaLightboxHelpers'
 // drive face-bbox highlights and receive clicks on face regions over the image.
 export function MediaLightbox({
   items, initialIndex = 0, title,
-  favorites, onFavorite, onRotate, onDownload, onDelete,
+  favorites, onFavorite, onRotate, onDownload, onDelete, onSetCover, currentCoverPath,
   onClose, onNavigate, onNeedMore, onAlbum, renderDetail, children,
 }) {
   const [index, setIndex] = useState(initialIndex)
@@ -155,6 +155,15 @@ export function MediaLightbox({
             )}
             {onRotate && <IconButton label="Rotate" onClick={rotate}><RotateCw size={18} /></IconButton>}
             {onAlbum && <IconButton label="Add to album" onClick={() => onAlbum(item)}><Album size={18} /></IconButton>}
+            {onSetCover && (
+              <IconButton
+                label={item?.path === currentCoverPath ? 'Current cover' : 'Set as cover'}
+                onClick={() => onSetCover(item)}
+                className={item?.path === currentCoverPath ? 'text-green-400 hover:text-green-300' : ''}
+              >
+                <ImageIcon size={18} />
+              </IconButton>
+            )}
             {onDownload && <IconButton label="Download" onClick={() => onDownload(item)}><Download size={18} /></IconButton>}
             {audio?.url && (
               <IconButton

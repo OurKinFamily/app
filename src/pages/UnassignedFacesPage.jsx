@@ -188,7 +188,7 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
             </div>
           )}
 
-          <div className="fixed left-20 right-0 bottom-[var(--bottom-bar-h,3.5rem)] z-30 border-t border-white/10 bg-black/90 p-3 backdrop-blur md:left-[19rem] md:bottom-0">
+          <div className="fixed left-20 right-0 bottom-[var(--bottom-bar-h,3.5rem)] z-30 border-t border-white/10 bg-black/90 p-3 backdrop-blur md:left-[17rem] md:bottom-0">
             <Select
               dropUp
               options={searchResults}

@@ -4,6 +4,7 @@ import { MainLayout } from './components/MainLayout'
 import { PeoplePage } from './pages/PeoplePage'
 import { PersonPage } from './pages/PersonPage'
 import { PersonOverview } from './pages/PersonOverview'
+import { PersonCircles } from './pages/PersonCircles'
 import { PersonAncestry } from './pages/PersonAncestry'
 import { PersonScrapbook } from './pages/PersonScrapbook'
 import { PersonTravel } from './pages/PersonTravel'
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/manage/people/:id" element={<PersonPage />}>
               <Route index            element={<Navigate to="overview" replace />} />
               <Route path="overview"  element={<PersonOverview />} />
+              <Route path="circles"   element={<PersonCircles />} />
               <Route path="ancestry"  element={<PersonAncestry />} />
               <Route path="scrapbook" element={<PersonScrapbook />} />
               <Route path="scrapbook/:collectionId" element={<PersonScrapbook />} />

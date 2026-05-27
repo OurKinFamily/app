@@ -27,7 +27,7 @@ export function AppHeader({ onMenu }) {
       </Link>
       {userName && (
         userTo
-          ? <Link to={userTo} className="truncate text-[13px] text-white/70 transition-colors hover:text-white" title={me?.person?.name || ''}>{userName}</Link>
+          ? <Link to={userTo} className="relative z-10 truncate text-[13px] text-white/70 transition-colors hover:text-white" title={me?.person?.name || ''}>{userName}</Link>
           : <span className="truncate text-[13px] text-white/70">{userName}</span>
       )}
       {/* Trailing slot — pages portal icon buttons in here (filters, etc.).

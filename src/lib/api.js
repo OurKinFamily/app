@@ -55,6 +55,15 @@ export async function setAvatar(personId, cropPath) {
   if (!res.ok) throw new Error('Failed to set avatar')
 }
 
+export async function setCover(personId, photoPath, position) {
+  const res = await fetch(`${BASE}/people/${personId}/cover`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photo_path: photoPath, position }),
+  })
+  if (!res.ok) throw new Error('Failed to set cover')
+}
+
 export async function addRelationship(personId, data) {
   const res = await fetch(`${BASE}/people/${personId}/relationships`, {
     method: 'POST',

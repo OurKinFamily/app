@@ -9,6 +9,7 @@ const LIMIT = 48
 //          loadOlder, loadNewer.
 export function useGallery({ anchor = null, params = {} } = {}) {
   const [media, setMedia] = useState([])
+  const [total, setTotal] = useState(null)
   const [loading, setLoading] = useState(false)
   const [hasMoreOlder, setHasMoreOlder] = useState(true)
   const [hasMoreNewer, setHasMoreNewer] = useState(false)
@@ -42,6 +43,7 @@ export function useGallery({ anchor = null, params = {} } = {}) {
           oldestRef.current = batch[batch.length - 1].timestamp
         }
         setMedia(batch)
+        setTotal(typeof d.total === 'number' ? d.total : null)
         setLoading(false)
         setHasMoreOlder(batch.length >= LIMIT || !!d.has_more)
         setHasMoreNewer(anchor != null)
@@ -145,5 +147,5 @@ export function useGallery({ anchor = null, params = {} } = {}) {
     finally { loadingRef.current = false; setLoading(false) }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer, fillGap }
+  return { media, total, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer, fillGap }
 }
