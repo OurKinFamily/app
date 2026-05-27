@@ -18,6 +18,7 @@ function formatDate(date, precision) {
 const TABS = [
   { to: 'overview', label: 'Overview' },
   { to: 'circles', label: 'Circles' },
+  { to: 'timeline', label: 'Timeline' },
   { to: 'ancestry', label: 'Ancestry' },
   { to: 'scrapbook', label: 'Scrapbook' },
   { to: 'travel', label: 'Travel' },

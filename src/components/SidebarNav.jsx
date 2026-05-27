@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   Images, MapPin, Users, Album, Heart,
-  UserPlus, UserCheck, Users2, Sparkles,
+  UserPlus, UserCheck, CheckCircle, Users2, Sparkles,
   LayoutDashboard, Activity, Palette,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
@@ -22,6 +22,7 @@ const SECTIONS = [
     items: [
       { to: '/manage/faces/unassigned', label: 'Unassigned faces', Icon: UserPlus },
       { to: '/manage/faces/assigned', label: 'Assigned faces', Icon: UserCheck },
+      { to: '/manage/faces/confirm', label: 'Confirm faces', Icon: CheckCircle },
       { to: '/manage/groups', label: 'Groups', Icon: Users2 },
       { to: '/manage/suggestions', label: 'Suggestions', Icon: Sparkles },
     ],

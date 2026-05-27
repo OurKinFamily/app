@@ -5,12 +5,14 @@ import { PeoplePage } from './pages/PeoplePage'
 import { PersonPage } from './pages/PersonPage'
 import { PersonOverview } from './pages/PersonOverview'
 import { PersonCircles } from './pages/PersonCircles'
+import { PersonTimeline } from './pages/PersonTimeline'
 import { PersonAncestry } from './pages/PersonAncestry'
 import { PersonScrapbook } from './pages/PersonScrapbook'
 import { PersonTravel } from './pages/PersonTravel'
 import { PersonAI } from './pages/PersonAI'
 import { UnassignedFacesPage } from './pages/UnassignedFacesPage'
 import { AssignedFacesPage } from './pages/AssignedFacesPage'
+import { ConfirmFacesPage } from './pages/ConfirmFacesPage'
 import { GroupsPage } from './pages/GroupsPage'
 import { GroupPage } from './pages/GroupPage'
 import { SimilarFacesPage } from './pages/SimilarFacesPage'
@@ -54,6 +56,7 @@ export default function App() {
             <Route path="/manage/faces" element={<Navigate to="/manage/faces/unassigned" replace />} />
             <Route path="/manage/faces/unassigned" element={<UnassignedFacesPage />} />
             <Route path="/manage/faces/assigned" element={<AssignedFacesPage />} />
+            <Route path="/manage/faces/confirm"  element={<ConfirmFacesPage />} />
             <Route path="/manage/faces/similar" element={<SimilarFacesPage />} />
             <Route path="/manage/groups" element={<GroupsPage />} />
             <Route path="/manage/groups/:id" element={<GroupPage />} />
@@ -63,6 +66,7 @@ export default function App() {
               <Route index            element={<Navigate to="overview" replace />} />
               <Route path="overview"  element={<PersonOverview />} />
               <Route path="circles"   element={<PersonCircles />} />
+              <Route path="timeline"  element={<PersonTimeline />} />
               <Route path="ancestry"  element={<PersonAncestry />} />
               <Route path="scrapbook" element={<PersonScrapbook />} />
               <Route path="scrapbook/:collectionId" element={<PersonScrapbook />} />

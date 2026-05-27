@@ -13,7 +13,7 @@ import { displayName, otherName } from '../lib/people'
 // Pure APPEARS_IN intersection — does NOT use the explicit Connections
 // graph.
 
-const DEFAULT_MIN = 30
+const DEFAULT_MIN = 10
 const LANE_H      = 16   // px
 const LANE_GAP    = 4    // px
 const LEFT_LABEL  = 0    // gantt uses the full width; names render on hover
