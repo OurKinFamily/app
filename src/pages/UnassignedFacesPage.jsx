@@ -52,20 +52,15 @@ function ClusterCard({ cluster, isSelected, onClick }) {
       }
     >
       <div className="mb-1.5 flex gap-1">
-        {cluster.samples.slice(0, 4).map((url, i) => (
+        {cluster.samples[0] ? (
           <img
-            key={i}
-            src={url}
+            src={cluster.samples[0]}
             alt=""
             loading="lazy"
-            className={
-              'h-12 w-12 rounded bg-white/5 object-cover ' +
-              (i > 0 ? 'hidden md:block' : '')
-            }
+            className="h-12 w-12 rounded bg-white/5 object-cover"
             onError={e => { e.target.style.display = 'none' }}
           />
-        ))}
-        {cluster.samples.length === 0 && (
+        ) : (
           <div className="flex h-12 w-12 items-center justify-center rounded bg-white/5 text-xs text-white/20">?</div>
         )}
       </div>
@@ -193,7 +188,7 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
             </div>
           )}
 
-          <div className="fixed left-20 right-0 bottom-[var(--bottom-bar-h,3.5rem)] z-30 border-t border-white/10 bg-black/90 p-3 backdrop-blur md:left-[28rem] md:bottom-0">
+          <div className="fixed left-20 right-0 bottom-[var(--bottom-bar-h,3.5rem)] z-30 border-t border-white/10 bg-black/90 p-3 backdrop-blur md:left-[19rem] md:bottom-0">
             <Select
               dropUp
               options={searchResults}
@@ -424,7 +419,7 @@ export function UnassignedFacesPage() {
 
       <div className="flex h-[calc(100vh-var(--app-header-h,3rem)-4rem)] md:h-[calc(100vh-var(--app-header-h,3rem))]">
         {/* Cluster sidebar */}
-        <aside className="flex w-20 shrink-0 flex-col border-r border-white/5 md:w-56">
+        <aside className="flex w-20 shrink-0 flex-col border-r border-white/5">
           <div className="hide-scrollbar flex-1 space-y-1.5 overflow-y-auto p-2">
             {loading && <p className="p-2 text-xs text-white/20">Loading…</p>}
             {!loading && clusters.length === 0 && (

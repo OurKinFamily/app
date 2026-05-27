@@ -22,19 +22,15 @@ function ClusterCard({ cluster, isSelected, onClick }) {
       }
     >
       <div className="mb-1.5 flex gap-1">
-        {cluster.samples.slice(0, 4).map((url, i) => (
+        {cluster.samples[0] && (
           <img
-            key={i}
-            src={url}
+            src={cluster.samples[0]}
             alt=""
             loading="lazy"
-            className={
-              'h-12 w-12 rounded bg-white/5 object-cover ' +
-              (i > 0 ? 'hidden md:block' : '')
-            }
+            className="h-12 w-12 rounded bg-white/5 object-cover"
             onError={e => { e.target.style.display = 'none' }}
           />
-        ))}
+        )}
       </div>
       <div className="truncate text-[12px] font-medium text-white/80">
         {cluster.person_name || '(unknown)'}
@@ -180,7 +176,7 @@ export function AssignedFacesPage() {
       )}
 
       <div className="flex h-[calc(100vh-var(--app-header-h,3rem)-4rem)] md:h-[calc(100vh-var(--app-header-h,3rem))]">
-        <aside className="flex w-20 shrink-0 flex-col border-r border-white/5 md:w-56">
+        <aside className="flex w-20 shrink-0 flex-col border-r border-white/5">
           <div className="hide-scrollbar flex-1 space-y-1.5 overflow-y-auto p-2">
             {loading && <p className="p-2 text-xs text-white/20">Loading…</p>}
             {!loading && clusters.length === 0 && (
