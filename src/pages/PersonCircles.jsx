@@ -3,6 +3,7 @@ import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { mediaUrl } from '../lib/media'
 import { displayName } from '../lib/people'
 import { EntityItem } from '../components/EntityItem'
+import { ConnectionTimeline } from '../components/ConnectionTimeline'
 import {
   TYPE_LABELS,
   Section,
@@ -46,7 +47,13 @@ export function PersonCircles() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="space-y-10">
+      <section>
+        <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-white/30">Co-appearance Timeline</h2>
+        <ConnectionTimeline personId={person.id} />
+      </section>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       {/* ── Groups ── */}
       <Section label="Groups" count={groups.length} action="+ Add" onAction={() => setAddingGroup(v => !v)} actionActive={addingGroup}>
         {addingGroup && (
@@ -125,6 +132,7 @@ export function PersonCircles() {
         ))}
         {connections.length === 0 && !addingConn && <p className="text-[12px] text-white/25">No connections yet.</p>}
       </Section>
+      </div>
     </div>
   )
 }
