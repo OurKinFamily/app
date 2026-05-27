@@ -17,10 +17,22 @@ import { ScrollTopButton } from './ScrollTopButton'
 // publishes the combined header height as `--app-header-h` on :root so other
 // sticky elements (sidebar, MediaGallery day headers, DateScrubber) stack
 // below the header regardless of whether a subheader is mounted.
+const SIDEBAR_HIDDEN_KEY = 'desktop-sidebar-hidden'
+
 export function MainLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem(SIDEBAR_HIDDEN_KEY) === '1')
+  useEffect(() => { localStorage.setItem(SIDEBAR_HIDDEN_KEY, sidebarHidden ? '1' : '0') }, [sidebarHidden])
   const closeDrawer = () => setDrawerOpen(false)
   const headerRef = useRef(null)
+
+  // Hamburger handler — toggles whichever menu fits the viewport. Mobile
+  // drawer + desktop sidebar are mutually exclusive (CSS gates which is
+  // visible) so toggling both is safe.
+  const onMenu = () => {
+    if (window.matchMedia('(min-width: 768px)').matches) setSidebarHidden(h => !h)
+    else setDrawerOpen(o => !o)
+  }
 
   useEffect(() => {
     if (!headerRef.current) return
@@ -38,9 +50,10 @@ export function MainLayout() {
   return (
     <>
       <AppShell
+        sidebarHidden={sidebarHidden}
         header={
           <div ref={headerRef} className="relative">
-            <AppHeader onMenu={() => setDrawerOpen(true)} />
+            <AppHeader onMenu={onMenu} />
             {/* Mobile: stacked bar below AppHeader (own bg + border).
                 Desktop: absolute-positioned inside the AppHeader row,
                 starting right of the OK logo. Wrapper height stays the

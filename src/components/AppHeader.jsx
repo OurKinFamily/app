@@ -36,8 +36,8 @@ export function AppHeader({ onMenu }) {
       {onMenu && (
         <button
           onClick={onMenu}
-          aria-label="Open menu"
-          className="ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white md:hidden"
+          aria-label="Toggle menu"
+          className="ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
         >
           <Menu size={20} />
         </button>

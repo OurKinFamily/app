@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { getClusters, getCluster } from '../lib/api'
 import { isVideo, mediaUrl } from '../lib/media'
 import { EntityChip } from '../components/EntityChip'
-import { PhotoLightbox } from '../components/PhotoLightbox'
+import { MediaLightbox } from '../components/MediaLightbox'
+import { MediaDetail } from '../components/MediaDetail'
+import { SubheaderPortal } from '../components/SubheaderPortal'
+import { HeaderTrailingPortal } from '../components/HeaderTrailingPortal'
+import { Tag } from '../components/Tag'
 
 const PAGE_SIZE = 50
 
@@ -24,7 +28,10 @@ function ClusterCard({ cluster, isSelected, onClick }) {
             src={url}
             alt=""
             loading="lazy"
-            className="h-12 w-12 rounded bg-white/5 object-cover"
+            className={
+              'h-12 w-12 rounded bg-white/5 object-cover ' +
+              (i > 0 ? 'hidden md:block' : '')
+            }
             onError={e => { e.target.style.display = 'none' }}
           />
         ))}
@@ -50,7 +57,7 @@ function DetailPanel({ cluster, onOpenPhoto }) {
   if (!cluster) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-white/20">
-        Select a cluster to view
+        Select a person to view
       </div>
     )
   }
@@ -58,52 +65,42 @@ function DetailPanel({ cluster, onOpenPhoto }) {
   const personName = cluster.person_name || cluster.person_id
 
   return (
-    <div className="hide-scrollbar flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto pr-2">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-medium text-white">
-            {personName}
-            {cluster.person_known_as && <span className="ml-2 text-white/40">({cluster.person_known_as})</span>}
-          </h2>
-          <p className="mt-0.5 text-[12px] text-white/30">{cluster.size} faces</p>
-        </div>
+    <div className="hide-scrollbar flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto">
+      <div className="flex items-center gap-3">
         {cluster.person_id && (
           <EntityChip
             to={`/manage/people/${cluster.person_id}`}
             avatar={cluster.person_avatar ? mediaUrl(cluster.person_avatar) : null}
             initials
             text={personName}
+            caption={cluster.person_known_as && cluster.person_known_as !== personName ? `(${cluster.person_known_as})` : null}
           />
         )}
+        <Tag tone="slate">{cluster.size.toLocaleString()} face{cluster.size !== 1 ? 's' : ''}</Tag>
       </div>
 
-      <div>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/40">
-          {detail ? `${detail.faces.length} crops` : 'Samples'}
-          {!detail && <span className="ml-1 opacity-50">(loading…)</span>}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {detail
-            ? detail.faces.map((f, i) => (
-                <button
-                  key={i}
-                  onClick={() => f.photo_path && onOpenPhoto(detail.faces, i)}
-                  className="overflow-hidden rounded focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  title="Open original photo"
-                >
-                  <img
-                    src={f.crop_url}
-                    alt=""
-                    className="h-16 w-16 bg-white/5 object-cover transition-opacity hover:opacity-80"
-                    onError={e => { e.target.style.display = 'none' }}
-                  />
-                </button>
-              ))
-            : cluster.samples.map((url, i) => (
-                <img key={i} src={url} alt="" className="h-16 w-16 rounded bg-white/5 object-cover" />
-              ))
-          }
-        </div>
+      <div className="grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(64px,1fr))]">
+        {detail
+          ? detail.faces.map((f, i) => (
+              <button
+                key={i}
+                onClick={() => f.photo_path && onOpenPhoto(detail.faces, i)}
+                className="aspect-square overflow-hidden rounded focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                title="Open original photo"
+              >
+                <img
+                  src={f.crop_url}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full bg-white/5 object-cover transition-opacity hover:opacity-80"
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+              </button>
+            ))
+          : cluster.samples.map((url, i) => (
+              <img key={i} src={url} alt="" loading="lazy" className="aspect-square w-full rounded bg-white/5 object-cover" />
+            ))
+        }
       </div>
     </div>
   )
@@ -154,31 +151,36 @@ export function AssignedFacesPage() {
     const photos = []
     let adjustedIndex = 0
     faces.forEach((f, i) => {
-      if (!f.photo_path || seen.has(f.photo_path)) return
+      if (!f.photo_path) return
+      const path = f.photo_path.startsWith('/photos/') ? f.photo_path.slice('/photos/'.length) : f.photo_path
+      if (seen.has(path)) return
       if (i === index) adjustedIndex = photos.length
-      seen.add(f.photo_path)
-      photos.push({ path: f.photo_path, url: `/api/media/${f.photo_path}`, is_video: isVideo(f.photo_path) })
+      seen.add(path)
+      photos.push({ path, url: `/api/media/${path}`, is_video: isVideo(path) })
     })
     setViewer({ photos, index: adjustedIndex })
   }, [])
 
   return (
     <>
+      <SubheaderPortal>
+        <h1 className="text-sm font-medium text-white/80">Assigned Faces</h1>
+      </SubheaderPortal>
+      <HeaderTrailingPortal>
+        {!loading && <Tag tone="green">{total.toLocaleString()} assigned</Tag>}
+      </HeaderTrailingPortal>
+
       {viewer && (
-        <PhotoLightbox
+        <MediaLightbox
           items={viewer.photos}
           initialIndex={viewer.index}
           onClose={() => setViewer(null)}
+          renderDetail={(it, ctx, v) => <MediaDetail key={`${it.path}-${v}`} item={it} ctx={ctx} />}
         />
       )}
-      <div className="flex h-[calc(100vh-var(--app-header-h,3rem))]">
-        <div className="flex w-56 shrink-0 flex-col border-r border-white/5">
-          <div className="border-b border-white/5 px-4 pb-3 pt-6">
-            <h1 className="text-sm font-semibold text-white">Assigned Clusters</h1>
-            <p className="mt-0.5 text-[11px] text-white/30">
-              {loading ? '…' : `${total} assigned`}
-            </p>
-          </div>
+
+      <div className="flex h-[calc(100vh-var(--app-header-h,3rem)-4rem)] md:h-[calc(100vh-var(--app-header-h,3rem))]">
+        <aside className="flex w-20 shrink-0 flex-col border-r border-white/5 md:w-56">
           <div className="hide-scrollbar flex-1 space-y-1.5 overflow-y-auto p-2">
             {loading && <p className="p-2 text-xs text-white/20">Loading…</p>}
             {!loading && clusters.length === 0 && (
@@ -196,11 +198,11 @@ export function AssignedFacesPage() {
               {loadingMore && <span className="text-[11px] text-white/20">Loading…</span>}
             </div>
           </div>
-        </div>
+        </aside>
 
-        <div className="flex flex-1 overflow-hidden p-6">
+        <main className="flex flex-1 overflow-hidden p-3 md:p-6">
           <DetailPanel cluster={selected} onOpenPhoto={handleOpenPhoto} />
-        </div>
+        </main>
       </div>
     </>
   )
