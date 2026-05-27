@@ -132,10 +132,69 @@ export function MediaGallery({
 
   const groups = groupByDay(items)
 
+  // Pack consecutive 1-photo days into shared "shelves" so the page doesn't
+  // leave half-empty rows when there's only one photo for a day. Multi-photo
+  // days keep their own full-width row.
+  const shelves = []
+  let openShelf = null
+  for (const group of groups) {
+    const isShort = group.items.length === 1
+    if (isShort) {
+      if (!openShelf) {
+        openShelf = { short: true, days: [] }
+        shelves.push(openShelf)
+      }
+      openShelf.days.push(group)
+    } else {
+      openShelf = null
+      shelves.push({ short: false, day: group })
+    }
+  }
+
   return (
     <div ref={ref} className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {groups.map(group => {
-        const rows = computeRows(group.items, width, { rowHeight, gap })
+      {shelves.map((shelf, si) => {
+        if (shelf.short) {
+          // Side-by-side packing — each day renders header + its single photo
+          // at rowHeight. flex-wrap kicks in only when the row overflows.
+          return (
+            <div key={`shelf-${si}`} className="flex flex-wrap" style={{ gap }}>
+              {shelf.days.map(group => {
+                const item   = group.items[0]
+                const cities = citiesFor(group.items)
+                const w      = Math.round((item.aspect || 1) * rowHeight)
+                return (
+                  <section key={group.day} style={{ width: w }}>
+                    <h3 className="sticky top-[var(--app-header-h,3rem)] z-10 mb-2 bg-[#0f0f0f] py-2 text-[13px] font-medium text-white/75">
+                      {formatDay(group.day)}
+                      {cities.length > 0 && (
+                        <span className="ml-2 text-white/40">{cities.join(' & ')}</span>
+                      )}
+                    </h3>
+                    <div
+                      data-year={item.timestamp ? new Date(item.timestamp).getFullYear() : undefined}
+                      data-gap-from={item.__gap ? item.gapFromTs : undefined}
+                      data-gap-to={item.__gap ? item.gapToTs : undefined}
+                      style={{ height: rowHeight }}
+                    >
+                      <Media
+                        thumb={item.__gap ? null : item.thumbnail_url}
+                        isVideo={!item.__gap && item.is_video}
+                        color={item.dominant_color}
+                        favorited={!item.__gap && favorites?.has(item.path)}
+                        onFavorite={item.__gap || !onFavorite ? undefined : () => onFavorite(item)}
+                        onClick={item.__gap || !onSelect ? undefined : () => onSelect(item)}
+                      />
+                    </div>
+                  </section>
+                )
+              })}
+            </div>
+          )
+        }
+
+        const group  = shelf.day
+        const rows   = computeRows(group.items, width, { rowHeight, gap })
         const showHeader = group.day !== '__unknown'
         const cities = citiesFor(group.items)
         return (
