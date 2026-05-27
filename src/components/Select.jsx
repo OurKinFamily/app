@@ -10,7 +10,7 @@ import { Leading } from './Leading'
 // single:  value = a value,        onChange(option)
 // multiple value = array of values, onChange(array of options)   — set `multiple`
 // Filtering is internal by default; pass onQueryChange to drive it externally (async).
-export function Select({ options = [], value, onChange, onQueryChange, placeholder = 'Search…', multiple = false, autoFocus = false, className }) {
+export function Select({ options = [], value, onChange, onQueryChange, placeholder = 'Search…', multiple = false, autoFocus = false, dropUp = false, className }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const ref = useRef(null)
@@ -84,7 +84,10 @@ export function Select({ options = [], value, onChange, onQueryChange, placehold
       )}
 
       {open && (
-        <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-white/10 bg-zinc-900 py-1 shadow-xl">
+        <div className={cn(
+          'absolute z-50 max-h-72 w-full overflow-y-auto rounded-lg border border-white/10 bg-zinc-900 py-1 shadow-xl',
+          dropUp ? 'bottom-full mb-1' : 'mt-1',
+        )}>
           {filtered.length === 0 && <p className="px-3 py-2 text-[12px] text-white/30">No results</p>}
           {filtered.map(o => {
             const isSel = multiple ? selectedValues.has(o.value) : o.value === value

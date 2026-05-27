@@ -58,7 +58,10 @@ function ClusterCard({ cluster, isSelected, onClick }) {
             src={url}
             alt=""
             loading="lazy"
-            className="h-12 w-12 rounded bg-white/5 object-cover"
+            className={
+              'h-12 w-12 rounded bg-white/5 object-cover ' +
+              (i > 0 ? 'hidden md:block' : '')
+            }
             onError={e => { e.target.style.display = 'none' }}
           />
         ))}
@@ -173,19 +176,9 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
   }
 
   return (
-    <div className="hide-scrollbar flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-base font-medium text-white">Cluster #{cluster.id}</h2>
-          <Tag tone="slate">{cluster.size.toLocaleString()} face{cluster.size !== 1 ? 's' : ''}</Tag>
-        </div>
-        <Button variant="secondary" size="sm" onClick={handleSkip}>Skip</Button>
-      </div>
-
+    <div className="hide-scrollbar flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto pb-28 md:pb-24">
       {!creating ? (
         <div className="space-y-3">
-          <Label>Assign to person</Label>
-
           {quickPeople.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {quickPeople.map(p => (
@@ -200,32 +193,38 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
             </div>
           )}
 
-          <Select
-            options={searchResults}
-            value={null}
-            onChange={opt => handleAssign(opt.value)}
-            onQueryChange={onSearch}
-            placeholder="Search all people…"
-          />
+          <div className="fixed left-20 right-0 bottom-[var(--bottom-bar-h,3.5rem)] z-30 border-t border-white/10 bg-black/90 p-3 backdrop-blur md:left-[28rem] md:bottom-0">
+            <Select
+              dropUp
+              options={searchResults}
+              value={null}
+              onChange={opt => handleAssign(opt.value)}
+              onQueryChange={onSearch}
+              placeholder="Search all people…"
+            />
+          </div>
 
-          <button
-            onClick={() => setCreating(true)}
-            className="flex items-center gap-1 text-[12px] text-blue-400/70 transition-colors hover:text-blue-400"
-          >
-            <Plus size={12} /> Create new person
-          </button>
+          <div className="flex items-start justify-between">
+            <button
+              onClick={() => setCreating(true)}
+              className="flex items-center gap-1 text-[12px] text-blue-400/70 transition-colors hover:text-blue-400"
+            >
+              <Plus size={12} /> Create new person
+            </button>
+            <Button variant="secondary" size="sm" onClick={handleSkip}>Skip</Button>
+          </div>
         </div>
       ) : (
         <div className="space-y-2">
           <Label>New person name</Label>
+          <Input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            placeholder="Full name…"
+            autoFocus
+          />
           <div className="flex gap-2">
-            <Input
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              placeholder="Full name…"
-              autoFocus
-            />
             <Button size="sm" onClick={handleCreate} disabled={saving || !newName.trim()}>
               Create &amp; Assign
             </Button>
@@ -244,9 +243,6 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
                     : `${detail.faces.length.toLocaleString()} crops`)
                 : 'Samples'}
             </Label>
-            {detail && shown < detail.faces.length && (
-              <Tag tone="amber">only loaded faces assigned</Tag>
-            )}
             {excluded.size > 0 && <Tag tone="red">{excluded.size} excluded</Tag>}
             {!detail && <span className="text-[11px] text-white/30">loading…</span>}
           </div>
@@ -256,16 +252,16 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
             </button>
           )}
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(64px,1fr))]">
           {detail
             ? detail.faces.slice(0, shown).map((f, i) => {
                 const ex = excluded.has(f.face_index)
                 return (
-                  <div key={i} className="group/face relative">
+                  <div key={i} className="group/face relative aspect-square">
                     <button
                       onClick={() => f.photo_path && onOpenPhoto(detail.faces, i)}
                       className={
-                        'overflow-hidden rounded focus:outline-none focus:ring-2 focus:ring-blue-500/50 ' +
+                        'block h-full w-full overflow-hidden rounded focus:outline-none focus:ring-2 focus:ring-blue-500/50 ' +
                         (ex ? 'opacity-30 ring-1 ring-red-500/60' : '')
                       }
                       title="Open original photo"
@@ -274,7 +270,7 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
                         src={f.crop_url}
                         alt=""
                         loading="lazy"
-                        className="h-16 w-16 bg-white/5 object-cover transition-opacity hover:opacity-80"
+                        className="h-full w-full bg-white/5 object-cover transition-opacity hover:opacity-80"
                         onError={e => { e.target.style.display = 'none' }}
                       />
                     </button>
@@ -295,7 +291,7 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
                 )
               })
             : cluster.samples.map((url, i) => (
-                <img key={i} src={url} alt="" loading="lazy" className="h-16 w-16 rounded bg-white/5 object-cover" />
+                <img key={i} src={url} alt="" loading="lazy" className="aspect-square w-full rounded bg-white/5 object-cover" />
               ))
           }
         </div>
@@ -426,9 +422,9 @@ export function UnassignedFacesPage() {
         />
       )}
 
-      <div className="flex h-[calc(100vh-var(--app-header-h,3rem))]">
+      <div className="flex h-[calc(100vh-var(--app-header-h,3rem)-4rem)] md:h-[calc(100vh-var(--app-header-h,3rem))]">
         {/* Cluster sidebar */}
-        <aside className="flex w-56 shrink-0 flex-col border-r border-white/5">
+        <aside className="flex w-20 shrink-0 flex-col border-r border-white/5 md:w-56">
           <div className="hide-scrollbar flex-1 space-y-1.5 overflow-y-auto p-2">
             {loading && <p className="p-2 text-xs text-white/20">Loading…</p>}
             {!loading && clusters.length === 0 && (
