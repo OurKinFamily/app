@@ -151,34 +151,50 @@ function GanttLanes({ rows, stack, hover, setHover, navigate }) {
   const maxYear = Math.max(...merged.map(r => yearOf(r.last_ts)), new Date().getFullYear())
   const span    = Math.max(1, maxYear - minYear)
 
-  const decadeTicks = []
-  for (let y = Math.ceil(minYear / 10) * 10; y <= maxYear; y += 10) decadeTicks.push(y)
+  // Every 2 years labeled along the top. Each individual year becomes a
+  // faint tick mark — decades drawn brighter for orientation.
+  const labelTicks = []
+  for (let y = Math.ceil(minYear / 2) * 2; y <= maxYear; y += 2) labelTicks.push(y)
+  const allYearTicks = []
+  for (let y = minYear; y <= maxYear; y += 1) allYearTicks.push(y)
 
   const totalLanes = lanes.length
   const totalH = totalLanes * LANE_H + (totalLanes - 1) * LANE_GAP
 
   return (
     <div className="rounded-lg border border-white/10 bg-white/2 p-3">
-      {/* Time axis */}
-      <div className="relative mb-2 h-5 text-[10px] text-white/40">
-        {decadeTicks.map(y => {
+      {/* Time axis — every 2 years labeled, rotated -90° so each year reads
+          vertically. writing-mode + rotate(180deg) gives a vertical column
+          that sits entirely above the gantt rows (no bleed into lane 0). */}
+      <div className="relative mb-4 h-12 text-[10px] text-white/40">
+        {labelTicks.map(y => {
           const left = ((y - minYear) / span) * 100
           return (
-            <div key={y} className="absolute" style={{ left: `${left}%` }}>
-              <div className="-translate-x-1/2">{y}</div>
+            <div
+              key={y}
+              className="absolute bottom-0"
+              style={{ left: `${left}%`, transform: 'translateX(-50%)' }}
+            >
+              <span
+                className={`block leading-none ${y % 10 === 0 ? 'text-white/60 font-medium' : ''}`}
+                style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+              >
+                {y}
+              </span>
             </div>
           )
         })}
       </div>
 
-      {/* Decade grid lines (sit behind the bars) */}
+      {/* Year grid lines behind the bars — every year faint, decades brighter */}
       <div className="relative" style={{ height: totalH }}>
-        {decadeTicks.map(y => {
+        {allYearTicks.map(y => {
           const left = ((y - minYear) / span) * 100
+          const isDecade = y % 10 === 0
           return (
             <div
               key={y}
-              className="pointer-events-none absolute inset-y-0 border-l border-white/5"
+              className={`pointer-events-none absolute inset-y-0 border-l ${isDecade ? 'border-white/10' : 'border-white/3'}`}
               style={{ left: `${left}%` }}
             />
           )

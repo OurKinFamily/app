@@ -36,6 +36,7 @@ export function ConfirmFacesPage() {
   const [done, setDone]             = useState(0)    // counter of people confirmed/skipped
   const [error, setError]           = useState(null)
   const [viewer, setViewer]         = useState(null) // index into candidates.items
+  const [tick, setTick]             = useState(0)    // bump to force re-fetch of current person
   const inflightRef = useRef(null)
 
   // Load people who have ≥5 assigned faces (need a stable mean).
@@ -100,7 +101,7 @@ export function ConfirmFacesPage() {
       setCandidates({ done: true })
     })()
     return () => { alive = false }
-  }, [people, idx, minSim])
+  }, [people, idx, minSim, tick])
 
   async function confirm() {
     if (!candidates?.items || busy) return
@@ -121,7 +122,10 @@ export function ConfirmFacesPage() {
         }),
       })
       setDone(d => d + 1)
-      setIdx(i => i + 1)
+      // Re-fetch the SAME person: their candidate list was capped at
+      // MAX_PER_PERSON; if more remain above the threshold they'll show
+      // in the next batch. Auto-skip kicks in only when the well's dry.
+      setTick(t => t + 1)
     } finally {
       setBusy(false)
     }

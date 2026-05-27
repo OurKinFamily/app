@@ -36,11 +36,26 @@ export function bboxRect(el, bbox, pad = 0) {
 
 // When the medium endpoint 404s (face-cluster paths sometimes lack the
 // `archive/` prefix that endpoint assumes), fall back to the original
-// `/api/media/<path>` URL, then to thumbnail_url.
+// `/api/media/<path>` URL, then to thumbnail_url. Track tried URLs on the
+// element so a chain of failures doesn't loop between the same two
+// fallbacks forever.
 export function onMediaError(e, item) {
-  const orig = item.url || (item.path ? `/api/media/${item.path}` : null)
-  if (orig && !e.currentTarget.src.endsWith(orig)) { e.currentTarget.src = orig; return }
-  if (item.thumbnail_url && !e.currentTarget.src.endsWith(item.thumbnail_url)) {
-    e.currentTarget.src = item.thumbnail_url
+  const el    = e.currentTarget
+  const tried = new Set((el.dataset.tried || '').split('|').filter(Boolean))
+  if (el.src) tried.add(el.src)
+
+  const candidates = [
+    item.url || (item.path ? `/api/media/${item.path}` : null),
+    item.thumbnail_url,
+  ].filter(Boolean)
+
+  const next = candidates.find(u => !tried.has(u) && !el.src.endsWith(u))
+  if (next) {
+    tried.add(next)
+    el.dataset.tried = [...tried].join('|')
+    el.src = next
+    return
   }
+  // Exhausted — stop trying and hide the broken image.
+  el.style.display = 'none'
 }
