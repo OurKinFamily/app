@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { ChevronLeft, Maximize2, X } from 'lucide-react'
 import { searchPeople } from '../lib/api'
@@ -11,7 +11,7 @@ import { EntityChip } from '../components/EntityChip'
 import { Select } from '../components/Select'
 import { Tag } from '../components/Tag'
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 400
 
 function personToOption(p) {
   return {
@@ -53,8 +53,6 @@ export function SimilarFacesPage() {
   const [assigning, setAssigning]     = useState(false)
   const [assigned, setAssigned]       = useState(0)
   const [lightbox, setLightbox]       = useState(null)
-
-  const sentinelRef = useRef(null)
 
   const search = useCallback(async () => {
     setLoading(true)
@@ -115,16 +113,6 @@ export function SimilarFacesPage() {
     if (personId || activePath) search()
   }, [personId, activePath, activeFaceIdx])
 
-  // Infinite scroll sentinel
-  useEffect(() => {
-    if (!allResults) return
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setShown(n => Math.min(n + PAGE_SIZE, allResults.length)) },
-      { rootMargin: '400px' },
-    )
-    if (sentinelRef.current) observer.observe(sentinelRef.current)
-    return () => observer.disconnect()
-  }, [allResults])
 
   const onPersonSearch = async q => {
     if (!q.trim()) { setPersonOpts([]); return }
@@ -134,10 +122,15 @@ export function SimilarFacesPage() {
     } catch { setPersonOpts([]) }
   }
 
+  // "Select all" operates on the VISIBLE batch only — anything past `shown`
+  // hasn't been loaded into the grid yet and shouldn't be assignable.
   function toggleAll() {
     if (!allResults) return
-    if (selected.size === allResults.length) setSelected(new Set())
-    else setSelected(new Set(allResults.map((_, i) => i)))
+    const visibleCount = Math.min(shown, allResults.length)
+    const allVisibleSelected = visibleCount > 0
+      && Array.from({ length: visibleCount }, (_, i) => i).every(i => selected.has(i))
+    if (allVisibleSelected) setSelected(new Set())
+    else setSelected(new Set(Array.from({ length: visibleCount }, (_, i) => i)))
   }
 
   async function assignSelected(personIdToAssign) {
@@ -238,7 +231,12 @@ export function SimilarFacesPage() {
           {/* Bulk assign bar */}
           <div className="sticky top-[var(--app-header-h,3rem)] z-10 mb-4 flex flex-wrap items-center gap-3 bg-[#0a0a0a]/90 py-2 backdrop-blur">
             <Button variant="secondary" size="sm" onClick={toggleAll}>
-              {selected.size === allResults.length ? 'Deselect all' : `Select all ${allResults.length.toLocaleString()}`}
+              {(() => {
+                const visibleCount = Math.min(shown, allResults.length)
+                const allVisibleSelected = visibleCount > 0
+                  && Array.from({ length: visibleCount }, (_, i) => i).every(i => selected.has(i))
+                return allVisibleSelected ? 'Deselect all' : `Select all ${visibleCount.toLocaleString()} loaded`
+              })()}
             </Button>
             {selected.size > 0 && (
               <>
@@ -304,9 +302,18 @@ export function SimilarFacesPage() {
             })}
           </div>
 
-          <div ref={sentinelRef} className="flex h-16 items-center justify-center text-[11px] text-white/20">
-            {shown < allResults.length ? 'Loading more…' : ''}
-          </div>
+          {shown < allResults.length && (
+            <div className="mt-6 flex items-center justify-between text-[12px] text-white/40">
+              <span>Showing {shown.toLocaleString()} of {allResults.length.toLocaleString()}</span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShown(n => Math.min(n + PAGE_SIZE, allResults.length))}
+              >
+                Load {Math.min(PAGE_SIZE, allResults.length - shown)} more
+              </Button>
+            </div>
+          )}
         </>
       )}
 
