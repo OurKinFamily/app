@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { mediaUrl } from '../lib/media'
-import { searchPeople } from '../lib/api'
+import { searchPeople, unassignFace, createPerson } from '../lib/api'
 import { DetailSection } from './DetailSection'
 import { Tag } from './Tag'
 import { Thumb } from './Thumb'
@@ -34,8 +34,11 @@ export function MediaDetail({ item, ctx }) {
   const [showAllFaces, setShowAllFaces] = useState(false)
   const [addPersonOpen, setAddPersonOpen] = useState(false)
   const [addResults, setAddResults] = useState([])
+  const [addQuery, setAddQuery]     = useState('')
+  const [creatingNew, setCreatingNew] = useState(false)
 
   const onAddSearch = async q => {
+    setAddQuery(q)
     if (!q.trim()) { setAddResults([]); return }
     try {
       const r = await searchPeople(q)
@@ -43,9 +46,9 @@ export function MediaDetail({ item, ctx }) {
     } catch { setAddResults([]) }
   }
 
-  const tagPerson = async option => {
+  const tagPerson = async personId => {
     try {
-      await fetch(`/api/people/${option.value}/photos`, {
+      await fetch(`/api/people/${personId}/photos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ photo_path: item.path }),
@@ -53,7 +56,21 @@ export function MediaDetail({ item, ctx }) {
     } catch { /* ignore network errors */ }
     setAddPersonOpen(false)
     setAddResults([])
+    setAddQuery('')
     ctx?.bumpDetail?.()
+  }
+
+  const createAndTag = async () => {
+    if (!addQuery.trim() || creatingNew) return
+    setCreatingNew(true)
+    try {
+      const person = await createPerson({ name: addQuery.trim() })
+      await tagPerson(person.id)
+    } catch (e) {
+      alert('Failed to create person: ' + e.message)
+    } finally {
+      setCreatingNew(false)
+    }
   }
 
   useEffect(() => {
@@ -137,20 +154,42 @@ export function MediaDetail({ item, ctx }) {
                       avatar={p.crop_url || (p.avatar ? mediaUrl(p.avatar) : null)}
                       initials
                       text={p.known_as || p.name}
+                      onRemove={async () => {
+                        if (p.face_index == null || !item?.path) return
+                        if (!confirm(`Unassign ${p.known_as || p.name} from this photo?`)) return
+                        try {
+                          await unassignFace(p.id, item.path, p.face_index)
+                          ctx?.bumpDetail?.()
+                        } catch (e) {
+                          alert('Failed to unassign: ' + e.message)
+                        }
+                      }}
+                      removeLabel={`Unassign ${p.known_as || p.name}`}
                     />
                   </span>
                 ))}
               </div>
             )}
             {addPersonOpen ? (
-              <Select
-                autoFocus
-                options={addResults}
-                value={null}
-                onChange={tagPerson}
-                onQueryChange={onAddSearch}
-                placeholder="Add a person…"
-              />
+              <div className="space-y-2">
+                {addQuery.trim() && !addResults.some(o => o.text?.toLowerCase() === addQuery.trim().toLowerCase()) && (
+                  <button
+                    onClick={createAndTag}
+                    disabled={creatingNew}
+                    className="block text-[12px] text-blue-400/80 transition-colors hover:text-blue-300 disabled:opacity-50"
+                  >
+                    {creatingNew ? `Creating "${addQuery.trim()}"…` : `+ Create new person "${addQuery.trim()}"`}
+                  </button>
+                )}
+                <Select
+                  autoFocus
+                  options={addResults}
+                  value={null}
+                  onChange={opt => tagPerson(opt.value)}
+                  onQueryChange={onAddSearch}
+                  placeholder="Add a person…"
+                />
+              </div>
             ) : (
               <Button variant="secondary" size="sm" onClick={() => setAddPersonOpen(true)}>+ Add person</Button>
             )}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { searchPeople } from '../lib/api'
+import { searchPeople, createPerson } from '../lib/api'
 import { mediaUrl } from '../lib/media'
 import { Select } from './Select'
 
@@ -21,9 +21,12 @@ function toOption(p) {
 // Floating "assign face" popover anchored to (x, y) in viewport coords.
 // Searches people and POSTs the assignment, then calls onAssigned + onClose.
 export function FaceAssignPopover({ face, photoPath, x, y, onClose, onAssigned }) {
-  const [results, setResults] = useState([])
+  const [results, setResults]   = useState([])
+  const [query,   setQuery]     = useState('')
+  const [creating, setCreating] = useState(false)
 
   const onSearch = async q => {
+    setQuery(q)
     if (!q.trim()) { setResults([]); return }
     try {
       const r = await searchPeople(q)
@@ -31,20 +34,34 @@ export function FaceAssignPopover({ face, photoPath, x, y, onClose, onAssigned }
     } catch { setResults([]) }
   }
 
-  const onPick = async option => {
+  async function assignToPerson(personId) {
     try {
-      await fetch(`/api/people/${option.value}/faces`, {
+      await fetch(`/api/people/${personId}/faces`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           photo_path: photoPath,
           face_index: face.face_index,
-          crop_path: face.crop_path,
+          crop_path:  face.crop_path,
         }),
       })
     } catch { /* ignore network errors */ }
     onAssigned?.()
     onClose?.()
+  }
+
+  const onPick = option => assignToPerson(option.value)
+
+  const createAndAssign = async () => {
+    if (!query.trim() || creating) return
+    setCreating(true)
+    try {
+      const person = await createPerson({ name: query.trim() })
+      await assignToPerson(person.id)
+    } catch (e) {
+      alert('Failed to create person: ' + e.message)
+      setCreating(false)
+    }
   }
 
   const W = 340
@@ -59,11 +76,20 @@ export function FaceAssignPopover({ face, photoPath, x, y, onClose, onAssigned }
         style={{ left, top, width: W }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-start gap-2">
           {face.crop_url && (
             <img src={face.crop_url} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
           )}
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            {query.trim() && !results.some(o => o.text?.toLowerCase() === query.trim().toLowerCase()) && (
+              <button
+                onClick={createAndAssign}
+                disabled={creating}
+                className="block w-full text-left text-[12px] text-blue-400/80 transition-colors hover:text-blue-300 disabled:opacity-50"
+              >
+                {creating ? `Creating "${query.trim()}"…` : `+ Create new person "${query.trim()}"`}
+              </button>
+            )}
             <Select
               autoFocus
               options={results}

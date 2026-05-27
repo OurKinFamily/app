@@ -34,24 +34,29 @@ export function DateScrubber({ years = [], currentYear, onJump }) {
     const el = containerRef.current
     if (!el) return null
     const rect = el.getBoundingClientRect()
-    const pct  = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
-    const idx  = Math.min(ordered.length - 1, Math.floor(pct * ordered.length))
+    // Account for vertical padding (py-2 = 8px each side) so the cursor
+    // maps to year rows, not the padding zone.
+    const PAD = 8
+    const usable = rect.height - PAD * 2
+    if (usable <= 0) return null
+    const pct = Math.max(0, Math.min(1, (clientY - rect.top - PAD) / usable))
+    const idx = Math.min(ordered.length - 1, Math.floor(pct * ordered.length))
     return ordered[idx].year
   }
 
+  // During drag we only update the visual indicator. Navigation fires once
+  // on release — otherwise every pixel of drag triggers a full fetch/scroll
+  // cascade and the page never lands on the final position.
   function onPointerDown(e) {
     e.preventDefault()
     setDragging(true)
     const y = yearFromY(e.clientY)
     setHoverYear(y)
     containerRef.current?.setPointerCapture?.(e.pointerId)
-    // Fire immediately on press so a click without drag still jumps.
-    if (y != null && y !== currentYear) onJump(y)
   }
   function onPointerMove(e) {
     const y = yearFromY(e.clientY)
     setHoverYear(y)
-    if (dragging && y != null && y !== currentYear) onJump(y)
   }
   function onPointerUp(e) {
     setDragging(false)

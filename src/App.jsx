@@ -23,6 +23,7 @@ import { SuggestionsPage } from './pages/SuggestionsPage'
 import { DesignPage } from './pages/DesignPage'
 import { LightboxPage } from './pages/LightboxPage'
 import { AlbumsPage } from './pages/AlbumsPage'
+import { AlbumPage } from './pages/AlbumPage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import './index.css'
 
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/gallery/people" element={<PeoplePage />} />
             <Route path="/gallery/scrapbook" element={<ScrapbookPage />} />
             <Route path="/gallery/albums" element={<AlbumsPage />} />
+            <Route path="/gallery/albums/:id" element={<AlbumPage />} />
             <Route path="/gallery/favorites" element={<FavoritesPage />} />
             <Route path="/design" element={<DesignPage />} />
 

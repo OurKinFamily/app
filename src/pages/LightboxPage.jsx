@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { useFavorites } from '../lib/useFavorites'
+import { deleteMedia } from '../lib/api'
 import { MediaLightbox } from '../components/MediaLightbox'
 import { MediaDetail } from '../components/MediaDetail'
+import { AlbumPicker } from '../components/AlbumPicker'
 
 // Renders as the gallery's nested route so GalleryPage stays mounted underneath
 // (scroll position + loaded pages survive). Reads media from the outlet context.
@@ -13,6 +15,7 @@ export function LightboxPage() {
   const navigate = useNavigate()
   const { media, hasMore, loadMore } = useOutletContext()
   const { favs, toggle: toggleFav } = useFavorites()
+  const [albumFor, setAlbumFor] = useState(null)
 
   const photoPath = params['*'] || ''
 
@@ -37,22 +40,35 @@ export function LightboxPage() {
   const onNav = item => navigate(`../photo/${item.path}`, { replace: true })
 
   return (
-    <MediaLightbox
-      // Remount when items transitions from the single-item fallback to the loaded
-      // gallery list, so initialIndex actually points at the right photo.
-      key={items.length > 1 ? `list-${photoPath}` : `single-${photoPath}`}
-      items={items}
-      initialIndex={index}
-      onClose={close}
-      onNavigate={onNav}
-      onNeedMore={hasMore ? loadMore : undefined}
-      favorites={favs}
-      onFavorite={toggleFav}
-      onRotate={(it, deg) => console.log('rotate (mock — needs API)', it.path, deg)}
-      onAlbum={it => console.log('add to album (mock)', it.path)}
-      onDownload={it => console.log('download (mock)', it.path)}
-      onDelete={() => { console.log('delete (mock)'); close() }}
-      renderDetail={(it, ctx, v) => <MediaDetail key={`${it.path}-${v}`} item={it} ctx={ctx} />}
-    />
+    <>
+      <MediaLightbox
+        // Remount when items transitions from the single-item fallback to the loaded
+        // gallery list, so initialIndex actually points at the right photo.
+        key={items.length > 1 ? `list-${photoPath}` : `single-${photoPath}`}
+        items={items}
+        initialIndex={index}
+        onClose={close}
+        onNavigate={onNav}
+        onNeedMore={hasMore ? loadMore : undefined}
+        favorites={favs}
+        onFavorite={toggleFav}
+        onRotate={(it, deg) => console.log('rotate (mock — needs API)', it.path, deg)}
+        onAlbum={it => setAlbumFor(it.path)}
+        onDownload={it => console.log('download (mock)', it.path)}
+        onDelete={async it => {
+          try {
+            await deleteMedia(it.path)
+          } catch (e) {
+            alert('Failed to delete: ' + e.message)
+            return
+          }
+          close()
+        }}
+        renderDetail={(it, ctx, v) => <MediaDetail key={`${it.path}-${v}`} item={it} ctx={ctx} />}
+      />
+      {albumFor && (
+        <AlbumPicker paths={[albumFor]} onClose={() => setAlbumFor(null)} />
+      )}
+    </>
   )
 }

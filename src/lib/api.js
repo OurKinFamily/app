@@ -55,6 +55,17 @@ export async function setAvatar(personId, cropPath) {
   if (!res.ok) throw new Error('Failed to set avatar')
 }
 
+export async function unassignFace(personId, photoPath, faceIndex) {
+  const qs = new URLSearchParams({ person_id: personId, photo_path: photoPath, face_index: String(faceIndex) })
+  const res = await fetch(`${BASE}/faces/assignment?${qs}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to unassign face')
+}
+
+export async function deleteMedia(path) {
+  const res = await fetch(`${BASE}/gallery/media?path=${encodeURIComponent(path)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to delete media')
+}
+
 export async function setCover(personId, photoPath, position) {
   const res = await fetch(`${BASE}/people/${personId}/cover`, {
     method: 'PUT',

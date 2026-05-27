@@ -55,7 +55,11 @@ export function GalleryPage() {
 
   // Bottom-edge loader (+velocity skip) is owned by MediaGallery.
   // Here we only handle the upward direction when an anchor exposed older years.
+  // Skip while the lightbox is open — body position:fixed pins scrollY ≈ 0 so
+  // any scroll event would call loadNewer in a loop, shifting media[] under
+  // the lightbox's frozen index.
   useEffect(() => {
+    if (lightboxOpen) return
     const onScroll = () => {
       if (hasMoreNewer && window.scrollY < 600) {
         prependedRef.current = true
@@ -65,7 +69,7 @@ export function GalleryPage() {
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [loadNewer, hasMoreNewer])
+  }, [lightboxOpen, loadNewer, hasMoreNewer])
 
   // After clicking a year, auto-prepend one batch of newer items so the user
   // has scroll headroom above to load more newer years naturally.

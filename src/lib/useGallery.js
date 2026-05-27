@@ -89,7 +89,11 @@ export function useGallery({ anchor = null, params = {} } = {}) {
           }
         }
         additions.push(...batch)
-        mediaRef.current = [...mediaRef.current, ...additions]
+        // Defensive: dedupe by path so a pagination cursor overlap can't
+        // duplicate items in the rendered grid.
+        const seen = new Set(mediaRef.current.map(m => m.path))
+        const fresh = additions.filter(m => m.__gap || (m.path && !seen.has(m.path)))
+        mediaRef.current = [...mediaRef.current, ...fresh]
         oldestRef.current = batch[batch.length - 1].timestamp
         setMedia([...mediaRef.current])
       }
@@ -120,8 +124,15 @@ export function useGallery({ anchor = null, params = {} } = {}) {
         const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0
         return tb - ta
       })
-      mediaRef.current = merged
-      setMedia([...merged])
+      // Defensive: keep first occurrence by path (gaps allowed to repeat).
+      const seen = new Set()
+      const deduped = merged.filter(m => {
+        if (m.__gap || !m.path) return true
+        if (seen.has(m.path)) return false
+        seen.add(m.path); return true
+      })
+      mediaRef.current = deduped
+      setMedia([...deduped])
     } catch { /* ignore */ }
     finally { fillingGapsRef.current.delete(key2) }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -137,10 +148,16 @@ export function useGallery({ anchor = null, params = {} } = {}) {
       const d = await res.json()
       const batch = (d.media || []).filter(m => m.timestamp !== newestRef.current)
       if (batch.length) {
-        const reversed = [...batch].reverse() // ASC → DESC for prepend
-        mediaRef.current = [...reversed, ...mediaRef.current]
-        newestRef.current = reversed[0].timestamp
-        setMedia([...mediaRef.current])
+        // Defensive: drop any paths already in the existing list so prepending
+        // a window of items can't duplicate ones we already have.
+        const existing = new Set(mediaRef.current.map(m => m.path))
+        const fresh = batch.filter(m => m.path && !existing.has(m.path))
+        if (fresh.length) {
+          const reversed = [...fresh].reverse() // ASC → DESC for prepend
+          mediaRef.current = [...reversed, ...mediaRef.current]
+          newestRef.current = reversed[0].timestamp
+          setMedia([...mediaRef.current])
+        }
       }
       setHasMoreNewer(batch.length > 0)
     } catch { /* ignore */ }
