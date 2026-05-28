@@ -24,15 +24,17 @@ import { getClusters } from '../lib/api'
 const SEARCH_THRESHOLD = 0.5   // sent to /search/by_person (distance space)
 const MIN_SIM_DEFAULT  = 0.80  // filter: only show results ≥ this similarity
 const MAX_PER_PERSON   = 200   // cap the visible candidate count per person
-const SKIPPED_KEY      = 'ourkin:confirm-faces:skipped'
+const SKIPPED_KEY      = 'ourkin:confirm-faces:skipped'        // person ids (explicit Skip)
+const DEAD_FACES_KEY   = 'ourkin:confirm-faces:dead-faces'     // "photo_path::face_index" entries the API failed to assign
 
-function loadSkipped() {
-  try { return new Set(JSON.parse(localStorage.getItem(SKIPPED_KEY) || '[]')) }
+function loadSet(key) {
+  try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')) }
   catch { return new Set() }
 }
-function persistSkipped(s) {
-  try { localStorage.setItem(SKIPPED_KEY, JSON.stringify([...s])) } catch { /* quota */ }
+function persistSet(key, s) {
+  try { localStorage.setItem(key, JSON.stringify([...s])) } catch { /* quota */ }
 }
+const faceKey = (photo_path, face_index) => `${photo_path}::${face_index}`
 
 export function ConfirmFacesPage() {
   const [people, setPeople] = useState(null)         // [{id, person_name, person_known_as, person_avatar, size}, …]
@@ -46,17 +48,27 @@ export function ConfirmFacesPage() {
   const [error, setError]           = useState(null)
   const [viewer, setViewer]         = useState(null) // index into candidates.items
   const [tick, setTick]             = useState(0)    // bump to force re-fetch of current person
-  const [skipped, setSkipped]       = useState(() => loadSkipped())
+  const [skipped, setSkipped]       = useState(() => loadSet(SKIPPED_KEY))
+  const [deadFaces, setDeadFaces]   = useState(() => loadSet(DEAD_FACES_KEY))
   const inflightRef = useRef(null)
 
-  // Persist whenever the skipped set changes.
-  useEffect(() => { persistSkipped(skipped) }, [skipped])
+  useEffect(() => { persistSet(SKIPPED_KEY, skipped) }, [skipped])
+  useEffect(() => { persistSet(DEAD_FACES_KEY, deadFaces) }, [deadFaces])
 
   function addSkipped(personId) {
     setSkipped(prev => {
       if (prev.has(personId)) return prev
       const next = new Set(prev)
       next.add(personId)
+      return next
+    })
+  }
+
+  function addDeadFaces(facesArr) {
+    if (!facesArr?.length) return
+    setDeadFaces(prev => {
+      const next = new Set(prev)
+      for (const f of facesArr) next.add(faceKey(f.photo_path, f.face_index))
       return next
     })
   }
@@ -116,6 +128,7 @@ export function ConfirmFacesPage() {
           const data = await res.json()
           const filtered = (data.results || [])
             .filter(r => (r.similarity ?? 0) >= minSim)
+            .filter(r => !deadFaces.has(faceKey(r.photo_path, r.face_index)))
             .slice(0, MAX_PER_PERSON)
           if (filtered.length > 0) {
             if (!alive) return
@@ -155,12 +168,17 @@ export function ConfirmFacesPage() {
       const missing = data?.missing?.length ?? 0
       setDone(d => d + assigned)
       if (missing > 0) {
-        // Faces couldn't be assigned — usually a stale embedding-index path
-        // not matching a Neo4j Media node (see issue #46). Advance idx
-        // in-session so the UI doesn't loop, but DON'T persist a skip:
-        // the user intended Confirm, not Skip, and fixing the root cause
-        // should make these candidates actually assignable.
-        console.warn('[ConfirmFaces] %d face(s) could not be assigned (stale embedding paths). Advancing — root cause tracked in #46.', missing, data?.missing)
+        // Some/all faces couldn't be assigned — stale embedding-index
+        // paths not matching Neo4j Media nodes (issue #46). Remember the
+        // specific (path, face_index) pairs so they never resurface in
+        // search results again, even across reloads. User clicked
+        // Confirm — they shouldn't keep seeing the same bad candidates.
+        console.warn('[ConfirmFaces] %d face(s) could not be assigned (stale paths). Adding to dead-faces list.', missing, data?.missing)
+        addDeadFaces(data?.missing || [])
+      }
+      if (assigned === 0) {
+        // Nothing landed — auto-skip to the next person in-session so the
+        // UI doesn't refetch the same now-empty bucket forever.
         setIdx(i => i + 1)
       } else {
         // Re-fetch the SAME person: their candidate list was capped at
