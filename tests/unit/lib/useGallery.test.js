@@ -84,6 +84,36 @@ describe('useGallery', () => {
     })
   })
 
+  describe('removeItem', () => {
+    it('drops the matching path from the rendered media list', async () => {
+      queueResponses([
+        { data: { media: [
+          m('a.jpg', '2024-01-03T00:00:00Z'),
+          m('b.jpg', '2024-01-02T00:00:00Z'),
+          m('c.jpg', '2024-01-01T00:00:00Z'),
+        ] } },
+      ])
+      const { result } = renderHook(() => useGallery())
+      await waitFor(() => expect(result.current.media).toHaveLength(3))
+      await act(async () => { result.current.removeItem('b.jpg') })
+      expect(result.current.media.map(x => x.path)).toEqual(['a.jpg', 'c.jpg'])
+    })
+    it('is a no-op when the path is not in the list', async () => {
+      queueResponses([{ data: { media: [m('a.jpg', '2024-01-01T00:00:00Z')] } }])
+      const { result } = renderHook(() => useGallery())
+      await waitFor(() => expect(result.current.media).toHaveLength(1))
+      await act(async () => { result.current.removeItem('nope.jpg') })
+      expect(result.current.media).toHaveLength(1)
+    })
+    it('is a no-op when called with a falsy path', async () => {
+      queueResponses([{ data: { media: [m('a.jpg', '2024-01-01T00:00:00Z')] } }])
+      const { result } = renderHook(() => useGallery())
+      await waitFor(() => expect(result.current.media).toHaveLength(1))
+      await act(async () => { result.current.removeItem(null) })
+      expect(result.current.media).toHaveLength(1)
+    })
+  })
+
   describe('loadOlder', () => {
     it('appends an older page after the initial load', async () => {
       queueResponses([

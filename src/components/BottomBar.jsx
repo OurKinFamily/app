@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Images, Users, MapPin, Settings2 } from 'lucide-react'
+import { Images, Users, MapPin, TreeDeciduous, Settings2 } from 'lucide-react'
 import { cn } from '../lib/cn'
 
 // Mobile bottom nav. Bar UI only — positioning (fixed bottom) is the parent's job.
@@ -8,6 +8,7 @@ const ITEMS = [
   { to: '/gallery', label: 'Gallery', Icon: Images, end: true },
   { to: '/gallery/people', label: 'People', Icon: Users },
   { to: '/gallery/places', label: 'Places', Icon: MapPin },
+  { to: '/gallery/family', label: 'Family', Icon: TreeDeciduous },
   { to: '/manage', label: 'Manage', Icon: Settings2 },
 ]
 

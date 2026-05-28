@@ -1,15 +1,41 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Pencil } from 'lucide-react'
 import { DetailSection } from './DetailSection'
 import { Field } from './Field'
 import { Tag } from './Tag'
 import { Swatch } from './Swatch'
 import { MiniMap } from './MiniMap'
+import { redateMedia } from '../lib/api'
 
 const CONF_TONE = { high: 'green', medium: 'amber', low: 'red' }
 
-function formatDate(ts) {
+function formatDate(ts, precision) {
   if (!ts) return null
-  return new Date(ts).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const d = new Date(ts)
+  if (precision === 'year') return String(d.getFullYear())
+  if (precision === 'month') return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+// Parse user input into {timestamp, precision} for the redate API.
+// Accepts: YYYY | YYYY-MM | YYYY-MM-DD. Noon local-time, no tz — server stores as-given.
+function parseRedateInput(raw) {
+  const v = raw.trim()
+  if (/^\d{4}$/.test(v))             return { timestamp: `${v}-01-01T12:00:00`, precision: 'year' }
+  if (/^\d{4}-\d{2}$/.test(v))       return { timestamp: `${v}-01T12:00:00`,    precision: 'month' }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return { timestamp: `${v}T12:00:00`,       precision: 'day' }
+  return null
+}
+
+// Pre-fill the input with the current value at the right granularity.
+function valueForEdit(ts, precision) {
+  const d = new Date(ts)
+  const yyyy = d.getFullYear()
+  const mm   = String(d.getMonth() + 1).padStart(2, '0')
+  const dd   = String(d.getDate()).padStart(2, '0')
+  if (precision === 'year')  return `${yyyy}`
+  if (precision === 'month') return `${yyyy}-${mm}`
+  return `${yyyy}-${mm}-${dd}`
 }
 
 function formatSize(bytes) {
@@ -26,7 +52,7 @@ function formatSize(bytes) {
 // Inputs:
 //   sidecar  — parsed sidecar metadata block (timestamps, location, camera, …)
 //   heritage — derived Neo4j-Media-node block (content_date, title, notes, …)
-export function MediaDetailMeta({ sidecar, heritage }) {
+export function MediaDetailMeta({ sidecar, heritage, path, onRedated }) {
   const ts          = sidecar?.timestamps?.primary || {}
   const loc         = sidecar?.location || {}
   const primaryLoc  = loc.primary || {}
@@ -46,14 +72,20 @@ export function MediaDetailMeta({ sidecar, heritage }) {
   const dateSource  = heritage?.content_date ? (heritage.content_date_source || 'manual') : ts?.source
   const dateConf    = heritage?.content_date ? (heritage.content_date_precision || 'high') : ts?.confidence
   const dateExplain = heritage?.content_date_explanation
+  const datePrec    = ts?.precision || 'day'
 
   return (
     <>
       {dateValue && (
         <DetailSection title="Date">
-          <p className="mb-2 text-[13px] text-white/80">
-            {heritage?.content_date ? heritage.content_date : formatDate(dateValue)}
-          </p>
+          <DateEditor
+            path={path}
+            value={dateValue}
+            precision={datePrec}
+            isHeritageString={!!heritage?.content_date}
+            heritageString={heritage?.content_date}
+            onRedated={onRedated}
+          />
           {dateExplain && <p className="-mt-1 mb-2 text-[11px] italic text-white/40">{dateExplain}</p>}
           <Field label="Source" value={dateSource} />
           <Field
@@ -172,6 +204,133 @@ export function MediaDetailMeta({ sidecar, heritage }) {
         </DetailSection>
       )}
     </>
+  )
+}
+
+// Inline-edit the Media date. Pencil → precision picker (Day/Month/Year) +
+// matching native input (date / month / number). Native pickers prevent
+// malformed input entirely — no free-text date parsing here.
+const MODES = ['day', 'month', 'year']
+function DateEditor({ path, value, precision, isHeritageString, heritageString, onRedated }) {
+  const [editing, setEditing] = useState(false)
+  const [mode, setMode]       = useState(precision)
+  const [d, setD]             = useState('')   // YYYY-MM-DD
+  const [m, setM]             = useState('')   // YYYY-MM
+  const [y, setY]             = useState('')   // YYYY
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState(null)
+  const inputRef = useRef(null)
+
+  useEffect(() => { if (editing) inputRef.current?.focus() }, [editing, mode])
+
+  const start = () => {
+    const full = valueForEdit(value, 'day')
+    setD(full)
+    setM(full.slice(0, 7))
+    setY(full.slice(0, 4))
+    setMode(precision)
+    setError(null)
+    setEditing(true)
+  }
+  const cancel = () => { setEditing(false); setError(null) }
+
+  const draft = mode === 'year' ? y : mode === 'month' ? m : d
+
+  const commit = async () => {
+    const parsed = parseRedateInput(draft)
+    if (!parsed) { setError('Pick a date'); return }
+    const orig = valueForEdit(value, precision)
+    if (parsed.precision === precision && draft === orig) { cancel(); return }
+    setSaving(true)
+    try {
+      await redateMedia(path, parsed)
+      setEditing(false)
+      setError(null)
+      onRedated?.()
+    } catch (e) {
+      setError(e.message || 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Lightbox attaches its Esc handler to `window`. React 17+ stopPropagation
+  // forwards to the native event, so this prevents window from also seeing
+  // the key and closing the lightbox out from under us.
+  const onKeyDown = e => {
+    if (e.key !== 'Enter' && e.key !== 'Escape') return
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.key === 'Enter') commit()
+    else cancel()
+  }
+  const inputCls = 'w-full rounded border border-white/15 bg-white/5 px-2 py-1 text-[13px] text-white/90 outline-none focus:border-white/40 disabled:opacity-50'
+
+  if (editing) {
+    return (
+      <div className="mb-2 space-y-2">
+        <div className="flex gap-1">
+          {MODES.map(opt => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => setMode(opt)}
+              disabled={saving}
+              className={
+                'rounded px-2 py-0.5 text-[11px] uppercase tracking-wide transition-colors ' +
+                (mode === opt
+                  ? 'bg-white/15 text-white'
+                  : 'bg-white/5 text-white/45 hover:text-white/70')
+              }
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+        {mode === 'day' && (
+          <input ref={inputRef} type="date" value={d} onChange={e => setD(e.target.value)}
+                 onKeyDown={onKeyDown} disabled={saving} className={inputCls} />
+        )}
+        {mode === 'month' && (
+          <input ref={inputRef} type="month" value={m} onChange={e => setM(e.target.value)}
+                 onKeyDown={onKeyDown} disabled={saving} className={inputCls} />
+        )}
+        {mode === 'year' && (
+          <input ref={inputRef} type="number" min={1800} max={2100} step={1}
+                 value={y} onChange={e => setY(e.target.value)}
+                 onKeyDown={onKeyDown} disabled={saving} className={inputCls} placeholder="YYYY" />
+        )}
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={commit} disabled={saving}
+                  className="rounded bg-white/15 px-2 py-0.5 text-[11px] text-white transition-colors hover:bg-white/25 disabled:opacity-50">
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button type="button" onClick={cancel} disabled={saving}
+                  className="text-[11px] text-white/45 transition-colors hover:text-white/70 disabled:opacity-50">
+            Cancel
+          </button>
+        </div>
+        {error && <p className="text-[11px] text-rose-400/80">{error}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="group mb-2 flex items-center gap-2">
+      <p className="text-[13px] text-white/80">
+        {isHeritageString ? heritageString : formatDate(value, precision)}
+      </p>
+      {path && (
+        <button
+          type="button"
+          onClick={start}
+          className="text-white/25 opacity-0 transition-opacity hover:text-white/70 group-hover:opacity-100"
+          aria-label="Edit date"
+        >
+          <Pencil size={12} />
+        </button>
+      )}
+    </div>
   )
 }
 

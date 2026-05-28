@@ -19,7 +19,7 @@ const LANE_H      = 16   // px
 const LANE_GAP    = 4    // px
 const LEFT_LABEL  = 0    // gantt uses the full width; names render on hover
 
-export function ConnectionTimeline({ personId }) {
+export function ConnectionTimeline({ endpoint }) {
   const [rows, setRows] = useState(null)
   const [min,  setMin]  = useState(DEFAULT_MIN)
   const [stack, setStack] = useState(true)
@@ -28,11 +28,11 @@ export function ConnectionTimeline({ personId }) {
 
   useEffect(() => {
     setRows(null)
-    fetch(`/api/people/${personId}/connection-timeline?min_photos=${min}`)
+    fetch(`${endpoint}?min_photos=${min}`)
       .then(r => r.ok ? r.json() : [])
       .then(setRows)
       .catch(() => setRows([]))
-  }, [personId, min])
+  }, [endpoint, min])
 
   return (
     <div className="space-y-3">
@@ -76,10 +76,10 @@ function GanttLanes({ rows, stack, hover, setHover, navigate }) {
   const maxYear = Math.max(...merged.map(r => yearOf(r.last_ts)), new Date().getFullYear())
   const span    = Math.max(1, maxYear - minYear)
 
-  // Every 2 years labeled along the top. Each individual year becomes a
+  // Every 5 years labeled along the top. Each individual year becomes a
   // faint tick mark — decades drawn brighter for orientation.
   const labelTicks = []
-  for (let y = Math.ceil(minYear / 2) * 2; y <= maxYear; y += 2) labelTicks.push(y)
+  for (let y = Math.ceil(minYear / 5) * 5; y <= maxYear; y += 5) labelTicks.push(y)
   const allYearTicks = []
   for (let y = minYear; y <= maxYear; y += 1) allYearTicks.push(y)
 

@@ -27,6 +27,7 @@ import { LightboxPage } from './pages/LightboxPage'
 import { AlbumsPage } from './pages/AlbumsPage'
 import { AlbumPage } from './pages/AlbumPage'
 import { FavoritesPage } from './pages/FavoritesPage'
+import { FamilyPage } from './pages/FamilyPage'
 import './index.css'
 
 export default function App() {
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="/gallery/albums" element={<AlbumsPage />} />
             <Route path="/gallery/albums/:id" element={<AlbumPage />} />
             <Route path="/gallery/favorites" element={<FavoritesPage />} />
+            <Route path="/gallery/family" element={<FamilyPage />} />
             <Route path="/design" element={<DesignPage />} />
 
             <Route path="/manage" element={<Navigate to="/manage/faces/unassigned" replace />} />

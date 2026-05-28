@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   getPeople, getPerson, getRelatives, searchPeople, createPerson,
-  getFaces, getPhotos, setAvatar, unassignFace, deleteMedia, setCover,
+  getFaces, getPhotos, setAvatar, unassignFace, deleteMedia, redateMedia, setCover,
   addRelationship, getClusters, getCluster, assignCluster, skipCluster,
   unskipCluster,
 } from '../../../src/lib/api'
@@ -160,6 +160,40 @@ describe('api', () => {
     it('throws on non-ok', async () => {
       mockFetch(null, { ok: false })
       await expect(deleteMedia('x')).rejects.toThrow('Failed to delete media')
+    })
+  })
+
+  describe('redateMedia', () => {
+    it('PATCHes /api/gallery/media with the timestamp + precision body', async () => {
+      mockFetch({ path: 'x', timestamp: '2000-01-01T12:00:00' })
+      const out = await redateMedia('archive/2000/01/x.jpg', { timestamp: '2000-01-01T12:00:00', precision: 'year' })
+      const [url, init] = lastCall()
+      expect(url).toBe('/api/gallery/media?path=archive%2F2000%2F01%2Fx.jpg')
+      expect(init.method).toBe('PATCH')
+      expect(lastBody()).toEqual({ timestamp: '2000-01-01T12:00:00', precision: 'year' })
+      expect(out).toEqual({ path: 'x', timestamp: '2000-01-01T12:00:00' })
+    })
+    it('surfaces the server-side detail message when present', async () => {
+      mockFetch({ detail: 'timestamp must be ISO-8601: bad' }, { ok: false })
+      await expect(
+        redateMedia('x', { timestamp: 'bad', precision: 'day' })
+      ).rejects.toThrow('timestamp must be ISO-8601: bad')
+    })
+    it('falls back to a generic message when the body is JSON but has no detail field', async () => {
+      mockFetch({}, { ok: false })
+      await expect(
+        redateMedia('x', { timestamp: 'bad', precision: 'day' })
+      ).rejects.toThrow('Failed to redate media')
+    })
+    it('falls back to a generic message when the server response is unparseable', async () => {
+      // !ok response whose .json() rejects → catch fires, generic message
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: () => Promise.reject(new Error('not json')),
+      })
+      await expect(
+        redateMedia('x', { timestamp: 'bad', precision: 'day' })
+      ).rejects.toThrow('Failed to redate media')
     })
   })
 

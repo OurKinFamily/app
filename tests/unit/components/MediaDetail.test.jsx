@@ -126,6 +126,24 @@ describe('MediaDetail', () => {
       expect(faces[0].label).toBe('Stephen')
       expect(faces[1].label).toBe('Cayce')
     })
+    it('renders age caption on person chips when sidecar timestamp + birth_date align', async () => {
+      mockDetail({
+        people: [{ id: 'p1', name: 'Stephen', birth_date: '1986-04-14' }],
+        unidentified: [], objects: [],
+        sidecar: { timestamps: { primary: { timestamp: '2024-04-14T00:00:00Z', confidence: 'high' } } },
+      })
+      renderWithRouter(<MediaDetail item={ITEM} ctx={makeCtx()} />)
+      await waitFor(() => expect(screen.getByText('age 38')).toBeInTheDocument())
+    })
+    it('omits age caption when sidecar has no high-confidence timestamp', async () => {
+      mockDetail({
+        people: [{ id: 'p1', name: 'Stephen', birth_date: '1986-04-14' }],
+        unidentified: [], objects: [],
+      })
+      renderWithRouter(<MediaDetail item={ITEM} ctx={makeCtx()} />)
+      await waitFor(() => expect(screen.getByRole('link', { name: /Stephen/ })).toBeInTheDocument())
+      expect(screen.queryByText(/^age /)).not.toBeInTheDocument()
+    })
     it('renders an avatar via mediaUrl fallback when crop_url is missing', async () => {
       mockDetail({
         people: [{ id: 'p1', name: 'X', avatar: 'archive/avatars/x.jpg' }],

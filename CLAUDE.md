@@ -79,3 +79,25 @@ See `tests/unit/CLAUDE.md` for the rules.
 See `tests/unit/CLAUDE.md` for the unit-test rules (mirror src/, no
 class-name queries, no mock-to-dodge-setup, BDD describes, single
 setup with `setupX(args)` factory, every bug gets a test).
+
+## Tone & wording — family-archive context
+
+This app is a *family* archive — many of the people in it have passed
+away, and family members will read these pages about their loved ones.
+Default to **warm, human language over clinical/database wording**.
+
+| Clinical | Warmer (use this) |
+|---|---|
+| Died | Passed |
+| Place of death | Last home |
+| Buried | Laid to rest |
+| Immigrated | Arrived |
+| Naturalized | Became citizen |
+| DECEASED / status flag | (don't show; let dates speak) |
+| GEDCOM id / row id / db id | hide from UI; keep on node |
+
+When you add a new field that's a life event or biographical fact,
+pick a label that sounds like something a family member would say out
+loud, not what a database admin would say. If unsure, ask before
+shipping a clinical default. Identifier / plumbing fields stay
+hidden from the user.

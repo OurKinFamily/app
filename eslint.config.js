@@ -55,4 +55,12 @@ export default defineConfig([
       'max-lines': 'off',
     },
   },
+  {
+    // Config files run in Node, not the browser — `process`, `__dirname`,
+    // etc. are valid.
+    files: ['*.config.{js,jsx}', 'playwright.config.{js,jsx}', 'vite.config.{js,jsx}', 'vitest.config.{js,jsx}'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
 ])

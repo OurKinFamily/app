@@ -7,7 +7,10 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
   retries: 0,
-  reporter: 'list',
+  // List reporter for live terminal output, HTML for after-the-fact review.
+  // `open: 'never'` so CI / local runs don't auto-launch a browser tab —
+  // use `npm run e2e:report` to open it on demand.
+  reporter: process.env.CI ? 'list' : [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'retain-on-failure',

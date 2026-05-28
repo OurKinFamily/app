@@ -13,7 +13,7 @@ import { AlbumPicker } from '../components/AlbumPicker'
 export function LightboxPage() {
   const params = useParams()
   const navigate = useNavigate()
-  const { media, hasMore, loadMore } = useOutletContext()
+  const { media, hasMore, loadMore, removeItem } = useOutletContext()
   const { favs, toggle: toggleFav } = useFavorites()
   const [albumFor, setAlbumFor] = useState(null)
 
@@ -62,6 +62,7 @@ export function LightboxPage() {
             alert('Failed to delete: ' + e.message)
             return
           }
+          removeItem?.(it.path)
           close()
         }}
         renderDetail={(it, ctx, v) => <MediaDetail key={`${it.path}-${v}`} item={it} ctx={ctx} />}

@@ -164,5 +164,14 @@ export function useGallery({ anchor = null, params = {} } = {}) {
     finally { loadingRef.current = false; setLoading(false) }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { media, total, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer, fillGap }
+  // Drop an item from the in-memory list — used by callers (lightbox
+  // delete) that mutate the backend and want the gallery to reflect it
+  // without a full refetch. Cursors stay where they are.
+  const removeItem = useCallback(path => {
+    if (!path) return
+    mediaRef.current = mediaRef.current.filter(m => m.path !== path)
+    setMedia([...mediaRef.current])
+  }, [])
+
+  return { media, total, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer, fillGap, removeItem }
 }

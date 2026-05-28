@@ -17,28 +17,28 @@ describe('ConnectionTimeline', () => {
     it('fetches /api/people/{id}/connection-timeline with the default threshold', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [] })
       global.fetch = fetchMock
-      renderWithRouter(<ConnectionTimeline personId="p1" />)
+      renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(fetchMock).toHaveBeenCalled())
       expect(fetchMock.mock.calls[0][0]).toBe('/api/people/p1/connection-timeline?min_photos=10')
     })
     it('shows a Loading message while pending', () => {
       global.fetch = vi.fn().mockImplementation(() => new Promise(() => {}))
-      renderWithRouter(<ConnectionTimeline personId="p1" />)
+      renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       expect(screen.getByText('Loading…')).toBeInTheDocument()
     })
     it('shows an empty-state message when no rows come back', async () => {
       global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [] })
-      renderWithRouter(<ConnectionTimeline personId="p1" />)
+      renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(screen.getByText(/No people meet/)).toBeInTheDocument())
     })
     it('treats a non-ok response as no rows', async () => {
       global.fetch = vi.fn().mockResolvedValue({ ok: false })
-      renderWithRouter(<ConnectionTimeline personId="p1" />)
+      renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(screen.getByText(/No people meet/)).toBeInTheDocument())
     })
     it('survives a fetch rejection', async () => {
       global.fetch = vi.fn().mockRejectedValue(new Error('net'))
-      renderWithRouter(<ConnectionTimeline personId="p1" />)
+      renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(screen.getByText(/No people meet/)).toBeInTheDocument())
     })
   })
@@ -55,11 +55,11 @@ describe('ConnectionTimeline', () => {
       })
     })
     it('renders one bar per (post-grouping) row', async () => {
-      const { container } = renderWithRouter(<ConnectionTimeline personId="p1" />)
+      const { container } = renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(container.querySelector('button[title*="cayce"]')).not.toBeNull())
     })
     it('shows the count chip in the threshold control', async () => {
-      renderWithRouter(<ConnectionTimeline personId="p1" />)
+      renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       // After load, the count chip says "3 people".
       await waitFor(() => expect(screen.getByText(/3 people/)).toBeInTheDocument())
     })
@@ -69,7 +69,7 @@ describe('ConnectionTimeline', () => {
     it('refetches when the threshold is changed', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [] })
       global.fetch = fetchMock
-      renderWithRouter(<ConnectionTimeline personId="p1" />)
+      renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
       fireEvent.change(screen.getByRole('combobox'), { target: { value: '20' } })
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
@@ -77,7 +77,7 @@ describe('ConnectionTimeline', () => {
     })
     it('toggles the stack checkbox', async () => {
       global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [] })
-      renderWithRouter(<ConnectionTimeline personId="p1" />)
+      renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(screen.getByRole('checkbox')).toBeInTheDocument())
       const box = screen.getByRole('checkbox')
       expect(box).toBeChecked()
@@ -92,7 +92,7 @@ describe('ConnectionTimeline', () => {
         ok: true,
         json: async () => [ROW('cayce', 2008, 2026, 5000)],
       })
-      const { container } = renderWithRouter(<ConnectionTimeline personId="p1" />, { route: '/foo' })
+      const { container } = renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />, { route: '/foo' })
       await waitFor(() => expect(container.querySelector('button[title*="cayce"]')).not.toBeNull())
       fireEvent.click(container.querySelector('button[title*="cayce"]'))
       // useNavigate inside MemoryRouter will update location — we don't have
@@ -109,7 +109,7 @@ describe('ConnectionTimeline', () => {
           ROW('b', 2008, 2026, 90),
         ],
       })
-      const { container } = renderWithRouter(<ConnectionTimeline personId="p1" />)
+      const { container } = renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(container.querySelector('button[title*="a"]')).not.toBeNull())
       // Title for the merged bar lists both: "a, b · 190 photos · 2008–2026"
       const merged = container.querySelector('button[title*="190 photos"]')
@@ -127,7 +127,7 @@ describe('ConnectionTimeline', () => {
           ROW('b', 2008, 2026, 90),
         ],
       })
-      const { container } = renderWithRouter(<ConnectionTimeline personId="p1" />)
+      const { container } = renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(container.querySelector('button[title*="190 photos"]')).not.toBeNull())
       // Untoggle stack — now each person gets its own bar.
       fireEvent.click(screen.getByRole('checkbox'))
@@ -150,7 +150,7 @@ describe('ConnectionTimeline', () => {
           ROW('p5', 2021, 2025, 5000),     // pink
         ],
       })
-      const { container } = renderWithRouter(<ConnectionTimeline personId="p1" />)
+      const { container } = renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       // Title format uses raw photo_count (no locale separators) — "5000 photos".
       await waitFor(() => expect(container.querySelector('button[title*="5000 photos"]')).not.toBeNull())
       expect(container.querySelectorAll('button[title*="photos"]').length).toBeGreaterThanOrEqual(5)
@@ -166,7 +166,7 @@ describe('ConnectionTimeline', () => {
           first_ts: '2020-01-01T00:00:00Z', last_ts: '2025-12-31T00:00:00Z', photo_count: 100,
         }],
       })
-      const { container } = renderWithRouter(<ConnectionTimeline personId="p1" />)
+      const { container } = renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(container.querySelector('button[title*="100 photos"]')).not.toBeNull())
       // Untoggle stack so rows go through `rows.map(r => ({...r, people: [r]}))`
       // path — people IS set. Then re-toggle stack back on and hover.
@@ -188,7 +188,7 @@ describe('ConnectionTimeline', () => {
           first_ts: '2008-01-01T00:00:00Z', last_ts: '2026-12-31T00:00:00Z', photo_count: 500,
         }],
       })
-      const { container } = renderWithRouter(<ConnectionTimeline personId="p1" />)
+      const { container } = renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(container.querySelector('img[src*="archive/avatars/x.jpg"]')).not.toBeNull())
     })
   })
@@ -199,7 +199,7 @@ describe('ConnectionTimeline', () => {
         ok: true,
         json: async () => [ROW('cayce', 2008, 2026, 5000)],
       })
-      const { container } = renderWithRouter(<ConnectionTimeline personId="p1" />)
+      const { container } = renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(container.querySelector('button[title*="cayce"]')).not.toBeNull())
       fireEvent.mouseEnter(container.querySelector('button[title*="cayce"]'))
       // The detail strip shows year range + count.
@@ -210,7 +210,7 @@ describe('ConnectionTimeline', () => {
         ok: true,
         json: async () => [ROW('cayce', 2008, 2026, 5000)],
       })
-      const { container } = renderWithRouter(<ConnectionTimeline personId="p1" />)
+      const { container } = renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(container.querySelector('button[title*="cayce"]')).not.toBeNull())
       const bar = container.querySelector('button[title*="cayce"]')
       fireEvent.mouseEnter(bar)
@@ -227,7 +227,7 @@ describe('ConnectionTimeline', () => {
           first_ts: '2008-01-01T00:00:00Z', last_ts: '2026-12-31T00:00:00Z', photo_count: 5000,
         }],
       })
-      const { container } = renderWithRouter(<ConnectionTimeline personId="p1" />)
+      const { container } = renderWithRouter(<ConnectionTimeline endpoint="/api/people/p1/connection-timeline" />)
       await waitFor(() => expect(container.querySelector('button')).not.toBeNull())
       const bar = container.querySelector('button[title*="photos"]')
       fireEvent.mouseEnter(bar)

@@ -62,13 +62,22 @@ export function PersonOverview() {
         ) : (
           <>
             {person.maiden_name && <p className="text-white/40 text-sm">Née {person.maiden_name}</p>}
-
-            {(person.death_date || person.death_place) && (
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                {person.death_date  && <Field label="Died"           value={formatDate(person.death_date,  person.death_date_precision)} />}
-                {person.death_place && <Field label="Place of death" value={person.death_place} />}
-              </div>
+            {person.former_names?.length > 0 && (
+              <p className="text-white/35 text-xs">
+                Also known as: {person.former_names.join(' · ')}
+              </p>
             )}
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {person.death_date          && <Field label="Passed"               value={formatDate(person.death_date, person.death_date_precision)} />}
+              {person.death_place         && <Field label="Last home"            value={person.death_place} />}
+              {person.burial_place        && <Field label="Laid to rest"         value={person.burial_place} />}
+              {person.immigration_date    && <Field label="Arrived"              value={formatDate(person.immigration_date, 'year')} />}
+              {person.immigration_place   && <Field label="From / via"           value={person.immigration_place} />}
+              {person.naturalization_date && <Field label="Became citizen"       value={formatDate(person.naturalization_date, 'year')} />}
+              {person.naturalization_place&& <Field label="Took citizenship in"  value={person.naturalization_place} />}
+              {person.ssn                 && <Field label="SSN"                  value={person.ssn} />}
+            </div>
 
             {person.notes && <p className="text-white/50 text-sm">{person.notes}</p>}
           </>
@@ -498,6 +507,10 @@ function EditForm({ person, onSaved, onCancel }) {
     birth_date: person.birth_date || '', birth_date_precision: person.birth_date_precision || 'full',
     birth_place: person.birth_place || '', death_date: person.death_date || '',
     death_date_precision: person.death_date_precision || 'full', death_place: person.death_place || '',
+    burial_place: person.burial_place || '',
+    immigration_date: person.immigration_date || '', immigration_place: person.immigration_place || '',
+    naturalization_date: person.naturalization_date || '', naturalization_place: person.naturalization_place || '',
+    ssn: person.ssn || '',
     is_living: person.is_living ?? true, notes: person.notes || '',
   })
   const [saving, setSaving] = useState(false)
@@ -512,6 +525,10 @@ function EditForm({ person, onSaved, onCancel }) {
           known_as: form.known_as || null, maiden_name: form.maiden_name || null,
           birth_date: form.birth_date || null, birth_place: form.birth_place || null,
           death_date: form.death_date || null, death_place: form.death_place || null,
+          burial_place: form.burial_place || null,
+          immigration_date: form.immigration_date || null, immigration_place: form.immigration_place || null,
+          naturalization_date: form.naturalization_date || null, naturalization_place: form.naturalization_place || null,
+          ssn: form.ssn || null,
           notes: form.notes || null,
         }),
       })
@@ -558,10 +575,24 @@ function EditForm({ person, onSaved, onCancel }) {
               <option value="full" className="bg-[#1a1a1a]">Full date</option>
               <option value="year" className="bg-[#1a1a1a]">Year only</option>
             </select></div>
-          <div className="col-span-2"><label className="text-[11px] text-white/40 block mb-1">Place of death</label>
+          <div className="col-span-2"><label className="text-[11px] text-white/40 block mb-1">Last home</label>
             <input {...f('death_place')} className={INPUT_CLS} /></div>
+          <div className="col-span-2"><label className="text-[11px] text-white/40 block mb-1">Laid to rest at</label>
+            <input {...f('burial_place')} className={INPUT_CLS} /></div>
         </div>
       )}
+      <div className="grid grid-cols-2 gap-3">
+        <div><label className="text-[11px] text-white/40 block mb-1">Arrived (year)</label>
+          <input {...f('immigration_date')} placeholder="YYYY" className={INPUT_CLS} /></div>
+        <div><label className="text-[11px] text-white/40 block mb-1">From / via</label>
+          <input {...f('immigration_place')} className={INPUT_CLS} /></div>
+        <div><label className="text-[11px] text-white/40 block mb-1">Became citizen (year)</label>
+          <input {...f('naturalization_date')} placeholder="YYYY" className={INPUT_CLS} /></div>
+        <div><label className="text-[11px] text-white/40 block mb-1">Took citizenship in</label>
+          <input {...f('naturalization_place')} className={INPUT_CLS} /></div>
+      </div>
+      <div><label className="text-[11px] text-white/40 block mb-1">SSN</label>
+        <input {...f('ssn')} placeholder="XXX-XX-XXXX" className={INPUT_CLS} /></div>
       <div><label className="text-[11px] text-white/40 block mb-1">Notes</label>
         <textarea rows={3} {...f('notes')} className={`${INPUT_CLS} resize-none`} /></div>
       <div className="flex gap-2 pt-1">

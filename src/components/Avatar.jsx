@@ -1,7 +1,8 @@
 import { cn } from '../lib/cn'
 
 function initials(name) {
-  return (name || '')
+  const s = typeof name === 'string' ? name : ''
+  return s
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { mediaUrl } from '../lib/media'
+import { ageAt } from '../lib/age'
 import { searchPeople, unassignFace, createPerson } from '../lib/api'
 import { DetailSection } from './DetailSection'
 import { Tag } from './Tag'
@@ -141,7 +142,11 @@ export function MediaDetail({ item, ctx }) {
           <DetailSection title={`People${detail.people?.length ? ` · ${detail.people.length}` : ''}`}>
             {detail.people?.length > 0 && (
               <div className="mb-2 flex flex-wrap gap-1.5">
-                {detail.people.map(p => (
+                {detail.people.map(p => {
+                  const photoTs   = detail.sidecar?.timestamps?.primary?.timestamp
+                  const photoConf = detail.sidecar?.timestamps?.primary?.confidence
+                  const age = ageAt(p.birth_date, photoTs, photoConf, p.birth_date_precision)
+                  return (
                   <span
                     key={p.id}
                     onMouseEnter={() => p.bbox && ctx?.setHighlight?.({ bbox: normBbox(p.bbox), label: p.known_as || p.name })}
@@ -152,6 +157,7 @@ export function MediaDetail({ item, ctx }) {
                       avatar={p.crop_url || (p.avatar ? mediaUrl(p.avatar) : null)}
                       initials
                       text={p.known_as || p.name}
+                      caption={age}
                       onRemove={async () => {
                         if (p.face_index == null || !item?.path) return
                         if (!confirm(`Unassign ${p.known_as || p.name} from this photo?`)) return
@@ -165,7 +171,8 @@ export function MediaDetail({ item, ctx }) {
                       removeLabel={`Unassign ${p.known_as || p.name}`}
                     />
                   </span>
-                ))}
+                  )
+                })}
               </div>
             )}
             {addPersonOpen ? (
@@ -246,7 +253,12 @@ export function MediaDetail({ item, ctx }) {
             </DetailSection>
           )}
 
-          <MediaDetailMeta sidecar={detail.sidecar} heritage={detail.heritage} />
+          <MediaDetailMeta
+            sidecar={detail.sidecar}
+            heritage={detail.heritage}
+            path={item.path}
+            onRedated={ctx?.bumpDetail}
+          />
         </>
       )}
     </div>

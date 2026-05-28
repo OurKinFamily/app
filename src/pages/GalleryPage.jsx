@@ -24,7 +24,7 @@ export function GalleryPage() {
     yearParam && /^\d{4}$/.test(yearParam) ? Number(yearParam) : null
   )
   const [years, setYears] = useState([])
-  const { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer, fillGap } = useGallery({
+  const { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer, fillGap, removeItem } = useGallery({
     anchor: yearFilter != null ? { year: yearFilter } : null,
   })
   const { favs, toggle: toggleFav } = useFavorites()
@@ -209,7 +209,7 @@ export function GalleryPage() {
         )}
       </div>
 
-      <Outlet context={{ media, hasMore: hasMoreOlder, loadMore: loadOlder }} />
+      <Outlet context={{ media, hasMore: hasMoreOlder, loadMore: loadOlder, removeItem }} />
     </div>
   )
 }

@@ -23,36 +23,55 @@ function buildGraph(person, relatives, childRelatives) {
   const nodes = []
   const edges = []
 
-  const Y_PARENTS = 0
-  const Y_SELF = NODE_H + V_GAP
+  const Y_GRANDPARENTS = 0
+  const Y_PARENTS = NODE_H + V_GAP
+  const Y_SELF = Y_PARENTS + NODE_H + V_GAP
   const Y_CHILDREN = Y_SELF + NODE_H + V_GAP
   const Y_GRANDCHILDREN = Y_CHILDREN + NODE_H + V_GAP
 
+  // Each parent's x-anchor (center). Centered: parent0 left of self, parent1 right.
+  const parentCenterX = (i) => i === 0
+    ? -(NODE_W + PARENT_GAP / 2) + NODE_W / 2  // = -PARENT_GAP/2 - NODE_W/2
+    : PARENT_GAP / 2 + NODE_W / 2
+
   // Parents — centered over self (x=0)
-  if (parents[0]) {
+  ;[0, 1].forEach(i => {
+    const par = parents[i]
+    if (!par) return
+    const parX = i === 0 ? -(NODE_W + PARENT_GAP / 2) : PARENT_GAP / 2
     nodes.push({
-      id: `p-${parents[0].id}`, type: 'person',
-      position: { x: -(NODE_W + PARENT_GAP / 2), y: Y_PARENTS },
-      data: { ...parents[0], personId: parents[0].id, relationship: 'Parent' },
+      id: `p-${par.id}`, type: 'person',
+      position: { x: parX, y: Y_PARENTS },
+      data: { ...par, personId: par.id, relationship: 'Parent' },
     })
     edges.push({
-      id: 'e-p0', source: `p-${parents[0].id}`, target: 'self',
+      id: `e-p${i}`, source: `p-${par.id}`, target: 'self',
       sourceHandle: 'bottom', targetHandle: 'top', type: 'smoothstep',
       style: { stroke: 'rgba(255,255,255,0.2)', strokeDasharray: '4 3' },
     })
-  }
-  if (parents[1]) {
-    nodes.push({
-      id: `p-${parents[1].id}`, type: 'person',
-      position: { x: PARENT_GAP / 2, y: Y_PARENTS },
-      data: { ...parents[1], personId: parents[1].id, relationship: 'Parent' },
+
+    // Grandparents above this parent — two slots side-by-side, centered on parent
+    const gps = par.parents || []
+    ;[0, 1].forEach(gi => {
+      const gp = gps[gi]
+      if (!gp) return
+      const cx = parentCenterX(i)
+      const gpX = gi === 0
+        ? cx - (NODE_W + PARENT_GAP / 2)
+        : cx + PARENT_GAP / 2
+      nodes.push({
+        id: `gp-${gp.id}`, type: 'person',
+        position: { x: gpX, y: Y_GRANDPARENTS },
+        data: { ...gp, personId: gp.id, relationship: 'Grandparent', small: true },
+      })
+      edges.push({
+        id: `e-gp-${par.id}-${gp.id}`,
+        source: `gp-${gp.id}`, target: `p-${par.id}`,
+        sourceHandle: 'bottom', targetHandle: 'top', type: 'smoothstep',
+        style: { stroke: 'rgba(255,255,255,0.15)', strokeDasharray: '3 3' },
+      })
     })
-    edges.push({
-      id: 'e-p1', source: `p-${parents[1].id}`, target: 'self',
-      sourceHandle: 'bottom', targetHandle: 'top', type: 'smoothstep',
-      style: { stroke: 'rgba(255,255,255,0.2)', strokeDasharray: '4 3' },
-    })
-  }
+  })
 
   // Add-parent button — only if fewer than 2 parents
   if (parents.length < 2) {

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 // Mock the Leaflet-backed map — its real impl needs a real canvas which
 // jsdom doesn't have, and it's excluded from coverage anyway.
@@ -7,10 +7,15 @@ vi.mock('../../../src/components/MiniMap', () => ({
   MiniMap: ({ lat, lng }) => <div data-testid="minimap" data-lat={lat} data-lng={lng} />,
 }))
 
+vi.mock('../../../src/lib/api', () => ({
+  redateMedia: vi.fn(),
+}))
+import { redateMedia } from '../../../src/lib/api'
+
 import { MediaDetailMeta } from '../../../src/components/MediaDetailMeta'
 
-function renderMeta(sidecar, heritage) {
-  return render(<MediaDetailMeta sidecar={sidecar} heritage={heritage} />)
+function renderMeta(sidecar, heritage, extra = {}) {
+  return render(<MediaDetailMeta sidecar={sidecar} heritage={heritage} {...extra} />)
 }
 
 describe('MediaDetailMeta', () => {
@@ -208,6 +213,183 @@ describe('MediaDetailMeta', () => {
     it('handles missing extractedAt in Processing (formatDate null branch)', () => {
       renderMeta({ processing: { processor: 'mpp@2.0' } })
       expect(screen.getByText('mpp@2.0')).toBeInTheDocument()
+    })
+  })
+
+  describe('DateEditor', () => {
+    const sidecar = {
+      timestamps: { primary: { timestamp: '2000-04-15T12:00:00', source: 'exif', confidence: 'high', precision: 'day' } },
+    }
+    beforeEach(() => { redateMedia.mockReset() })
+
+    it('omits the pencil when no path is provided', () => {
+      renderMeta(sidecar, null)
+      expect(screen.queryByLabelText('Edit date')).not.toBeInTheDocument()
+    })
+
+    it('shows the pencil and opens the editor on click', () => {
+      renderMeta(sidecar, null, { path: 'x.jpg' })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'day' })).toBeInTheDocument()
+    })
+
+    it('saves a Day-precision change and calls onRedated', async () => {
+      redateMedia.mockResolvedValue({})
+      const onRedated = vi.fn()
+      renderMeta(sidecar, null, { path: 'x.jpg', onRedated })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      const input = screen.getByDisplayValue('2000-04-15')
+      fireEvent.change(input, { target: { value: '2001-06-20' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(redateMedia).toHaveBeenCalledWith('x.jpg', {
+        timestamp: '2001-06-20T12:00:00', precision: 'day',
+      }))
+      expect(onRedated).toHaveBeenCalled()
+    })
+
+    it('switches to Month mode and saves a YYYY-MM value', async () => {
+      redateMedia.mockResolvedValue({})
+      renderMeta(sidecar, null, { path: 'x.jpg' })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      fireEvent.click(screen.getByRole('button', { name: 'month' }))
+      const input = screen.getByDisplayValue('2000-04')
+      fireEvent.change(input, { target: { value: '1995-12' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(redateMedia).toHaveBeenCalledWith('x.jpg', {
+        timestamp: '1995-12-01T12:00:00', precision: 'month',
+      }))
+    })
+
+    it('switches to Year mode and saves a YYYY value', async () => {
+      redateMedia.mockResolvedValue({})
+      renderMeta(sidecar, null, { path: 'x.jpg' })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      fireEvent.click(screen.getByRole('button', { name: 'year' }))
+      const input = screen.getByDisplayValue('2000')
+      fireEvent.change(input, { target: { value: '1980' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(redateMedia).toHaveBeenCalledWith('x.jpg', {
+        timestamp: '1980-01-01T12:00:00', precision: 'year',
+      }))
+    })
+
+    it('shows "Pick a date" when the input is empty on save', async () => {
+      renderMeta(sidecar, null, { path: 'x.jpg' })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      const input = screen.getByDisplayValue('2000-04-15')
+      fireEvent.change(input, { target: { value: '' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      expect(await screen.findByText('Pick a date')).toBeInTheDocument()
+      expect(redateMedia).not.toHaveBeenCalled()
+    })
+
+    it('closes silently when the value is unchanged', () => {
+      renderMeta(sidecar, null, { path: 'x.jpg' })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      expect(redateMedia).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    })
+
+    it('surfaces the API error message', async () => {
+      redateMedia.mockRejectedValue(new Error('bad ts'))
+      renderMeta(sidecar, null, { path: 'x.jpg' })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      const input = screen.getByDisplayValue('2000-04-15')
+      fireEvent.change(input, { target: { value: '2001-06-20' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      expect(await screen.findByText('bad ts')).toBeInTheDocument()
+    })
+
+    it('falls back to "Save failed" when the error has no message', async () => {
+      redateMedia.mockRejectedValue({})
+      renderMeta(sidecar, null, { path: 'x.jpg' })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      const input = screen.getByDisplayValue('2000-04-15')
+      fireEvent.change(input, { target: { value: '2001-06-20' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      expect(await screen.findByText('Save failed')).toBeInTheDocument()
+    })
+
+    it('cancels via the Cancel button', () => {
+      renderMeta(sidecar, null, { path: 'x.jpg' })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    })
+
+    it('commits on Enter and cancels on Escape (and stops propagation)', async () => {
+      redateMedia.mockResolvedValue({})
+      renderMeta(sidecar, null, { path: 'x.jpg' })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      const input = screen.getByDisplayValue('2000-04-15')
+      fireEvent.change(input, { target: { value: '2001-06-20' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+      await waitFor(() => expect(redateMedia).toHaveBeenCalled())
+
+      // Re-open and cancel with Escape
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      const input2 = screen.getByDisplayValue('2000-04-15')
+      fireEvent.keyDown(input2, { key: 'Escape' })
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    })
+
+    it('ignores keys other than Enter/Escape', () => {
+      renderMeta(sidecar, null, { path: 'x.jpg' })
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      const input = screen.getByDisplayValue('2000-04-15')
+      fireEvent.keyDown(input, { key: 'a' })
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
+    })
+
+    it('formats a Month-precision value in the read view and edits it', async () => {
+      redateMedia.mockResolvedValue({})
+      renderMeta(
+        { timestamps: { primary: { timestamp: '2000-04-15T12:00:00', source: 'exif', confidence: 'high', precision: 'month' } } },
+        null,
+        { path: 'x.jpg' }
+      )
+      expect(screen.getByText(/April 2000/)).toBeInTheDocument()
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      const input = screen.getByDisplayValue('2000-04')
+      fireEvent.change(input, { target: { value: '1995-12' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      // Save exercises valueForEdit(value, 'month') in commit() —
+      // covers the month branch of valueForEdit.
+      await waitFor(() => expect(redateMedia).toHaveBeenCalledWith('x.jpg', {
+        timestamp: '1995-12-01T12:00:00', precision: 'month',
+      }))
+    })
+
+    it('formats a Year-precision value in the read view and edits it', async () => {
+      redateMedia.mockResolvedValue({})
+      renderMeta(
+        { timestamps: { primary: { timestamp: '2000-04-15T12:00:00', source: 'exif', confidence: 'high', precision: 'year' } } },
+        null,
+        { path: 'x.jpg' }
+      )
+      expect(screen.getByText('2000')).toBeInTheDocument()
+      fireEvent.click(screen.getByLabelText('Edit date'))
+      // Pre-fill should match precision='year' → year input shows 2000.
+      // Changing it and saving exercises valueForEdit(value, 'year') in commit().
+      const input = screen.getByDisplayValue('2000')
+      fireEvent.change(input, { target: { value: '1985' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(redateMedia).toHaveBeenCalledWith('x.jpg', {
+        timestamp: '1985-01-01T12:00:00', precision: 'year',
+      }))
+    })
+
+    it('still shows heritage content_date as the read-view string when present', () => {
+      renderMeta(sidecar, { content_date: '1995' }, { path: 'x.jpg' })
+      expect(screen.getByText('1995')).toBeInTheDocument()
+    })
+
+    it('handles a missing date value gracefully when opening editor', () => {
+      // dateValue would be undefined → section omitted entirely; nothing to edit.
+      renderMeta({}, null, { path: 'x.jpg' })
+      expect(screen.queryByLabelText('Edit date')).not.toBeInTheDocument()
     })
   })
 

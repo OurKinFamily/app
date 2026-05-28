@@ -5,5 +5,5 @@ import { ConnectionTimeline } from '../components/ConnectionTimeline'
 // person who shares meaningful overlap with the subject.
 export function PersonTimeline() {
   const { person } = useOutletContext()
-  return <ConnectionTimeline personId={person.id} />
+  return <ConnectionTimeline endpoint={`/api/people/${person.id}/connection-timeline`} />
 }

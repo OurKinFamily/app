@@ -66,6 +66,20 @@ export async function deleteMedia(path) {
   if (!res.ok) throw new Error('Failed to delete media')
 }
 
+export async function redateMedia(path, { timestamp, precision }) {
+  const res = await fetch(`${BASE}/gallery/media?path=${encodeURIComponent(path)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ timestamp, precision }),
+  })
+  if (!res.ok) {
+    let detail = ''
+    try { detail = (await res.json())?.detail || '' } catch { /* noop */ }
+    throw new Error(detail || 'Failed to redate media')
+  }
+  return res.json()
+}
+
 export async function setCover(personId, photoPath, position) {
   const res = await fetch(`${BASE}/people/${personId}/cover`, {
     method: 'PUT',
