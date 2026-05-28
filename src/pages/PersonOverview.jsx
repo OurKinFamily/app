@@ -9,6 +9,7 @@ import { EntityChip } from '../components/EntityChip'
 import { EntityItem } from '../components/EntityItem'
 import { MediaGallery } from '../components/MediaGallery'
 import { PhotoLightbox } from '../components/PhotoLightbox'
+import { LifeStagesStrip } from '../components/LifeStagesStrip'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,10 @@ export function PersonOverview() {
           </>
         )}
       </div>
+
+      <LifeStagesStrip personId={person.id} />
+
+
 
       <PersonGalleryInline personId={person.id} />
     </>
