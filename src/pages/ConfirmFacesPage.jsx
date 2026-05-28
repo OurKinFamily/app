@@ -109,7 +109,7 @@ export function ConfirmFacesPage() {
     const p = candidates.person
     const toAssign = candidates.items.filter(f => !excluded.has(`${f.photo_path}:${f.face_index}`))
     try {
-      await fetch('/api/faces/search/assign', {
+      const r = await fetch('/api/faces/search/assign', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
@@ -121,11 +121,22 @@ export function ConfirmFacesPage() {
           })),
         }),
       })
-      setDone(d => d + 1)
-      // Re-fetch the SAME person: their candidate list was capped at
-      // MAX_PER_PERSON; if more remain above the threshold they'll show
-      // in the next batch. Auto-skip kicks in only when the well's dry.
-      setTick(t => t + 1)
+      const data = r.ok ? await r.json() : null
+      const assigned = data?.assigned ?? 0
+      const missing = data?.missing?.length ?? 0
+      setDone(d => d + assigned)
+      if (missing > 0) {
+        // Faces couldn't be assigned — usually a stale embedding-index path
+        // not matching a Neo4j Media node. Auto-skip this person so the UI
+        // doesn't loop forever on the same candidates.
+        console.warn('[ConfirmFaces] %d face(s) could not be assigned (stale embedding paths). Skipping person.', missing, data?.missing)
+        setIdx(i => i + 1)
+      } else {
+        // Re-fetch the SAME person: their candidate list was capped at
+        // MAX_PER_PERSON; if more remain above the threshold they'll show
+        // in the next batch.
+        setTick(t => t + 1)
+      }
     } finally {
       setBusy(false)
     }
