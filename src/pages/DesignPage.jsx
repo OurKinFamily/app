@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MapPin, Camera, ShieldCheck } from 'lucide-react'
+import { MapPin, Camera, ShieldCheck, Lock, RefreshCw } from 'lucide-react'
 import { EntityChip } from '../components/EntityChip'
 import { EntityItem } from '../components/EntityItem'
 import { MediaCard, MediaRow } from '../components/MediaCard'
@@ -21,6 +21,8 @@ import { DetailSection } from '../components/DetailSection'
 import { Field } from '../components/Field'
 import { Tag } from '../components/Tag'
 import { ProgressBar } from '../components/ProgressBar'
+import { StripFrame } from '../components/StripFrame'
+import { PhotoStrip } from '../components/PhotoStrip'
 
 const TAG_TONES = ['default', 'green', 'amber', 'red', 'blue', 'purple', 'pink', 'orange', 'slate', 'cyan']
 import { MiniMap } from '../components/MiniMap'
@@ -114,6 +116,15 @@ function Section({ title, children }) {
       <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-white/30">{title}</h2>
       {children}
     </section>
+  )
+}
+
+function LabeledFrame({ label, children }) {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <span className="text-[10px] text-white/40">{label}</span>
+      {children}
+    </div>
   )
 }
 
@@ -566,6 +577,60 @@ export function DesignPage() {
             <Field label="Extracted" value="May 2, 2026" />
           </DetailSection>
         </div>
+      </Section>
+
+      <Section title="StripFrame — single tile, composes into a strip">
+        <p className="mb-4 text-[12px] text-white/50">
+          Generic one-image tile with optional caption, avatar overlay, corner
+          badge, and hover-only action buttons. Hover any tile to reveal its
+          actions.
+        </p>
+        <div className="flex flex-wrap gap-6">
+          <LabeledFrame label="1. bare">
+            <StripFrame image={{ src: 'https://picsum.photos/seed/bare/96', alt: 'bare' }} />
+          </LabeledFrame>
+          <LabeledFrame label="2. caption">
+            <StripFrame image={{ src: 'https://picsum.photos/seed/cap/96', alt: 'caption' }} caption="age 8" />
+          </LabeledFrame>
+          <LabeledFrame label="3. avatar">
+            <StripFrame image={{ src: 'https://picsum.photos/seed/avatar/96', alt: 'avatar' }} avatar={{ src: 'https://picsum.photos/seed/face/64' }} />
+          </LabeledFrame>
+          <LabeledFrame label="4. caption + avatar">
+            <StripFrame
+              image={{ src: 'https://picsum.photos/seed/full/96', alt: 'caption + avatar' }}
+              caption="age 24"
+              avatar={{ src: 'https://picsum.photos/seed/face2/64' }}
+            />
+          </LabeledFrame>
+          <LabeledFrame label="5. caption + avatar + badge + actions">
+            <StripFrame
+              image={{ src: 'https://picsum.photos/seed/full2/96', alt: 'loaded' }}
+              caption="age 24"
+              avatar={{ src: 'https://picsum.photos/seed/face3/64' }}
+              badge={<Lock size={10} className="text-emerald-400" />}
+              actions={[
+                { icon: <RefreshCw size={12} />, title: 'Next', onClick: () => console.log('next') },
+                { icon: <Lock size={12} />, title: 'Lock', onClick: () => console.log('lock') },
+              ]}
+              onClick={() => console.log('open')}
+            />
+          </LabeledFrame>
+        </div>
+      </Section>
+
+      <Section title="PhotoStrip — horizontal wrapper for StripFrames">
+        <p className="mb-4 text-[12px] text-white/50">
+          Hidden scrollbar; vertical mouse-wheel converts to horizontal scroll.
+          Children are arbitrary — usually StripFrames, but anything shrink-0 works.
+        </p>
+        <PhotoStrip>
+          {Array.from({ length: 12 }, (_, i) => (
+            <StripFrame
+              key={i}
+              image={{ src: `https://picsum.photos/seed/strip${i}/96`, alt: `frame ${i}` }}
+            />
+          ))}
+        </PhotoStrip>
       </Section>
 
       {viewer && (
