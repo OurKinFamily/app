@@ -13,6 +13,7 @@ test.describe('Top-level pages load', () => {
     ['/gallery/people',    'heading', 'People'],
     ['/gallery/albums',    'heading', 'Albums'],
     ['/gallery/favorites', 'heading', 'Favorites'],
+    ['/gallery/family',    'heading', 'Family'],
     ['/gallery/places',    'main',    null],
   ]
 
