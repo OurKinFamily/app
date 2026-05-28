@@ -31,9 +31,7 @@ export function DateScrubber({ years = [], currentYear, onJump }) {
   const active  = hoverYear ?? currentYear ?? ordered[0].year
 
   function yearFromY(clientY) {
-    const el = containerRef.current
-    if (!el) return null
-    const rect = el.getBoundingClientRect()
+    const rect = containerRef.current.getBoundingClientRect()
     // Account for vertical padding (py-2 = 8px each side) so the cursor
     // maps to year rows, not the padding zone.
     const PAD = 8
@@ -44,6 +42,14 @@ export function DateScrubber({ years = [], currentYear, onJump }) {
     return ordered[idx].year
   }
 
+  // Wraps the optional-chain pointer-capture so older jsdom builds that
+  // don't implement setPointerCapture still work; production browsers all
+  // ship it.
+  function safePointerCapture(pointerId) {
+    const el = containerRef.current
+    if (el.setPointerCapture) el.setPointerCapture(pointerId)
+  }
+
   // During drag we only update the visual indicator. Navigation fires once
   // on release — otherwise every pixel of drag triggers a full fetch/scroll
   // cascade and the page never lands on the final position.
@@ -52,7 +58,7 @@ export function DateScrubber({ years = [], currentYear, onJump }) {
     setDragging(true)
     const y = yearFromY(e.clientY)
     setHoverYear(y)
-    containerRef.current?.setPointerCapture?.(e.pointerId)
+    safePointerCapture(e.pointerId)
   }
   function onPointerMove(e) {
     const y = yearFromY(e.clientY)

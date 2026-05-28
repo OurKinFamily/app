@@ -16,7 +16,6 @@ function notify() {
 }
 
 async function loadFavorites() {
-  if (cache) return cache
   if (inflight) return inflight
   inflight = (async () => {
     const res = await fetch('/api/me/favorites/paths')

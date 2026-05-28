@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'coverage', 'playwright-report', '.playwright-mcp', 'test-results']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -41,10 +41,18 @@ export default defineConfig([
     },
   },
   {
-    // Test files use Node globals (`global`, etc).
-    files: ['**/*.test.{js,jsx}'],
+    // Test files + test helpers + the vitest setup file use Node globals
+    // (`global`, `process`, etc.) on top of the browser environment, and
+    // are allowed to grow past the production max-lines cap.
+    files: [
+      '**/*.test.{js,jsx}',
+      'tests/**/*.{js,jsx}',
+    ],
     languageOptions: {
       globals: { ...globals.node, ...globals.browser },
+    },
+    rules: {
+      'max-lines': 'off',
     },
   },
 ])

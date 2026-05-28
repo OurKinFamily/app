@@ -19,7 +19,6 @@ export function CoverPicker({ person, onClose, onSaved }) {
   const [position, setPosition] = useState(person.cover_position || 'center')
 
   async function save() {
-    if (saving) return
     setSaving(true)
     try {
       await setCover(person.id, person.cover_image || null, position)
@@ -31,7 +30,6 @@ export function CoverPicker({ person, onClose, onSaved }) {
   }
 
   async function clear() {
-    if (saving) return
     setSaving(true)
     try {
       await setCover(person.id, null, null)

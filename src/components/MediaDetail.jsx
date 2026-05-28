@@ -61,7 +61,6 @@ export function MediaDetail({ item, ctx }) {
   }
 
   const createAndTag = async () => {
-    if (!addQuery.trim() || creatingNew) return
     setCreatingNew(true)
     try {
       const person = await createPerson({ name: addQuery.trim() })
@@ -98,7 +97,6 @@ export function MediaDetail({ item, ctx }) {
   // renders a downsized "medium" version, so normalise to 0..1 against the
   // original media dimensions wherever we push a bbox up to the lightbox.
   const normBbox = (b) => {
-    if (!b) return null
     const mw = detail?.media?.width
     const mh = detail?.media?.height
     if (!mw || !mh) return b

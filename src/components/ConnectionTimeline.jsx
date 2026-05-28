@@ -4,6 +4,7 @@ import { Tag } from './Tag'
 import { Avatar } from './Avatar'
 import { mediaUrl } from '../lib/media'
 import { displayName, otherName } from '../lib/people'
+import { yearOf, packLanes, groupBySpan } from '../lib/timelineLanes'
 
 // Lane-packed gantt of co-appearances. Each person is a horizontal bar
 // from first → last photo with the subject. Bars share lanes whenever
@@ -52,91 +53,15 @@ export function ConnectionTimeline({ personId }) {
   )
 }
 
-function yearOf(ts) { return Number(String(ts).slice(0, 4)) }
-
 // Photo-count tiers. Color denotes how deep the relationship is rather
 // than opacity — every bar stays fully opaque and the eye reads the color.
+// Visual mapping; verified by e2e + visual regression, not unit tests.
 function colorTier(count) {
   if (count >= 2000) return { bg: 'bg-pink-500',    hover: 'hover:bg-pink-400'    }
   if (count >=  500) return { bg: 'bg-violet-500',  hover: 'hover:bg-violet-400'  }
   if (count >=  200) return { bg: 'bg-blue-500',    hover: 'hover:bg-blue-400'    }
   if (count >=   50) return { bg: 'bg-cyan-600',    hover: 'hover:bg-cyan-500'    }
   return                   { bg: 'bg-slate-600',   hover: 'hover:bg-slate-500'   }
-}
-
-function packLanes(rows) {
-  // Sort by duration DESC so the longest-running bars land in the top
-  // lanes. Ties broken by first_ts ASC (older starts above).
-  const ordered = [...rows].sort((a, b) => {
-    const da = yearOf(a.last_ts) - yearOf(a.first_ts)
-    const db = yearOf(b.last_ts) - yearOf(b.first_ts)
-    if (db !== da) return db - da
-    return String(a.first_ts).localeCompare(String(b.first_ts))
-  })
-  const lanes = []   // each lane = array of placed rows (kept sorted by first_ts)
-  const placed = []  // [{row, lane}]
-  for (const r of ordered) {
-    const start = yearOf(r.first_ts)
-    const end   = yearOf(r.last_ts)
-    // Find the first lane where this row doesn't overlap any existing bar.
-    let laneIdx = lanes.findIndex(lane =>
-      lane.every(other => yearOf(other.last_ts) < start || yearOf(other.first_ts) > end)
-    )
-    if (laneIdx === -1) { laneIdx = lanes.length; lanes.push([]) }
-    lanes[laneIdx].push(r)
-    placed.push({ row: r, lane: laneIdx, start, end })
-  }
-  return { lanes, placed }
-}
-
-// People are merged into one bar only when (a) they share the same start +
-// end year AND (b) their photo counts are within COUNT_RATIO of each other.
-// This keeps Cayce (deep relationship) from getting merged with cameo
-// people who happen to overlap her exact span.
-const COUNT_RATIO = 3
-
-function groupBySpan(rows) {
-  // First bucket by (first_year, last_year)
-  const buckets = new Map()
-  for (const r of rows) {
-    const key = `${yearOf(r.first_ts)}|${yearOf(r.last_ts)}`
-    if (!buckets.has(key)) buckets.set(key, [])
-    buckets.get(key).push(r)
-  }
-
-  // Within each year-bucket, sort by photo_count desc and split into
-  // sub-groups whenever the count drops more than COUNT_RATIO× from the
-  // current sub-group's max.
-  const groups = []
-  for (const bucket of buckets.values()) {
-    bucket.sort((a, b) => (b.photo_count || 0) - (a.photo_count || 0))
-    let current = []
-    let groupMax = 0
-    for (const r of bucket) {
-      const c = r.photo_count || 0
-      if (current.length === 0 || c * COUNT_RATIO >= groupMax) {
-        current.push(r)
-        if (c > groupMax) groupMax = c
-      } else {
-        groups.push(current)
-        current  = [r]
-        groupMax = c
-      }
-    }
-    if (current.length) groups.push(current)
-  }
-
-  return groups.map(group => {
-    const first_ts = group.reduce((a, b) => (a.first_ts < b.first_ts ? a : b)).first_ts
-    const last_ts  = group.reduce((a, b) => (a.last_ts  > b.last_ts  ? a : b)).last_ts
-    const total    = group.reduce((s, r) => s + (r.photo_count || 0), 0)
-    return {
-      id:           group.map(r => r.id).join('+'),
-      people:       group,
-      first_ts, last_ts,
-      photo_count:  total,
-    }
-  })
 }
 
 function GanttLanes({ rows, stack, hover, setHover, navigate }) {
@@ -207,8 +132,8 @@ function GanttLanes({ rows, stack, hover, setHover, navigate }) {
           // Color tiers by absolute photo count — stable across sessions.
           const tier = colorTier(row.photo_count)
           const isHover = hover === row.id
-          const isGroup = row.people && row.people.length > 1
-          const people  = row.people || [row]
+          const isGroup = row.people.length > 1
+          const people  = row.people
           const titleText = isGroup
             ? `${people.map(p => displayName(p)).join(', ')} · ${row.photo_count} photos · ${start}–${end}`
             : `${displayName(people[0])} · ${row.photo_count} photos · ${start}–${end}`
@@ -257,9 +182,8 @@ function GanttLanes({ rows, stack, hover, setHover, navigate }) {
       {/* Hover detail */}
       <div className="mt-3 min-h-5 text-[11px] text-white/50">
         {hover && (() => {
-          const r = placed.find(x => x.row.id === hover)?.row
-          if (!r) return null
-          const people = r.people || [r]
+          const r = placed.find(x => x.row.id === hover).row
+          const people = r.people
           return (
             <div className="flex flex-wrap items-baseline gap-x-2">
               <span>{yearOf(r.first_ts)}–{yearOf(r.last_ts)}</span>

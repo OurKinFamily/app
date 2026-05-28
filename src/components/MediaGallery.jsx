@@ -2,32 +2,9 @@ import { useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { Media } from './Media'
 import { DateScrubber } from './DateScrubber'
 import { computeRows } from '../lib/justifiedRows'
+import { formatDay, groupByDay, citiesFor } from '../lib/galleryGrouping'
 
 const DAY_MS = 86400 * 1000
-
-function formatDay(iso) {
-  const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function groupByDay(items) {
-  const map = new Map()
-  for (const it of items) {
-    const day = it.timestamp ? it.timestamp.slice(0, 10) : '__unknown'
-    if (!map.has(day)) map.set(day, [])
-    map.get(day).push(it)
-  }
-  return [...map.entries()].map(([day, items]) => ({ day, items }))
-}
-
-function citiesFor(items) {
-  const set = new Set()
-  for (const it of items) {
-    const c = it.city || it.place_name
-    if (c) set.add(c)
-  }
-  return [...set]
-}
 
 
 // Justified-rows gallery, grouped by day with a section header per group.
@@ -49,7 +26,6 @@ export function MediaGallery({
   const velocityRef = useRef({ y: 0, t: 0, v: 0 })
 
   useLayoutEffect(() => {
-    if (!ref.current) return
     const ro = new ResizeObserver(e => setWidth(Math.floor(e[0].contentRect.width)))
     ro.observe(ref.current)
     return () => ro.disconnect()
@@ -152,7 +128,7 @@ export function MediaGallery({
   }
 
   return (
-    <div ref={ref} className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div ref={ref} data-testid="gallery" className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {shelves.map((shelf, si) => {
         if (shelf.short) {
           // Side-by-side packing — each day renders header + its single photo
@@ -172,6 +148,7 @@ export function MediaGallery({
                       )}
                     </h3>
                     <div
+                      data-testid={item.__gap ? undefined : 'gallery-item'}
                       data-year={item.timestamp ? new Date(item.timestamp).getFullYear() : undefined}
                       data-gap-from={item.__gap ? item.gapFromTs : undefined}
                       data-gap-to={item.__gap ? item.gapToTs : undefined}
@@ -213,6 +190,7 @@ export function MediaGallery({
                   {row.items.map(item => (
                     <div
                       key={item.path}
+                      data-testid={item.__gap ? undefined : 'gallery-item'}
                       data-year={item.timestamp ? new Date(item.timestamp).getFullYear() : undefined}
                       data-gap-from={item.__gap ? item.gapFromTs : undefined}
                       data-gap-to={item.__gap ? item.gapToTs : undefined}

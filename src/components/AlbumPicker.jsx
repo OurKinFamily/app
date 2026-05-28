@@ -16,7 +16,6 @@ export function AlbumPicker({ paths, onClose, onAdded }) {
   }, [])
 
   async function addTo(albumId) {
-    if (busy) return
     setBusy(true)
     try {
       await fetch(`/api/albums/${albumId}/media`, {

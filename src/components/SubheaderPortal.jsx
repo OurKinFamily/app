@@ -10,9 +10,7 @@ import { createPortal } from 'react-dom'
 // MainLayout always renders #layout-subheader (siblings to AppHeader) before
 // the <Outlet/> mounts, so the node is in the DOM by the time any page renders.
 export function SubheaderPortal({ children }) {
-  const el = typeof document !== 'undefined'
-    ? document.getElementById('layout-subheader')
-    : null
+  const el = document.getElementById('layout-subheader')
   if (!el) return null
   return createPortal(children, el)
 }

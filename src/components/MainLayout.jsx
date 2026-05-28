@@ -35,7 +35,6 @@ export function MainLayout() {
   }
 
   useEffect(() => {
-    if (!headerRef.current) return
     const ro = new ResizeObserver(entries => {
       const h = Math.round(entries[0].contentRect.height)
       document.documentElement.style.setProperty('--app-header-h', `${h}px`)

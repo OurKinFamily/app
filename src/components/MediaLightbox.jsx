@@ -43,7 +43,6 @@ export function MediaLightbox({
 
   const toggleAudio = () => {
     const el = audioRef.current
-    if (!el || !audio?.url) return
     if (audioPlaying) { el.pause(); el.currentTime = 0; setAudioPlaying(false) }
     else { el.src = audio.url; el.play().catch(() => setAudioPlaying(false)); setAudioPlaying(true) }
   }
@@ -201,7 +200,6 @@ export function MediaLightbox({
 
         {!item.is_video && mediaRef.current?.naturalWidth > 0 && faces.map(f => {
           const r = bboxRect(mediaRef.current, f.bbox)
-          if (!r) return null
           const key = f.identified ? `p${f.person.id}` : `f${f.face.face_index}`
           return (
             <div key={key} style={{ position: 'absolute', ...r }}
@@ -216,7 +214,6 @@ export function MediaLightbox({
         {!item.is_video && (highlight?.bbox || assignAt?.face?.bbox) && mediaRef.current?.naturalWidth > 0 && (() => {
           const active = highlight?.bbox ? highlight : { bbox: assignAt.face.bbox }
           const r = bboxRect(mediaRef.current, active.bbox, 2)
-          if (!r) return null
           return (
             <div className="pointer-events-none absolute rounded border-2 border-white/80"
               style={{ ...r, boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)' }}>

@@ -53,7 +53,6 @@ export function FaceAssignPopover({ face, photoPath, x, y, onClose, onAssigned }
   const onPick = option => assignToPerson(option.value)
 
   const createAndAssign = async () => {
-    if (!query.trim() || creating) return
     setCreating(true)
     try {
       const person = await createPerson({ name: query.trim() })
