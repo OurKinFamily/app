@@ -24,6 +24,15 @@ import { getClusters } from '../lib/api'
 const SEARCH_THRESHOLD = 0.5   // sent to /search/by_person (distance space)
 const MIN_SIM_DEFAULT  = 0.80  // filter: only show results ≥ this similarity
 const MAX_PER_PERSON   = 200   // cap the visible candidate count per person
+const SKIPPED_KEY      = 'ourkin:confirm-faces:skipped'
+
+function loadSkipped() {
+  try { return new Set(JSON.parse(localStorage.getItem(SKIPPED_KEY) || '[]')) }
+  catch { return new Set() }
+}
+function persistSkipped(s) {
+  try { localStorage.setItem(SKIPPED_KEY, JSON.stringify([...s])) } catch { /* quota */ }
+}
 
 export function ConfirmFacesPage() {
   const [people, setPeople] = useState(null)         // [{id, person_name, person_known_as, person_avatar, size}, …]
@@ -37,7 +46,26 @@ export function ConfirmFacesPage() {
   const [error, setError]           = useState(null)
   const [viewer, setViewer]         = useState(null) // index into candidates.items
   const [tick, setTick]             = useState(0)    // bump to force re-fetch of current person
+  const [skipped, setSkipped]       = useState(() => loadSkipped())
   const inflightRef = useRef(null)
+
+  // Persist whenever the skipped set changes.
+  useEffect(() => { persistSkipped(skipped) }, [skipped])
+
+  function addSkipped(personId) {
+    setSkipped(prev => {
+      if (prev.has(personId)) return prev
+      const next = new Set(prev)
+      next.add(personId)
+      return next
+    })
+  }
+
+  function clearSkipped() {
+    setSkipped(new Set())
+    setIdx(0)
+    setTick(t => t + 1)
+  }
 
   // Load people who have ≥5 assigned faces (need a stable mean).
   useEffect(() => {
@@ -77,6 +105,7 @@ export function ConfirmFacesPage() {
       let cursor = idx
       while (alive && cursor < people.length) {
         const p = people[cursor]
+        if (skipped.has(p.person_id)) { cursor++; continue }
         try {
           const res = await fetch('/api/faces/search/by_person', {
             method:  'POST',
@@ -101,7 +130,7 @@ export function ConfirmFacesPage() {
       setCandidates({ done: true })
     })()
     return () => { alive = false }
-  }, [people, idx, minSim, tick])
+  }, [people, idx, minSim, tick, skipped])
 
   async function confirm() {
     if (!candidates?.items || busy) return
@@ -127,9 +156,11 @@ export function ConfirmFacesPage() {
       setDone(d => d + assigned)
       if (missing > 0) {
         // Faces couldn't be assigned — usually a stale embedding-index path
-        // not matching a Neo4j Media node. Auto-skip this person so the UI
-        // doesn't loop forever on the same candidates.
-        console.warn('[ConfirmFaces] %d face(s) could not be assigned (stale embedding paths). Skipping person.', missing, data?.missing)
+        // not matching a Neo4j Media node (see issue #46). Advance idx
+        // in-session so the UI doesn't loop, but DON'T persist a skip:
+        // the user intended Confirm, not Skip, and fixing the root cause
+        // should make these candidates actually assignable.
+        console.warn('[ConfirmFaces] %d face(s) could not be assigned (stale embedding paths). Advancing — root cause tracked in #46.', missing, data?.missing)
         setIdx(i => i + 1)
       } else {
         // Re-fetch the SAME person: their candidate list was capped at
@@ -143,6 +174,8 @@ export function ConfirmFacesPage() {
   }
 
   function skipPerson() {
+    const p = candidates?.person
+    if (p) addSkipped(p.person_id)
     setIdx(i => i + 1)
   }
 
@@ -177,6 +210,11 @@ export function ConfirmFacesPage() {
         <h1 className="text-lg font-medium text-white/80">Confirm Faces</h1>
         <Tag tone="green">{done} confirmed</Tag>
         <Tag tone="slate">{idx + 1} / {people.length}</Tag>
+        {skipped.size > 0 && (
+          <Button variant="secondary" size="sm" onClick={clearSkipped}>
+            <X size={12} /> Clear skipped ({skipped.size})
+          </Button>
+        )}
         <span className="ml-auto flex items-center gap-2 text-[12px] text-white/50">
           <span>Sort</span>
           <select

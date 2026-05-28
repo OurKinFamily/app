@@ -48,13 +48,28 @@ No hardcoded URLs in components — everything through `src/lib/api.js`.
 
 ## Testing — non-negotiable
 
-**Always** write tests for new changes:
+### When to write tests — timing matters
+
+**Bug fixes:** write the regression test in the same change as the fix.
+The fix is locked in; the test ratchet keeps it that way.
+
+**New UI features / iterative design work:** DO NOT jump straight to
+writing tests. Land the working UI, let Stephen look at it, iterate
+(layout, copy, colour, behaviour) until he confirms he likes it, *then*
+write tests against the stabilised shape. Writing tests in the same
+turn as a first-pass UI burns cycles because the tests get rewritten
+with every iteration.
+
+The signal to start writing tests is Stephen saying "looks good",
+"ship it", "great", or moving onto a different feature.
+
+### What to test
 
 - New helper / pure function → unit test in `tests/unit/`.
 - New component or prop → unit test that asserts the behavior the prop
   unlocks.
-- Bug fix → **regression test** with a `// regression(YYYY-MM-DD)`
-  comment on the load-bearing assertion (see `tests/unit/CLAUDE.md`).
+- Bug fix → **regression test** in `tests/unit/regression/<kebab-symptom>.spec.js`
+  (one file per bug; filename names the symptom).
 - New user flow that spans pages / routes / network → e2e in
   `tests/e2e/`.
 
