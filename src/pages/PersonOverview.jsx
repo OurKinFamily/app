@@ -62,6 +62,7 @@ export function PersonOverview() {
           <EditForm person={person} onSaved={updated => { setPerson(updated); setEditing(false) }} onCancel={() => setEditing(false)} />
         ) : (
           <>
+            <RelationshipLine personId={person.id} />
             {person.maiden_name && <p className="text-white/40 text-sm">Née {person.maiden_name}</p>}
             {person.former_names?.length > 0 && (
               <p className="text-white/35 text-xs">
@@ -95,6 +96,28 @@ export function PersonOverview() {
 }
 
 // ── Inline gallery ────────────────────────────────────────────────────────────
+
+// Shows a one-line derived relationship like "Your great-grandfather, on your
+// mother's side", based on the graph walk from the logged-in viewer to this
+// person. Stays silent when no path can be computed.
+function RelationshipLine({ personId }) {
+  const [data, setData] = useState(null)
+  useEffect(() => {
+    if (!personId) return
+    let alive = true
+    fetch(`/api/people/${personId}/relationship`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (alive) setData(d) })
+      .catch(() => { if (alive) setData(null) })
+    return () => { alive = false }
+  }, [personId])
+  if (!data?.label) return null
+  return (
+    <p className="text-sm capitalize text-white/65">
+      {data.label}{data.side ? `, on ${data.side}` : ''}
+    </p>
+  )
+}
 
 function PersonGalleryInline({ personId }) {
   const { person, setPerson } = useOutletContext()
