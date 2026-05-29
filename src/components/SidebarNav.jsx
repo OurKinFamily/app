@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   Images, MapPin, Users, Album, Heart, TreeDeciduous,
@@ -5,6 +6,11 @@ import {
   LayoutDashboard, Activity, Palette,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
+
+// Admin + Tools are Stephen-only views — Cayce and other family viewers
+// don't see them. Gate is intentionally simple: match the email on the
+// /me response. Anything else gets the public Our Kin / Manage groups.
+const ADMIN_EMAILS = new Set(['stephenyoung7267@gmail.com'])
 
 const SECTIONS = [
   {
@@ -47,9 +53,20 @@ const SECTIONS = [
 ]
 
 export function SidebarNav() {
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/admin/me')
+      .then(r => (r.ok ? r.json() : null))
+      .then(me => setIsAdmin(ADMIN_EMAILS.has(me?.email)))
+      .catch(() => {})
+  }, [])
+
+  const visible = SECTIONS.filter(s => isAdmin || (s.title !== 'Admin' && s.title !== 'Tools'))
+
   return (
     <nav className="flex flex-col gap-5">
-      {SECTIONS.map(section => (
+      {visible.map(section => (
         <div key={section.title}>
           <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-white/25">{section.title}</p>
           <ul className="space-y-0.5">

@@ -46,9 +46,12 @@ export function MosaicPage() {
   const [crop, setCrop] = useState('center')
   const [advanced, setAdvanced] = useState(false)
   const [printPreset, setPrintPreset] = useState(null)
-  const [people, setPeople] = useState([])  // [{id, name, avatar}]
+  const [people, setPeople] = useState([])           // include — [{id, name, avatar}]
+  const [excludePeople, setExcludePeople] = useState([])  // exclude — [{id, name, avatar}]
   const [peopleSearch, setPeopleSearch] = useState('')
   const [peopleResults, setPeopleResults] = useState([])
+  const [excludeSearch, setExcludeSearch] = useState('')
+  const [excludeResults, setExcludeResults] = useState([])
 
   useEffect(() => {
     const q = peopleSearch.trim()
@@ -70,6 +73,28 @@ export function MosaicPage() {
 
   function removePerson(id) {
     setPeople(prev => prev.filter(p => p.id !== id))
+  }
+
+  useEffect(() => {
+    const q = excludeSearch.trim()
+    if (q.length < 2) { setExcludeResults([]); return }
+    let cancelled = false
+    fetch(`/api/people/search?q=${encodeURIComponent(q)}&limit=10`)
+      .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then(rs => { if (!cancelled) setExcludeResults(rs) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [excludeSearch])
+
+  function addExcludePerson(p) {
+    if (excludePeople.find(x => x.id === p.id)) return
+    setExcludePeople(prev => [...prev, { id: p.id, name: p.name, avatar: p.avatar }])
+    setExcludeSearch('')
+    setExcludeResults([])
+  }
+
+  function removeExcludePerson(id) {
+    setExcludePeople(prev => prev.filter(p => p.id !== id))
   }
 
   function applyPrint(p) {
@@ -128,6 +153,7 @@ export function MosaicPage() {
       fd.append('source_smooth', p.source_smooth)
       fd.append('crop', p.crop)
       if (people.length) fd.append('person_ids', people.map(p2 => p2.id).join(','))
+      if (excludePeople.length) fd.append('exclude_person_ids', excludePeople.map(p2 => p2.id).join(','))
       const res = await fetch('/api/admin/mosaic/render', { method: 'POST', body: fd })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const metaHeader = res.headers.get('x-mosaic-meta')
@@ -338,6 +364,60 @@ export function MosaicPage() {
                       type="button"
                       onClick={() => removePerson(p.id)}
                       className="ml-0.5 rounded-full p-0.5 text-purple-200/60 hover:bg-white/10 hover:text-white"
+                      aria-label="Remove"
+                    >×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-lg border border-white/8 bg-white/3 p-4">
+            <div className="mb-2 flex items-baseline justify-between">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/40">Exclude people</h2>
+              {excludePeople.length > 0 && (
+                <span className="text-[10px] text-white/35">{excludePeople.length} blocked</span>
+              )}
+            </div>
+            <p className="mb-2 text-[10px] text-white/30">
+              Drop any tile where one of these people appears. Pairs with the include filter — "Cayce & Stephen but not if Henry's in frame".
+            </p>
+            <div className="relative">
+              <input
+                type="text"
+                value={excludeSearch}
+                onChange={e => setExcludeSearch(e.target.value)}
+                placeholder="Search…"
+                className="w-full rounded border border-white/10 bg-stone-900 px-2 py-1.5 text-[12px] text-white placeholder:text-white/25"
+              />
+              {excludeResults.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-56 overflow-y-auto rounded border border-white/10 bg-stone-950 shadow-lg">
+                  {excludeResults.map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => addExcludePerson(p)}
+                      className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[12px] text-white/75 hover:bg-white/5"
+                    >
+                      {p.avatar && <img src={p.avatar} alt="" className="h-6 w-6 rounded-full object-cover" />}
+                      <span>{p.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {excludePeople.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {excludePeople.map(p => (
+                  <span
+                    key={p.id}
+                    className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/15 py-0.5 pl-2 pr-1 text-[11px] text-rose-100"
+                  >
+                    {p.name}
+                    <button
+                      type="button"
+                      onClick={() => removeExcludePerson(p.id)}
+                      className="ml-0.5 rounded-full p-0.5 text-rose-200/60 hover:bg-white/10 hover:text-white"
                       aria-label="Remove"
                     >×</button>
                   </span>
