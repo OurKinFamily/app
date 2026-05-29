@@ -54,6 +54,7 @@ export function LightboxPage() {
         onFavorite={toggleFav}
         onRotate={(it, deg) => console.log('rotate (mock — needs API)', it.path, deg)}
         onAlbum={it => setAlbumFor(it.path)}
+        onMosaic={it => navigate(`/admin/mosaic?source=${encodeURIComponent(it.path)}`)}
         onDownload={it => console.log('download (mock)', it.path)}
         onDelete={async it => {
           try {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { X, ChevronLeft, ChevronRight, Heart, RotateCw, Download, Trash2, Album, Volume2, Square, Image as ImageIcon } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Heart, RotateCw, Download, Trash2, Album, Volume2, Square, Image as ImageIcon, Palette } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { IconButton } from './IconButton'
 import { FaceAssignPopover } from './FaceAssignPopover'
@@ -12,7 +12,7 @@ import { bboxRect, onMediaError } from './mediaLightboxHelpers'
 export function MediaLightbox({
   items, initialIndex = 0, title,
   favorites, onFavorite, onRotate, onDownload, onDelete, onSetCover, currentCoverPath,
-  onClose, onNavigate, onNeedMore, onAlbum, renderDetail, children,
+  onClose, onNavigate, onNeedMore, onAlbum, onMosaic, renderDetail, children,
 }) {
   const [index, setIndex] = useState(initialIndex)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -154,6 +154,7 @@ export function MediaLightbox({
             )}
             {onRotate && <IconButton label="Rotate" onClick={rotate}><RotateCw size={18} /></IconButton>}
             {onAlbum && <IconButton label="Add to album" onClick={() => onAlbum(item)}><Album size={18} /></IconButton>}
+            {onMosaic && <IconButton label="Mosaic" onClick={() => onMosaic(item)}><Palette size={18} /></IconButton>}
             {onSetCover && (
               <IconButton
                 label={item?.path === currentCoverPath ? 'Current cover' : 'Set as cover'}

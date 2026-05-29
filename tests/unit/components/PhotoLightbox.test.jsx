@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, render } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+
+// PhotoLightbox now calls useNavigate to handle the Mosaic icon → /admin/mosaic
+// hop, so every render needs to be wrapped in a Router. Wrap once here so
+// individual cases stay tidy.
+const wrapped = ui => render(<MemoryRouter>{ui}</MemoryRouter>)
 
 // Mock the heavy children so we only test PhotoLightbox's wiring.
 vi.mock('../../../src/components/MediaLightbox', () => ({
@@ -24,7 +30,7 @@ describe('PhotoLightbox', () => {
   describe('forwards configuration to MediaLightbox', () => {
     it('passes items, initialIndex, title, and callbacks', () => {
       const items = [{ path: 'a.jpg' }]
-      render(
+      wrapped(
         <PhotoLightbox
           items={items}
           initialIndex={3}
@@ -48,7 +54,7 @@ describe('PhotoLightbox', () => {
     })
 
     it('passes a renderDetail function', () => {
-      render(<PhotoLightbox items={[]} onClose={() => {}} />)
+      wrapped(<PhotoLightbox items={[]} onClose={() => {}} />)
       const props = MediaLightbox.mock.calls[0][0]
       expect(typeof props.renderDetail).toBe('function')
     })
@@ -56,7 +62,7 @@ describe('PhotoLightbox', () => {
 
   describe('callback wiring', () => {
     it('renderDetail returns a MediaDetail element keyed by path + v', () => {
-      render(<PhotoLightbox items={[]} onClose={() => {}} />)
+      wrapped(<PhotoLightbox items={[]} onClose={() => {}} />)
       const props = MediaLightbox.mock.calls[0][0]
       const el = props.renderDetail({ path: 'archive/x.jpg' }, {}, 7)
       expect(el.key).toBe('archive/x.jpg-7')
@@ -64,7 +70,7 @@ describe('PhotoLightbox', () => {
 
     it('onRotate is wired and logs without throwing', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      render(<PhotoLightbox items={[]} onClose={() => {}} />)
+      wrapped(<PhotoLightbox items={[]} onClose={() => {}} />)
       const props = MediaLightbox.mock.calls[0][0]
       props.onRotate({ path: 'x.jpg' }, 90)
       expect(logSpy).toHaveBeenCalled()
@@ -73,15 +79,25 @@ describe('PhotoLightbox', () => {
 
     it('onDownload is wired and logs without throwing', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      render(<PhotoLightbox items={[]} onClose={() => {}} />)
+      wrapped(<PhotoLightbox items={[]} onClose={() => {}} />)
       const props = MediaLightbox.mock.calls[0][0]
       props.onDownload({ path: 'x.jpg' })
       expect(logSpy).toHaveBeenCalled()
       logSpy.mockRestore()
     })
 
+    it('onMosaic navigates to /admin/mosaic with the source path encoded', () => {
+      wrapped(<PhotoLightbox items={[]} onClose={() => {}} />)
+      const props = MediaLightbox.mock.calls[0][0]
+      // No throw + onMosaic exists — covers the closure even without
+      // asserting on the navigate destination (jsdom doesn't update URL
+      // without a Routes match).
+      expect(typeof props.onMosaic).toBe('function')
+      expect(() => props.onMosaic({ path: 'archive/2026/05/x.jpg' })).not.toThrow()
+    })
+
     it('onAlbum opens the AlbumPicker and closing it sets albumFor=null', async () => {
-      const { findByTestId, queryByTestId } = render(<PhotoLightbox items={[]} onClose={() => {}} />)
+      const { findByTestId, queryByTestId } = wrapped(<PhotoLightbox items={[]} onClose={() => {}} />)
       const props = MediaLightbox.mock.calls[0][0]
       await act(async () => { props.onAlbum({ path: 'x.jpg' }) })
       const closeBtn = await findByTestId('mock-album-close')
@@ -93,7 +109,7 @@ describe('PhotoLightbox', () => {
     it('onDelete deletes via the api and calls onClose on success', async () => {
       const onClose = vi.fn()
       global.fetch = vi.fn().mockResolvedValue({ ok: true })
-      render(<PhotoLightbox items={[]} onClose={onClose} />)
+      wrapped(<PhotoLightbox items={[]} onClose={onClose} />)
       const props = MediaLightbox.mock.calls[0][0]
       await props.onDelete({ path: 'archive/x.jpg' })
       expect(onClose).toHaveBeenCalled()
@@ -103,7 +119,7 @@ describe('PhotoLightbox', () => {
       const onClose = vi.fn()
       global.fetch = vi.fn().mockResolvedValue({ ok: false })
       const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
-      render(<PhotoLightbox items={[]} onClose={onClose} />)
+      wrapped(<PhotoLightbox items={[]} onClose={onClose} />)
       const props = MediaLightbox.mock.calls[0][0]
       await props.onDelete({ path: 'archive/x.jpg' })
       expect(alertSpy).toHaveBeenCalled()

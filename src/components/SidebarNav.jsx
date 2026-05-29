@@ -31,7 +31,10 @@ const SECTIONS = [
   {
     title: 'Admin',
     items: [
-      { to: '/admin/overview', label: 'Overview', Icon: LayoutDashboard },
+      { to: '/admin/overview', label: 'Overview (legacy)', Icon: LayoutDashboard },
+      { to: '/admin/filesystem', label: 'Analytics', Icon: LayoutDashboard },
+      { to: '/admin/health', label: 'Health', Icon: Activity },
+      { to: '/admin/mosaic', label: 'Mosaic', Icon: Palette },
       { to: '/admin/jobs', label: 'Jobs', Icon: Activity },
     ],
   },

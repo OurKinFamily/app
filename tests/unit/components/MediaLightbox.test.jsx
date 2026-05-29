@@ -120,6 +120,12 @@ describe('MediaLightbox', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add to album' }))
       expect(onAlbum).toHaveBeenCalledWith(PHOTO)
     })
+    it('clicking Mosaic fires onMosaic with the current item', () => {
+      const onMosaic = vi.fn()
+      renderLightbox({ onMosaic })
+      fireEvent.click(screen.getByRole('button', { name: 'Mosaic' }))
+      expect(onMosaic).toHaveBeenCalledWith(PHOTO)
+    })
     it('clicking Set as cover fires onSetCover with the current item', () => {
       const onSetCover = vi.fn()
       renderLightbox({ onSetCover, currentCoverPath: 'archive/other.jpg' })

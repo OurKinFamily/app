@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 
-// In-flow header for AppShell. `onMenu` shows a hamburger on mobile (top-right).
+// In-flow header for AppShell. `onMenu` shows a hamburger on mobile (top-left).
 export function AppHeader({ onMenu }) {
   const [me, setMe] = useState(null)
 
@@ -17,7 +17,16 @@ export function AppHeader({ onMenu }) {
   const userTo   = me?.person?.id ? `/manage/people/${me.person.id}` : null
 
   return (
-    <header className="flex h-12 items-center gap-2 border-b border-white/5 bg-black/60 pl-4 backdrop-blur">
+    <header className="flex h-12 items-center gap-2 border-b border-white/5 bg-black/60 pl-2 pr-4 backdrop-blur">
+      {onMenu && (
+        <button
+          onClick={onMenu}
+          aria-label="Toggle menu"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <Menu size={20} />
+        </button>
+      )}
       <Link
         to="/"
         title="Home"
@@ -30,18 +39,8 @@ export function AppHeader({ onMenu }) {
           ? <Link to={userTo} className="relative z-10 truncate text-[13px] text-white/70 transition-colors hover:text-white" title={me?.person?.name || ''}>{userName}</Link>
           : <span className="truncate text-[13px] text-white/70">{userName}</span>
       )}
-      {/* Trailing slot — pages portal icon buttons in here (filters, etc.).
-          ml-auto pushes both this and the hamburger to the right edge. */}
+      {/* Trailing slot — pages portal icon buttons in here (filters, etc.). */}
       <div id="layout-header-trailing" className="ml-auto flex items-center gap-1" />
-      {onMenu && (
-        <button
-          onClick={onMenu}
-          aria-label="Toggle menu"
-          className="ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
-        >
-          <Menu size={20} />
-        </button>
-      )}
     </header>
   )
 }

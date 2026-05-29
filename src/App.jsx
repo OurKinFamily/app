@@ -18,6 +18,9 @@ import { GroupPage } from './pages/GroupPage'
 import { SimilarFacesPage } from './pages/SimilarFacesPage'
 import { JobsPage } from './pages/JobsPage'
 import { AdminOverviewPage } from './pages/AdminOverviewPage'
+import { FilesystemPage } from './pages/FilesystemPage'
+import { HealthPage } from './pages/HealthPage'
+import { MosaicPage } from './pages/MosaicPage'
 import { GalleryPage } from './pages/GalleryPage'
 import { PlacesPage } from './pages/PlacesPage'
 import { ScrapbookPage } from './pages/ScrapbookPage'
@@ -78,6 +81,9 @@ export default function App() {
 
             <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
             <Route path="/admin/overview" element={<AdminOverviewPage />} />
+            <Route path="/admin/filesystem" element={<FilesystemPage />} />
+            <Route path="/admin/health" element={<HealthPage />} />
+            <Route path="/admin/mosaic" element={<MosaicPage />} />
             <Route path="/admin/jobs" element={<JobsPage />} />
           </Route>
         </Route>

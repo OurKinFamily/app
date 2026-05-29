@@ -23,8 +23,11 @@ describe('SidebarNav', () => {
       ['Confirm faces',    '/manage/faces/confirm'],
       ['Groups',           '/manage/groups'],
       ['Suggestions',      '/manage/suggestions'],
-      ['Overview',         '/admin/overview'],
-      ['Jobs',             '/admin/jobs'],
+      ['Overview (legacy)', '/admin/overview'],
+      ['Analytics',         '/admin/filesystem'],
+      ['Health',            '/admin/health'],
+      ['Mosaic',            '/admin/mosaic'],
+      ['Jobs',              '/admin/jobs'],
       ['Design',           '/design'],
     ])('renders the %s link pointing at %s', (label, href) => {
       renderWithRouter(<SidebarNav />)

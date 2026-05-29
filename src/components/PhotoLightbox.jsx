@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useFavorites } from '../lib/useFavorites'
 import { MediaLightbox } from './MediaLightbox'
 import { MediaDetail } from './MediaDetail'
@@ -8,6 +9,7 @@ import { AlbumPicker } from './AlbumPicker'
 // (rotate / download / delete still mocked) + Album picker + MediaDetail.
 // Use this anywhere you want the same lightbox UX as the main gallery.
 export function PhotoLightbox({ items, initialIndex = 0, onClose, onNavigate, onNeedMore, onSetCover, currentCoverPath, title }) {
+  const navigate = useNavigate()
   const { favs, toggle: toggleFav } = useFavorites()
   const [albumFor, setAlbumFor] = useState(null)
   return (
@@ -20,6 +22,7 @@ export function PhotoLightbox({ items, initialIndex = 0, onClose, onNavigate, on
         onFavorite={toggleFav}
         onRotate={(it, deg) => console.log('rotate (mock — needs API)', it.path, deg)}
         onAlbum={it => setAlbumFor(it.path)}
+        onMosaic={it => navigate(`/admin/mosaic?source=${encodeURIComponent(it.path)}`)}
         onDownload={it => console.log('download (mock)', it.path)}
         onDelete={async it => {
           const { deleteMedia } = await import('../lib/api')
