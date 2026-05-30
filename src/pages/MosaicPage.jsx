@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Container } from '../components/Container'
+import { mediumUrl } from '../lib/media'
 
 const GRID_PRESETS = [
   { label: 'Small   · 60 × 80',    w: 60,  h: 80  },
@@ -34,7 +35,7 @@ export function MosaicPage() {
   const [sourceFile, setSourceFile] = useState(null)
   const [sourcePath, setSourcePath] = useState(initialPath)
   const [sourcePreview, setSourcePreview] = useState(
-    initialPath ? `/api/media/medium/${initialPath}` : null
+    initialPath ? mediumUrl(initialPath) : null
   )
   const [grid, setGrid] = useState(GRID_PRESETS[1])
   const [tileSize, setTileSize] = useState(48)

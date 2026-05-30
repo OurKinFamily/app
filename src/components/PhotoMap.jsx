@@ -4,12 +4,8 @@ import L from 'leaflet'
 import Supercluster from 'supercluster'
 import 'leaflet/dist/leaflet.css'
 import { PhotoViewer } from './PhotoViewer'
-import { isVideo, mediaUrl } from '../lib/media'
+import { isVideo, mediaUrl, thumbUrl } from '../lib/media'
 import { useEscToClose } from '../lib/hooks'
-
-function thumbUrl(path) {
-  return `/api/media/thumb/${path.replace(/^archive\//, '')}`
-}
 
 // ── Cluster layer ──────────────────────────────────────────────────────────────
 

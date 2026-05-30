@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Container } from '../components/Container'
+import { mediaUrl } from '../lib/media'
 
 const HUE_COLOR = {
   // Reds & warms
@@ -166,7 +167,7 @@ function PeopleLeaderboardBody({ buckets, onClick, limit }) {
           <div className="text-[10px] uppercase tracking-wider text-white/35">#{i + 1}</div>
           {b.avatar && (
             <img
-              src={`/api/media/${b.avatar}`}
+              src={mediaUrl(b.avatar)}
               alt=""
               className="h-12 w-12 rounded-full object-cover ring-1 ring-white/15 sm:h-14 sm:w-14"
             />
@@ -360,7 +361,7 @@ function InsightCard({ kind, data }) {
       <div className="text-[12px] uppercase tracking-wider text-white/45">{LABEL}</div>
       {kind === 'person' && data.avatar && (
         <img
-          src={`/api/media/${data.avatar}`}
+          src={mediaUrl(data.avatar)}
           alt=""
           className="h-12 w-12 flex-none rounded-full object-cover ring-1 ring-white/15 sm:h-14 sm:w-14"
         />
@@ -940,7 +941,7 @@ export function FilesystemPage() {
         percent={openPerson && data.media.total ? (openPerson.count / data.media.total) * 100 : 0}
         hero={openPerson?.avatar && (
           <img
-            src={`/api/media/${openPerson.avatar}`}
+            src={mediaUrl(openPerson.avatar)}
             alt=""
             className="h-7 w-7 rounded-full object-cover ring-1 ring-white/20"
           />

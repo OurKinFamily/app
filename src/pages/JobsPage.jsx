@@ -189,6 +189,10 @@ export function JobsPage() {
     return sd !== 0 ? sd : (b.started_at || '').localeCompare(a.started_at || '')
   })
 
+  const visibleRuns = selected
+    ? sortedRuns.filter(r => r.job_id === selected.id)
+    : sortedRuns
+
   const activeCount = runs.filter(r => r.status === 'running' || r.status === 'queued' || r.status === 'unknown').length
   const [jobsOpen, setJobsOpen] = useState(false)
 
@@ -241,32 +245,39 @@ export function JobsPage() {
                   </div>
                 )}
                 <div className="flex flex-col gap-3">
-                  {(selected.params || []).map(p => (
-                    <div key={p.name} className="flex items-start gap-3">
-                      <Label className="!mb-0 w-32 shrink-0 pt-1.5">
-                        {p.label}{p.required && ' *'}
-                      </Label>
-                      {p.type === 'flag' ? (
-                        <div className="flex items-center gap-2 pt-1">
-                          <input
-                            type="checkbox"
-                            checked={!!params[p.name]}
-                            onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.checked }))}
-                            className="h-4 w-4 cursor-pointer accent-blue-500"
-                          />
-                          {p.hint && <span className="text-[11px] text-white/30">{p.hint}</span>}
-                        </div>
-                      ) : (
-                        <div className="flex flex-1 flex-col gap-1">
-                          <Input
-                            value={params[p.name] ?? ''}
-                            onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.value }))}
-                          />
-                          {p.hint && <span className="text-[11px] text-white/30">{p.hint}</span>}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  {(selected.params || []).map(p => {
+                    // Conditional visibility: hide unless show_if condition is met
+                    if (p.show_if) {
+                      const dep = params[p.show_if.name]
+                      if (dep !== p.show_if.equals) return null
+                    }
+                    return (
+                      <div key={p.name} className="flex items-start gap-3">
+                        <Label className="!mb-0 w-32 shrink-0 pt-1.5">
+                          {p.label}{p.required && ' *'}
+                        </Label>
+                        {p.type === 'flag' ? (
+                          <div className="flex items-center gap-2 pt-1">
+                            <input
+                              type="checkbox"
+                              checked={!!params[p.name]}
+                              onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.checked }))}
+                              className="h-4 w-4 cursor-pointer accent-blue-500"
+                            />
+                            {p.hint && <span className="text-[11px] text-white/30">{p.hint}</span>}
+                          </div>
+                        ) : (
+                          <div className="flex flex-1 flex-col gap-1">
+                            <Input
+                              value={params[p.name] ?? ''}
+                              onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.value }))}
+                            />
+                            {p.hint && <span className="text-[11px] text-white/30">{p.hint}</span>}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
                 <div className="mt-4">
                   <Button onClick={startRun} disabled={starting}>
@@ -280,11 +291,11 @@ export function JobsPage() {
           {/* Run history */}
           <div className="flex-1 overflow-y-auto">
             <div className="sticky top-0 z-10 border-b border-white/5 bg-black px-6 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/30">
-              Run History
+              Run History{selected && ` — ${selected.name}`}
             </div>
-            {sortedRuns.length === 0 ? (
+            {visibleRuns.length === 0 ? (
               <div className="px-6 py-6 text-[13px] text-white/25">No runs yet</div>
-            ) : sortedRuns.map(run => {
+            ) : visibleRuns.map(run => {
               const progress = parseProgress(run.last_line)
               const tone = STATUS_TONE[run.status === 'unknown' ? 'running' : run.status] || 'blue'
               return (

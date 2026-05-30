@@ -6,8 +6,7 @@ import { Tag } from '../components/Tag'
 import { Avatar } from '../components/Avatar'
 import { MediaLightbox } from '../components/MediaLightbox'
 import { MediaDetail } from '../components/MediaDetail'
-import { isVideo } from '../lib/media'
-import { mediaUrl } from '../lib/media'
+import { isVideo, mediaUrl, thumbUrl } from '../lib/media'
 import { getClusters } from '../lib/api'
 
 // Walk through every person who has enough tagged faces to produce a
@@ -343,8 +342,8 @@ export function ConfirmFacesPage() {
                 const path = (f.photo_path || '').replace(/^\/photos\//, '')
                 return {
                   path,
-                  url:           `/api/media/${path}`,
-                  thumbnail_url: `/api/media/thumb/${path.replace(/^archive\//, '')}`,
+                  url:           mediaUrl(path),
+                  thumbnail_url: thumbUrl(path),
                   is_video:      isVideo(path),
                 }
               })}

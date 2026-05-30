@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { searchPeople } from '../lib/api'
+import { mediaUrl } from '../lib/media'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -175,7 +176,7 @@ function UnidentifiedFaces({ faces, photoPath, onAssigned, onHover }) {
                   className="w-full flex items-center gap-2 px-2 py-1.5 text-[11px] text-white/70 hover:bg-white/5 hover:text-white text-left"
                 >
                   {p.avatar
-                    ? <img src={`/api/media/${p.avatar}`} alt="" className="w-4 h-4 rounded-full object-cover shrink-0" />
+                    ? <img src={mediaUrl(p.avatar)} alt="" className="w-4 h-4 rounded-full object-cover shrink-0" />
                     : <div className="w-4 h-4 rounded-full bg-white/10 shrink-0" />
                   }
                   <span>{p.known_as && <span className="text-white/35 mr-1">({p.known_as})</span>}{p.name}</span>
@@ -381,7 +382,7 @@ export function PhotoViewer({ photos, initialIndex, onClose, onNeedMore, onNavig
                       {p.crop_url
                         ? <img src={p.crop_url} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
                         : p.avatar
-                          ? <img src={`/api/media/${p.avatar}`} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                          ? <img src={mediaUrl(p.avatar)} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
                           : <div className="w-5 h-5 rounded-full bg-white/10 shrink-0" />
                       }
                       <span className="text-[11px] text-white/70">{p.known_as || p.name}</span>

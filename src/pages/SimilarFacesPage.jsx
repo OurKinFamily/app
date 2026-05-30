@@ -37,7 +37,7 @@ export function SimilarFacesPage() {
 
   const [activePath, setActivePath]       = useState(photoPath)
   const [activeFaceIdx]                   = useState(faceIndex)
-  const [activeSeedCrop, setActiveSeedCrop] = useState(seedCrop ? `/api/media/${seedCrop}` : null)
+  const [activeSeedCrop, setActiveSeedCrop] = useState(seedCrop ? mediaUrl(seedCrop) : null)
 
   const [threshold, setThreshold]   = useState(0.5)
   const [allResults, setAllResults] = useState(null)
@@ -105,7 +105,7 @@ export function SimilarFacesPage() {
       const face = person.avatar
         ? (faces.find(f => f.crop_path === person.avatar) || faces[0])
         : faces[0]
-      setActiveSeedCrop(`/api/media/${face.crop_path}`)
+      setActiveSeedCrop(mediaUrl(face.crop_path))
     }).catch(() => {})
   }, [personId])
 
@@ -339,9 +339,9 @@ function SeedLightbox({ lightbox, onClose }) {
         </button>
         <div className="min-w-0 flex-1">
           {isVideo(lightbox.photoPath) ? (
-            <video src={`/api/media/${lightbox.photoPath}`} controls className="max-h-[80vh] w-full rounded-lg" />
+            <video src={mediaUrl(lightbox.photoPath)} controls className="max-h-[80vh] w-full rounded-lg" />
           ) : (
-            <img src={`/api/media/${lightbox.photoPath}`} alt="" className="max-h-[80vh] w-full rounded-lg object-contain" />
+            <img src={mediaUrl(lightbox.photoPath)} alt="" className="max-h-[80vh] w-full rounded-lg object-contain" />
           )}
           <p className="mt-2 break-all text-[11px] text-white/30">{lightbox.photoPath}</p>
         </div>

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { bboxRect, onMediaError } from '../../../src/components/mediaLightboxHelpers'
+import { MEDIA_VERSION } from '../../../src/lib/media'
 
 // Fake DOM element — enough for bboxRect to do its math without jsdom.
 function fakeEl({ cw = 800, ch = 600, ox = 10, oy = 20, nw = 1600, nh = 1200 } = {}) {
@@ -78,12 +79,13 @@ describe('onMediaError', () => {
     it('falls back from the medium URL to /api/media/<path> when path is set', () => {
       const e = fakeEvent({ src: 'https://example.com/medium/foo.jpg' })
       onMediaError(e, { path: 'foo.jpg' })
-      expect(e.currentTarget.src).toBe('/api/media/foo.jpg')
+      expect(e.currentTarget.src).toBe(`/api/media/foo.jpg?v=${MEDIA_VERSION}`)
     })
     it('falls back from /api/media/ to the thumbnail_url when present', () => {
+      const versioned = `/api/media/foo.jpg?v=${MEDIA_VERSION}`
       const e = fakeEvent({
-        src:     '/api/media/foo.jpg',
-        tried:   '/api/media/foo.jpg',  // already tried
+        src:     versioned,
+        tried:   versioned,  // already tried
       })
       onMediaError(e, { path: 'foo.jpg', thumbnail_url: '/api/media/thumb/foo.jpg' })
       expect(e.currentTarget.src).toBe('/api/media/thumb/foo.jpg')
@@ -101,12 +103,13 @@ describe('onMediaError', () => {
       onMediaError(e, { path: 'foo.jpg' })
       const tried = e.currentTarget.dataset.tried.split('|').filter(Boolean)
       expect(tried).toContain('https://example.com/medium/foo.jpg')
-      expect(tried).toContain('/api/media/foo.jpg')
+      expect(tried).toContain(`/api/media/foo.jpg?v=${MEDIA_VERSION}`)
     })
     it('hides the element once every candidate has been tried', () => {
+      const versioned = `/api/media/foo.jpg?v=${MEDIA_VERSION}`
       const e = fakeEvent({
-        src:     '/api/media/foo.jpg',
-        tried:   ['/api/media/foo.jpg', '/api/media/thumb/foo.jpg'].join('|'),
+        src:     versioned,
+        tried:   [versioned, '/api/media/thumb/foo.jpg'].join('|'),
       })
       onMediaError(e, { path: 'foo.jpg', thumbnail_url: '/api/media/thumb/foo.jpg' })
       // regression(2026-05-27): the fallback chain could loop between the

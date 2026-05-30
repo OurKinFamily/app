@@ -1,5 +1,6 @@
 // Helpers for MediaLightbox. Plain JS — kept out of the .jsx file to stay under
 // the 250-line cap.
+import { mediaUrl } from '../lib/media'
 
 // Maps a bbox to a CSS rect over the rendered <img> or <video>. Accepts
 // either normalized [0..1] coords (preferred — MediaDetail tries to convert
@@ -45,7 +46,7 @@ export function onMediaError(e, item) {
   if (el.src) tried.add(el.src)
 
   const candidates = [
-    item.url || (item.path ? `/api/media/${item.path}` : null),
+    item.url || (item.path ? mediaUrl(item.path) : null),
     item.thumbnail_url,
   ].filter(Boolean)
 

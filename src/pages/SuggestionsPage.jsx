@@ -4,6 +4,7 @@ import { Button } from '../components/Button'
 import { Container } from '../components/Container'
 import { Input } from '../components/Input'
 import { Tag } from '../components/Tag'
+import { mediaUrl } from '../lib/media'
 
 const TYPE_LABELS = {
   group_membership:  'Group',
@@ -141,7 +142,7 @@ function Avatar({ person, px = 22 }) {
   if (!person) return null
   const style = { width: px, height: px, borderRadius: '50%', flexShrink: 0 }
   if (person.avatar)
-    return <img src={`/api/media/${person.avatar}`} alt="" style={{ ...style, objectFit: 'cover' }} />
+    return <img src={mediaUrl(person.avatar)} alt="" style={{ ...style, objectFit: 'cover' }} />
   return (
     <div
       style={{ ...style, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}

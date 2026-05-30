@@ -6,6 +6,7 @@ import {
 import { CodeBlock } from '../components/admin/CodeBlock'
 import { Button } from '../components/Button'
 import { fmt, bytes, relTime } from '../components/admin/format'
+import { thumbUrl } from '../lib/media'
 
 // /admin/health — "Is the pipeline keeping up?"
 // Filesystem-side reality check. Drift vs Neo4j, sidecar coverage per
@@ -471,7 +472,7 @@ mm archive /photos/staging/ -r -w 6 ${bucket.flags}`.trimEnd()
                     {samples.slice(0, 16).map((p, i) => (
                       <div key={i} className="group relative aspect-square overflow-hidden rounded border border-white/8 bg-black/30">
                         <img
-                          src={`/api/media/thumb/${p}`}
+                          src={thumbUrl(p)}
                           alt=""
                           loading="lazy"
                           className="h-full w-full object-cover transition-transform group-hover:scale-110"

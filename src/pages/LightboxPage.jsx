@@ -5,6 +5,7 @@ import { deleteMedia } from '../lib/api'
 import { MediaLightbox } from '../components/MediaLightbox'
 import { MediaDetail } from '../components/MediaDetail'
 import { AlbumPicker } from '../components/AlbumPicker'
+import { mediaUrl, thumbUrl } from '../lib/media'
 
 // Renders as the gallery's nested route so GalleryPage stays mounted underneath
 // (scroll position + loaded pages survive). Reads media from the outlet context.
@@ -24,11 +25,10 @@ export function LightboxPage() {
     if (i >= 0) return { items: media, index: i }
     // Fallback: synthesize a minimal item from the URL so we can show this photo
     // without paging through the entire gallery to find it.
-    const stripped = photoPath.replace(/^archive\//, '')
     const single = {
       path: photoPath,
-      url: `/api/media/${photoPath}`,
-      thumbnail_url: `/api/media/thumb/${stripped}`,
+      url: mediaUrl(photoPath),
+      thumbnail_url: thumbUrl(photoPath),
     }
     return { items: [single], index: 0 }
   }, [media, photoPath])

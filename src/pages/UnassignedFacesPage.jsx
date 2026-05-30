@@ -394,7 +394,7 @@ export function UnassignedFacesPage() {
       if (seen.has(path)) return
       if (i === index) adjustedIndex = photos.length
       seen.add(path)
-      photos.push({ path, url: `/api/media/${path}`, is_video: isVideo(path) })
+      photos.push({ path, url: mediaUrl(path), is_video: isVideo(path) })
     })
     setViewer({ photos, index: adjustedIndex })
   }, [])

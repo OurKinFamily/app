@@ -5,6 +5,7 @@ import { IconButton } from './IconButton'
 import { FaceAssignPopover } from './FaceAssignPopover'
 import { MediaLightboxSheet } from './MediaLightboxSheet'
 import { bboxRect, onMediaError } from './mediaLightboxHelpers'
+import { mediumUrl } from '../lib/media'
 
 // Lightbox shell. Detail content via renderDetail(item, ctx).
 // ctx: { setHighlight, setFaces, setFaceClickHandler } — lets the detail panel
@@ -93,7 +94,7 @@ export function MediaLightbox({
     const preload = i => {
       const it = items[i]
       if (!it || it.is_video) return
-      const src = it.path ? `/api/media/medium/${it.path}` : (it.url || it.thumbnail_url)
+      const src = it.path ? mediumUrl(it.path) : (it.url || it.thumbnail_url)
       if (src) { const img = new Image(); img.src = src }
     }
     preload(index - 1)
@@ -118,7 +119,7 @@ export function MediaLightbox({
   // Photos use the resized medium endpoint to avoid serving multi-MB originals to the lightbox.
   const src = item.is_video
     ? (item.url || item.thumbnail_url)
-    : (item.path ? `/api/media/medium/${item.path}` : (item.url || item.thumbnail_url))
+    : (item.path ? mediumUrl(item.path) : (item.url || item.thumbnail_url))
   const fav = favorites?.has(item.path)
   const detail = renderDetail ? renderDetail(item, ctx, detailV) : (children || <DetailPlaceholder />)
   const rotate = () => { setRotation(r => (r + 90) % 360); onRotate?.(item, 90) }

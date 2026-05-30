@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { MediaCard, MediaRow } from '../components/MediaCard'
 import { PhotoLightbox } from '../components/PhotoLightbox'
+import { mediaUrl } from '../lib/media'
 
 const VIEW_STORAGE_KEY = 'scrapbook-view-mode'
 
@@ -256,7 +257,7 @@ export function PersonScrapbook() {
             {visibleCollections.map(c => (
               <ItemComp
                 key={c.id}
-                cover={c.cover_path ? `/api/media/${c.cover_path}` : null}
+                cover={c.cover_path ? mediaUrl(c.cover_path) : null}
                 coverBadge={`${c.item_count} ${c.is_series ? 'pages' : 'items'}`}
                 icon={typeIcon(c.type)}
                 text={c.name}

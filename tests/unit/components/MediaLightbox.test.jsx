@@ -13,6 +13,7 @@ vi.mock('../../../src/components/MediaLightboxSheet', () => ({
 }))
 
 import { MediaLightbox } from '../../../src/components/MediaLightbox'
+import { MEDIA_VERSION } from '../../../src/lib/media'
 
 const PHOTO = { path: 'archive/a.jpg', filename: 'a.jpg' }
 const VIDEO = { path: 'archive/v.mp4', filename: 'v.mp4', is_video: true }
@@ -29,7 +30,7 @@ describe('MediaLightbox', () => {
   describe('rendering', () => {
     it('shows the image at the current index', () => {
       const { container } = renderLightbox()
-      expect(container.querySelector('img[src="/api/media/medium/archive/a.jpg"]')).not.toBeNull()
+      expect(container.querySelector(`img[src="/api/media/medium/archive/a.jpg?v=${MEDIA_VERSION}"]`)).not.toBeNull()
     })
     it('shows a <video> element when the item is a video', () => {
       const { container } = renderLightbox({ items: [VIDEO] })

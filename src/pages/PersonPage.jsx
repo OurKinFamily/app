@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, Outlet, NavLink } from 'react-router-dom'
 import { Pencil } from 'lucide-react'
 import { getPerson, getRelatives, getPhotos } from '../lib/api'
-import { mediaUrl } from '../lib/media'
+import { mediaUrl, mediumUrl } from '../lib/media'
 import { cn } from '../lib/cn'
 import { Container } from '../components/Container'
 import { Avatar } from '../components/Avatar'
@@ -69,7 +69,7 @@ export function PersonPage() {
       <div
         className="group/hero relative h-[300px] overflow-hidden bg-cover"
         style={hero ? {
-          backgroundImage: `url(/api/media/medium/${hero})`,
+          backgroundImage: `url(${mediumUrl(hero)})`,
           backgroundPosition: person.cover_position || 'center',
         } : undefined}
       >

@@ -201,7 +201,7 @@ export function InlineSuggestion({ suggestion: s, otherPerson, onYes, onNo }) {
         <span className="text-[10px] text-amber-400/70">?</span>
         <div className="flex-1 min-w-0 flex items-center gap-1.5">
           {target?.avatar
-            ? <img src={`/api/media/${target.avatar}`} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+            ? <img src={mediaUrl(target.avatar)} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
             : target && <div className="w-5 h-5 rounded-full bg-white/10 shrink-0 flex items-center justify-center text-[9px] text-white/40">
                 {(target.known_as || target.name || '').slice(0, 1).toUpperCase()}
               </div>}
@@ -444,7 +444,7 @@ export function AddConnectionPanel({ personId, existingIds, onAdded }) {
                   {isSel && <span className="text-white text-[8px] font-bold">✓</span>}
                 </div>
                 {p.avatar
-                  ? <img src={`/api/media/${p.avatar}`} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                  ? <img src={mediaUrl(p.avatar)} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
                   : <div className="w-5 h-5 rounded-full bg-white/10 shrink-0" />}
                 <span>{p.name}{p.known_as ? <span className="text-white/30 ml-1">({p.known_as})</span> : ''}</span>
                 {existingIds.has(p.id) && <span className="ml-auto text-[10px] text-white/20">+ group</span>}

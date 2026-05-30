@@ -8,6 +8,7 @@ import { Input } from '../components/Input'
 import { Label } from '../components/Label'
 import { Drawer } from '../components/Drawer'
 import { MediaCard } from '../components/MediaCard'
+import { mediumUrl } from '../lib/media'
 
 export function AlbumsPage() {
   const navigate = useNavigate()
@@ -62,7 +63,7 @@ export function AlbumsPage() {
           {albums.map(a => (
             <MediaCard
               key={a.id}
-              cover={a.cover_path ? `/api/media/medium/${a.cover_path}` : null}
+              cover={a.cover_path ? mediumUrl(a.cover_path) : null}
               coverBadge={a.item_count > 0 ? `${a.item_count} photo${a.item_count === 1 ? '' : 's'}` : 'empty'}
               icon={a.is_private ? <Lock size={13} /> : <Album size={13} />}
               text={a.name}

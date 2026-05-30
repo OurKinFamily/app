@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getFaces, setAvatar } from '../lib/api'
 import { useEscToClose } from '../lib/hooks'
+import { mediaUrl } from '../lib/media'
 
 const PAGE_SIZE = 60
 
@@ -61,7 +62,7 @@ export function AvatarPicker({ person, onClose, onSaved }) {
                     className="aspect-square overflow-hidden rounded hover:ring-2 hover:ring-rose-400 transition focus:outline-none"
                   >
                     <img
-                      src={`/api/media/${face.crop_path}`}
+                      src={mediaUrl(face.crop_path)}
                       alt=""
                       className="w-full h-full object-cover"
                       loading="lazy"

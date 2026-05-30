@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { MosaicPage } from '../../../src/pages/MosaicPage'
+import { MEDIA_VERSION } from '../../../src/lib/media'
 import { renderWithRouter, mockFetch } from '../helpers'
 
 // Lightweight UI-only tests. We never hit /api/admin/mosaic/render here —
@@ -33,7 +34,7 @@ describe('MosaicPage', () => {
       route: '/admin/mosaic?source=archive/2020/05/x.jpg',
     })
     const img = screen.getByAltText('source')
-    expect(img).toHaveAttribute('src', '/api/media/medium/archive/2020/05/x.jpg')
+    expect(img).toHaveAttribute('src', `/api/media/medium/archive/2020/05/x.jpg?v=${MEDIA_VERSION}`)
     // Picker drop-zone is hidden when a source is loaded.
     expect(screen.queryByText(/pick an image/i)).not.toBeInTheDocument()
   })
