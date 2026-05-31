@@ -3,7 +3,7 @@ import {
   getPeople, getPerson, getRelatives, searchPeople, createPerson,
   getFaces, getPhotos, setAvatar, unassignFace, deleteMedia, redateMedia, setCover,
   addRelationship, getClusters, getCluster, assignCluster, skipCluster,
-  unskipCluster,
+  unskipCluster, search,
 } from '../../../src/lib/api'
 import { mockFetch, mockFetchFail } from '../helpers'
 
@@ -297,6 +297,26 @@ describe('api', () => {
     it('throws on non-ok', async () => {
       mockFetch(null, { ok: false })
       await expect(unskipCluster('c1')).rejects.toThrow('Failed to unskip cluster')
+    })
+  })
+
+  describe('search', () => {
+    it('POSTs /api/search with q + empty history by default', async () => {
+      mockFetch({ media: [], answer: { message: 'ok' } })
+      await search('photos of Stephen')
+      expect(lastCall()[0]).toBe('/api/search')
+      expect(lastCall()[1].method).toBe('POST')
+      expect(lastBody()).toEqual({ q: 'photos of Stephen', history: [] })
+    })
+    it('forwards history when provided', async () => {
+      mockFetch({ media: [] })
+      const history = [{ q: 'Stephen as a kid', plan: { person_names: ['Stephen'] } }]
+      await search('a little older', history)
+      expect(lastBody()).toEqual({ q: 'a little older', history })
+    })
+    it('throws with status code on non-ok', async () => {
+      mockFetch(null, { ok: false, status: 503 })
+      await expect(search('x')).rejects.toThrow('Search failed: 503')
     })
   })
 

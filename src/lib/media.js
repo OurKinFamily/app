@@ -6,7 +6,7 @@ const VIDEO_EXTS = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v', 'mts', 'm
 export const MEDIA_VERSION = 1
 
 function v(url) {
-  return url + (url.includes('?') ? '&' : '?') + 'v=' + MEDIA_VERSION
+  return url + '?v=' + MEDIA_VERSION
 }
 
 export function isVideo(path) {
@@ -28,8 +28,3 @@ export function mediumUrl(path) {
   return v(`/api/media/medium/${path}`)
 }
 
-// Pass-through cache-buster for URLs built elsewhere (e.g. thumbnail_url from API)
-export function withMediaVersion(url) {
-  if (!url) return url
-  return v(url)
-}
