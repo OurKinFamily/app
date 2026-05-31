@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { RootLayout } from './components/RootLayout'
 import { MainLayout } from './components/MainLayout'
+import { ToastProvider } from './components/Toast'
 import { PeoplePage } from './pages/PeoplePage'
 import { PersonPage } from './pages/PersonPage'
 import { PersonOverview } from './pages/PersonOverview'
@@ -31,15 +32,19 @@ import { AlbumsPage } from './pages/AlbumsPage'
 import { AlbumPage } from './pages/AlbumPage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { FamilyPage } from './pages/FamilyPage'
+import { SearchPage } from './pages/SearchPage'
 import './index.css'
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ToastProvider>
       <Routes>
         <Route element={<RootLayout />}>
           <Route element={<MainLayout />}>
             <Route path="/" element={<Navigate to="/gallery" replace />} />
+
+            <Route path="/search" element={<SearchPage />} />
 
             <Route path="/gallery" element={<GalleryPage />}>
               <Route path="photo/*" element={<LightboxPage />} />
@@ -88,6 +93,7 @@ export default function App() {
           </Route>
         </Route>
       </Routes>
+      </ToastProvider>
     </BrowserRouter>
   )
 }

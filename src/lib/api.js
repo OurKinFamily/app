@@ -135,3 +135,16 @@ export async function unskipCluster(clusterId) {
   const res = await fetch(`${BASE}/faces/clusters/${clusterId}/unskip`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to unskip cluster')
 }
+
+// LLM-powered search. Returns { media, debug } — debug includes plan, prompt,
+// raw LLM response, resolved persons/places, Cypher, timings.
+// `history` is an array of prior turns [{q, plan}] for conversational refinement.
+export async function search(q, history = []) {
+  const res = await fetch(`${BASE}/search`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ q, history }),
+  })
+  if (!res.ok) throw new Error(`Search failed: ${res.status}`)
+  return res.json()
+}

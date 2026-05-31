@@ -15,6 +15,7 @@ import { Label } from '../components/Label'
 import { Input } from '../components/Input'
 import { Textarea } from '../components/Textarea'
 import { Button } from '../components/Button'
+import { useToast } from '../components/Toast'
 import { AppShell } from '../components/AppShell'
 import { Container } from '../components/Container'
 import { DetailSection } from '../components/DetailSection'
@@ -141,6 +142,7 @@ const SAMPLE = 'The five Young children gathered by the lake.'
 
 export function DesignPage() {
   const noop = () => {}
+  const { toast } = useToast()
   const [favs, setFavs] = useState(() => new Set([MEDIA[0].path, MEDIA[3].path, MEDIA[5].path]))
   const toggleFav = it => setFavs(s => {
     const n = new Set(s)
@@ -297,6 +299,23 @@ export function DesignPage() {
           <Button variant="danger">Delete</Button>
           <Button disabled>Disabled</Button>
           <Button size="sm">Small</Button>
+        </div>
+      </Section>
+
+      <Section title="Toast — global notifications via useToast()">
+        <p className="mb-3 text-[12px] text-white/40">
+          <code className="rounded bg-white/5 px-1.5 py-0.5">{`const { toast } = useToast()`}</code>{' '}
+          then <code className="rounded bg-white/5 px-1.5 py-0.5">{`toast.success('msg')`}</code> /{' '}
+          <code className="rounded bg-white/5 px-1.5 py-0.5">{`.error / .info / .warning`}</code>.
+          Auto-dismisses in 3s; stacks bottom-right. Provider mounted at App root.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => toast.success('200 faces assigned to Henry F. Young')}>Success</Button>
+          <Button variant="danger" onClick={() => toast.error('Assign failed: network unreachable')}>Error</Button>
+          <Button variant="secondary" onClick={() => toast.info('Cluster #42 cached — fast next time')}>Info</Button>
+          <Button variant="secondary" onClick={() => toast.warning('Cluster has 5,000+ faces — review carefully')}>Warning</Button>
+          <Button variant="ghost" onClick={() => toast('Plain default tone (info)')}>Default</Button>
+          <Button variant="ghost" onClick={() => toast.success('Sticky — close me manually', { duration: 0 })}>Sticky</Button>
         </div>
       </Section>
 

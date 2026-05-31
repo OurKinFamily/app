@@ -10,6 +10,9 @@ import { Input } from '../components/Input'
 import { EntityChip } from '../components/EntityChip'
 import { Select } from '../components/Select'
 import { Tag } from '../components/Tag'
+import { useToast } from '../components/Toast'
+
+const AUTO_ASSIGN_THRESHOLD = 0.9
 
 const PAGE_SIZE = 400
 
@@ -47,6 +50,7 @@ export function SimilarFacesPage() {
   const [loading, setLoading]       = useState(false)
   const [error, setError]           = useState(null)
 
+  const { toast } = useToast()
   const [selected, setSelected]       = useState(new Set())
   const [knownPerson, setKnownPerson] = useState(null)
   const [personOpts, setPersonOpts]   = useState([])
@@ -133,8 +137,8 @@ export function SimilarFacesPage() {
     else setSelected(new Set(Array.from({ length: visibleCount }, (_, i) => i)))
   }
 
-  async function assignSelected(personIdToAssign) {
-    const faces = [...selected].map(i => allResults[i])
+  async function assignFaces(personIdToAssign, faces, personName) {
+    if (!faces.length) return
     setAssigning(true)
     try {
       await fetch('/api/faces/search/assign', {
@@ -154,9 +158,28 @@ export function SimilarFacesPage() {
       setAssigned(prev => prev + faces.length)
       setSelected(new Set())
       setPersonOpts([])
+      const who = personName || 'person'
+      toast.success(`${faces.length.toLocaleString()} face${faces.length === 1 ? '' : 's'} assigned to ${who}`)
+    } catch (e) {
+      toast.error(`Assign failed: ${e?.message || 'unknown error'}`)
     } finally {
       setAssigning(false)
     }
+  }
+
+  async function assignSelected(personIdToAssign, personName) {
+    const faces = [...selected].map(i => allResults[i])
+    await assignFaces(personIdToAssign, faces, personName)
+  }
+
+  async function autoAssignHighConfidence(personIdToAssign, personName) {
+    const faces = (allResults || []).filter(r => (r.similarity ?? 0) >= AUTO_ASSIGN_THRESHOLD)
+    if (!faces.length) {
+      toast.info(`No results ≥${AUTO_ASSIGN_THRESHOLD} similarity to auto-assign`)
+      return
+    }
+    if (!confirm(`Auto-assign ${faces.length.toLocaleString()} faces (≥${AUTO_ASSIGN_THRESHOLD * 100}% similarity) to ${personName}?`)) return
+    await assignFaces(personIdToAssign, faces, personName)
   }
 
   if (!activePath && !personId) {
@@ -238,11 +261,25 @@ export function SimilarFacesPage() {
                 return allVisibleSelected ? 'Deselect all' : `Select all ${visibleCount.toLocaleString()} loaded`
               })()}
             </Button>
+            {knownPerson && (() => {
+              const highConfCount = (allResults || []).filter(r => (r.similarity ?? 0) >= AUTO_ASSIGN_THRESHOLD).length
+              if (highConfCount === 0) return null
+              return (
+                <Button
+                  size="sm"
+                  disabled={assigning}
+                  onClick={() => autoAssignHighConfidence(knownPerson.id, knownPerson.known_as || knownPerson.name)}
+                  title={`Auto-assign all results with ≥${AUTO_ASSIGN_THRESHOLD * 100}% similarity`}
+                >
+                  Auto-assign {highConfCount.toLocaleString()} ≥{AUTO_ASSIGN_THRESHOLD * 100}% to {knownPerson.known_as || knownPerson.name}
+                </Button>
+              )
+            })()}
             {selected.size > 0 && (
               <>
                 <span className="text-[11px] text-white/50">{selected.size.toLocaleString()} selected</span>
                 {knownPerson ? (
-                  <Button size="sm" disabled={assigning} onClick={() => assignSelected(knownPerson.id)}>
+                  <Button size="sm" disabled={assigning} onClick={() => assignSelected(knownPerson.id, knownPerson.known_as || knownPerson.name)}>
                     Assign to {knownPerson.known_as || knownPerson.name}
                   </Button>
                 ) : (
@@ -250,7 +287,7 @@ export function SimilarFacesPage() {
                     <Select
                       options={personOpts}
                       value={null}
-                      onChange={opt => assignSelected(opt.value)}
+                      onChange={opt => assignSelected(opt.value, opt.text)}
                       onQueryChange={onPersonSearch}
                       placeholder="Assign to person…"
                     />

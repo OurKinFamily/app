@@ -67,7 +67,7 @@ export function PersonPage() {
     <>
       {/* Full-bleed hero — sits outside Container so the photo spans edge-to-edge */}
       <div
-        className="group/hero relative h-[300px] overflow-hidden bg-cover"
+        className="group/hero relative h-[400px] overflow-hidden bg-cover"
         style={hero ? {
           backgroundImage: `url(${mediumUrl(hero)})`,
           backgroundPosition: person.cover_position || 'center',

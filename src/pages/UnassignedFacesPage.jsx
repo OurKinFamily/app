@@ -13,6 +13,7 @@ import { SubheaderPortal } from '../components/SubheaderPortal'
 import { HeaderTrailingPortal } from '../components/HeaderTrailingPortal'
 import { MediaLightbox } from '../components/MediaLightbox'
 import { MediaDetail } from '../components/MediaDetail'
+import { useToast } from '../components/Toast'
 
 const QUICK_PERSON_IDS = [
   'person-stephen',
@@ -29,6 +30,7 @@ function personToOption(p) {
   return {
     value: p.id,
     text: p.known_as || p.name,
+    fullName: p.name,  // for toast — always full name regardless of known_as
     avatar: p.avatar ? mediaUrl(p.avatar) : null,
     initials: true,
     label: (
@@ -70,8 +72,12 @@ function ClusterCard({ cluster, isSelected, onClick }) {
 }
 
 function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto }) {
+  const { toast } = useToast()
   const [detail, setDetail]     = useState(null)
+  const [pageSize, setPageSize] = useState(CROP_BATCH)
   const [shown, setShown]       = useState(CROP_BATCH)
+  const [assignCount, setAssignCount] = useState(0)
+  const [lastAssigned, setLastAssigned] = useState(null)  // { id, name } | null
   const [searchResults, setSearchResults] = useState([])
   const [saving, setSaving]     = useState(false)
   const [creating, setCreating] = useState(false)
@@ -81,7 +87,8 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
   useEffect(() => {
     if (!cluster) return
     setExcluded(new Set())
-    setShown(CROP_BATCH)
+    setShown(pageSize)
+    setLastAssigned(null)  // new cluster — clear "assign to last" shortcut
     getCluster(cluster.id).then(setDetail).catch(() => {})
   }, [cluster?.id])
 
@@ -108,7 +115,7 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
       size: (d.size || 0) - count,
     } : d)
     setExcluded(new Set())
-    setShown(CROP_BATCH)
+    setShown(pageSize)
     return count
   }
 
@@ -128,7 +135,7 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
     } catch { setSearchResults([]) }
   }
 
-  const handleAssign = useCallback(async (personId) => {
+  const handleAssign = useCallback(async (personId, personName) => {
     if (saving) return
     setSaving(true)
     try {
@@ -136,26 +143,37 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
       await assignCluster(cluster.id, personId, args)
       const delta = applyAssignToLocalState(args)
       onAssigned(cluster.id, delta)
+      setLastAssigned({ id: personId, name: personName || 'person' })
+      setAssignCount(c => c + 1)  // bumps Select key → input remounts + autoFocuses
+      toast.success(`${delta.toLocaleString()} face${delta === 1 ? '' : 's'} assigned to ${personName || 'person'}`)
+    } catch (e) {
+      toast.error(`Assign failed: ${e?.message || 'unknown error'}`)
     } finally {
       setSaving(false)
     }
-  }, [cluster?.id, saving, onAssigned, detail, excluded, shown])
+  }, [cluster?.id, saving, onAssigned, detail, excluded, shown, toast])
 
   const handleCreate = useCallback(async () => {
     if (!newName.trim() || saving) return
     setSaving(true)
+    const name = newName.trim()
     try {
-      const person = await createPerson({ name: newName.trim() })
+      const person = await createPerson({ name })
       const args = buildAssignArgs()
       await assignCluster(cluster.id, person.id, args)
       const delta = applyAssignToLocalState(args)
       setCreating(false)
       setNewName('')
       onAssigned(cluster.id, delta)
+      setLastAssigned({ id: person.id, name })
+      setAssignCount(c => c + 1)
+      toast.success(`${delta.toLocaleString()} face${delta === 1 ? '' : 's'} assigned to ${name} (new person)`)
+    } catch (e) {
+      toast.error(`Create + assign failed: ${e?.message || 'unknown error'}`)
     } finally {
       setSaving(false)
     }
-  }, [newName, saving, cluster?.id, onAssigned, detail, excluded, shown])
+  }, [newName, saving, cluster?.id, onAssigned, detail, excluded, shown, toast])
 
   const handleSkip = useCallback(async () => {
     await skipCluster(cluster.id)
@@ -182,30 +200,44 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
                   avatar={p.avatar ? mediaUrl(p.avatar) : null}
                   initials
                   text={p.known_as || p.name.split(' ')[0]}
-                  onClick={() => handleAssign(p.id)}
+                  onClick={() => handleAssign(p.id, p.name)}
                 />
               ))}
             </div>
           )}
 
-          <div className="fixed left-20 right-0 bottom-[var(--bottom-bar-h,3.5rem)] z-30 border-t border-white/10 bg-black/90 p-3 backdrop-blur md:left-[17rem] md:bottom-0">
+          <div className="fixed left-20 right-0 bottom-[var(--bottom-bar-h,3.5rem)] z-30 flex flex-col gap-2 border-t border-white/10 bg-black/90 p-3 backdrop-blur md:left-[17rem] md:bottom-0">
+            {lastAssigned && detail && shown < detail.faces.length && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-white/40">
+                  {(detail.faces.length).toLocaleString()} faces still in this cluster
+                </span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={saving}
+                  onClick={() => handleAssign(lastAssigned.id, lastAssigned.name)}
+                >
+                  Assign next {Math.min(pageSize, detail.faces.length).toLocaleString()} to {lastAssigned.name}
+                </Button>
+              </div>
+            )}
             <Select
+              key={`${cluster?.id}-${assignCount}`}
+              autoFocus
               dropUp
               options={searchResults}
               value={null}
-              onChange={opt => handleAssign(opt.value)}
+              onChange={opt => handleAssign(opt.value, opt.fullName || opt.text)}
               onQueryChange={onSearch}
               placeholder="Search all people…"
             />
           </div>
 
           <div className="flex items-start justify-between">
-            <button
-              onClick={() => setCreating(true)}
-              className="flex items-center gap-1 text-[12px] text-blue-400/70 transition-colors hover:text-blue-400"
-            >
+            <Button size="sm" onClick={() => setCreating(true)}>
               <Plus size={12} /> Create new person
-            </button>
+            </Button>
             <Button variant="secondary" size="sm" onClick={handleSkip}>Skip</Button>
           </div>
         </div>
@@ -241,11 +273,27 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
             {excluded.size > 0 && <Tag tone="red">{excluded.size} excluded</Tag>}
             {!detail && <span className="text-[11px] text-white/30">loading…</span>}
           </div>
-          {excluded.size > 0 && (
-            <button onClick={() => setExcluded(new Set())} className="text-[11px] text-white/40 hover:text-white">
-              clear
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <select
+              value={pageSize}
+              onChange={e => {
+                const n = parseInt(e.target.value, 10)
+                setPageSize(n)
+                setShown(prev => Math.max(prev, n))
+              }}
+              className="rounded-md border border-white/10 bg-black/40 px-2 py-1 text-[11px] text-white/70 hover:bg-white/5 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+              title="Crops per page"
+            >
+              {[100, 200, 300, 400, 500].map(n => (
+                <option key={n} value={n}>{n} / page</option>
+              ))}
+            </select>
+            {excluded.size > 0 && (
+              <button onClick={() => setExcluded(new Set())} className="text-[11px] text-white/40 hover:text-white">
+                clear
+              </button>
+            )}
+          </div>
         </div>
         <div className="grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(64px,1fr))]">
           {detail
@@ -292,10 +340,10 @@ function AssignPanel({ cluster, quickPeople, onAssigned, onSkipped, onOpenPhoto 
         </div>
         {detail && shown < detail.faces.length && (
           <button
-            onClick={() => setShown(s => s + CROP_BATCH)}
+            onClick={() => setShown(s => s + pageSize)}
             className="mt-3 rounded-lg border border-white/10 px-3 py-1.5 text-[12px] text-white/60 transition-colors hover:bg-white/5 hover:text-white"
           >
-            Show {Math.min(CROP_BATCH, detail.faces.length - shown)} more ({(detail.faces.length - shown).toLocaleString()} remaining)
+            Show {Math.min(pageSize, detail.faces.length - shown)} more ({(detail.faces.length - shown).toLocaleString()} remaining)
           </button>
         )}
       </div>
@@ -401,9 +449,6 @@ export function UnassignedFacesPage() {
 
   return (
     <>
-      <SubheaderPortal>
-        <h1 className="text-sm font-medium text-white/80">Unassigned Faces</h1>
-      </SubheaderPortal>
       <HeaderTrailingPortal>
         {!loading && <Tag tone="amber">{total.toLocaleString()} remaining</Tag>}
       </HeaderTrailingPortal>
