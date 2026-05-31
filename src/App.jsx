@@ -12,6 +12,7 @@ import { PersonScrapbook } from './pages/PersonScrapbook'
 import { PersonTravel } from './pages/PersonTravel'
 import { PersonAI } from './pages/PersonAI'
 import { UnassignedFacesPage } from './pages/UnassignedFacesPage'
+import { FaceSuggestionsPage } from './pages/FaceSuggestionsPage'
 import { AssignedFacesPage } from './pages/AssignedFacesPage'
 import { ConfirmFacesPage } from './pages/ConfirmFacesPage'
 import { GroupsPage } from './pages/GroupsPage'
@@ -33,6 +34,9 @@ import { AlbumPage } from './pages/AlbumPage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { FamilyPage } from './pages/FamilyPage'
 import { SearchPage } from './pages/SearchPage'
+import { HomePage } from './pages/HomePage'
+import { MomChildhoodHomePage } from './pages/MomChildhoodHomePage'
+import { GrandmaBeforeMomPage } from './pages/GrandmaBeforeMomPage'
 import './index.css'
 
 export default function App() {
@@ -42,7 +46,13 @@ export default function App() {
       <Routes>
         <Route element={<RootLayout />}>
           <Route element={<MainLayout />}>
+            {/* "/" goes back to /gallery as the default landing. The home-page
+                napkin POC + its demo rooms still live at /home/* for when we
+                pick the vision work back up. */}
             <Route path="/" element={<Navigate to="/gallery" replace />} />
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/home/mom-childhood" element={<MomChildhoodHomePage />} />
+            <Route path="/home/grandma-before-mom" element={<GrandmaBeforeMomPage />} />
 
             <Route path="/search" element={<SearchPage />} />
 
@@ -63,7 +73,8 @@ export default function App() {
 
             <Route path="/manage" element={<Navigate to="/manage/faces/unassigned" replace />} />
             <Route path="/manage/people" element={<Navigate to="/gallery/people" replace />} />
-            <Route path="/manage/faces" element={<Navigate to="/manage/faces/unassigned" replace />} />
+            <Route path="/manage/faces" element={<Navigate to="/manage/faces/suggestions" replace />} />
+            <Route path="/manage/faces/suggestions" element={<FaceSuggestionsPage />} />
             <Route path="/manage/faces/unassigned" element={<UnassignedFacesPage />} />
             <Route path="/manage/faces/assigned" element={<AssignedFacesPage />} />
             <Route path="/manage/faces/confirm"  element={<ConfirmFacesPage />} />

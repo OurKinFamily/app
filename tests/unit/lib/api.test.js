@@ -3,7 +3,7 @@ import {
   getPeople, getPerson, getRelatives, searchPeople, createPerson,
   getFaces, getPhotos, setAvatar, unassignFace, deleteMedia, redateMedia, setCover,
   addRelationship, getClusters, getCluster, assignCluster, skipCluster,
-  unskipCluster, search,
+  unskipCluster, search, getGroupedSuggestions, getLeftoverClusters, rejectFaces,
 } from '../../../src/lib/api'
 import { mockFetch, mockFetchFail } from '../helpers'
 
@@ -317,6 +317,130 @@ describe('api', () => {
     it('throws with status code on non-ok', async () => {
       mockFetch(null, { ok: false, status: 503 })
       await expect(search('x')).rejects.toThrow('Search failed: 503')
+    })
+  })
+
+  describe('getGroupedSuggestions', () => {
+    it('POSTs default body to /api/faces/unassigned/grouped', async () => {
+      mockFetch({ groups: [], ambiguous: [], unknown_candidates: [], unmatched_count: 0 })
+      const out = await getGroupedSuggestions()
+      const [url, init] = lastCall()
+      expect(url).toBe('/api/faces/unassigned/grouped')
+      expect(init.method).toBe('POST')
+      expect(lastBody()).toEqual({
+        threshold:            0.75,
+        margin:               0.05,
+        limit:                100,
+        min_cluster_size:     3,
+        person_ids:           null,
+        inter_threshold:      0.80,
+        min_unknown_clusters: 2,
+        min_unknown_faces:    6,
+        maybe_threshold:      0.65,
+      })
+      expect(out).toEqual({ groups: [], ambiguous: [], unknown_candidates: [], unmatched_count: 0 })
+    })
+    it('forwards explicit overrides verbatim', async () => {
+      mockFetch({ groups: [] })
+      await getGroupedSuggestions({
+        threshold: 0.9,
+        margin: 0.02,
+        limit: 25,
+        minClusterSize: 5,
+        personIds: ['p1', 'p2'],
+        interThreshold: 0.7,
+        minUnknownClusters: 3,
+        minUnknownFaces: 12,
+        maybeThreshold: 0.5,
+      })
+      expect(lastBody()).toEqual({
+        threshold:            0.9,
+        margin:               0.02,
+        limit:                25,
+        min_cluster_size:     5,
+        person_ids:           ['p1', 'p2'],
+        inter_threshold:      0.7,
+        min_unknown_clusters: 3,
+        min_unknown_faces:    12,
+        maybe_threshold:      0.5,
+      })
+    })
+    it('throws "Failed to fetch grouped suggestions" on non-ok', async () => {
+      mockFetch(null, { ok: false })
+      await expect(getGroupedSuggestions()).rejects.toThrow('Failed to fetch grouped suggestions')
+    })
+  })
+
+  describe('getLeftoverClusters', () => {
+    it('POSTs default body to /api/faces/unassigned/leftover', async () => {
+      mockFetch({ leftover: [], total: 0, offset: 0, limit: 50 })
+      const out = await getLeftoverClusters()
+      const [url, init] = lastCall()
+      expect(url).toBe('/api/faces/unassigned/leftover')
+      expect(init.method).toBe('POST')
+      expect(lastBody()).toEqual({
+        threshold:            0.80,
+        inter_threshold:      0.80,
+        min_unknown_clusters: 2,
+        min_unknown_faces:    6,
+        min_cluster_size:     3,
+        maybe_threshold:      0.55,
+        offset:               0,
+        limit:                50,
+      })
+      expect(out).toEqual({ leftover: [], total: 0, offset: 0, limit: 50 })
+    })
+    it('forwards explicit overrides verbatim', async () => {
+      mockFetch({ leftover: [] })
+      await getLeftoverClusters({
+        threshold: 0.7,
+        interThreshold: 0.75,
+        minUnknownClusters: 4,
+        minUnknownFaces: 10,
+        minClusterSize: 2,
+        maybeThreshold: 0.45,
+        offset: 100,
+        limit: 200,
+      })
+      expect(lastBody()).toEqual({
+        threshold:            0.7,
+        inter_threshold:      0.75,
+        min_unknown_clusters: 4,
+        min_unknown_faces:    10,
+        min_cluster_size:     2,
+        maybe_threshold:      0.45,
+        offset:               100,
+        limit:                200,
+      })
+    })
+    it('throws "Failed to fetch leftover clusters" on non-ok', async () => {
+      mockFetch(null, { ok: false })
+      await expect(getLeftoverClusters()).rejects.toThrow('Failed to fetch leftover clusters')
+    })
+  })
+
+  describe('rejectFaces', () => {
+    it('POSTs person_id + faces to /api/faces/reject and returns the body', async () => {
+      mockFetch({ added: 2, requested: 2 })
+      const out = await rejectFaces('p1', [
+        { photo_path: 'archive/x.jpg', face_index: 0 },
+        { photo_path: 'archive/y.jpg', face_index: 1 },
+      ])
+      const [url, init] = lastCall()
+      expect(url).toBe('/api/faces/reject')
+      expect(init.method).toBe('POST')
+      expect(lastBody()).toEqual({
+        person_id: 'p1',
+        faces: [
+          { photo_path: 'archive/x.jpg', face_index: 0 },
+          { photo_path: 'archive/y.jpg', face_index: 1 },
+        ],
+      })
+      expect(out).toEqual({ added: 2, requested: 2 })
+    })
+    it('throws "Failed to reject faces" on non-ok', async () => {
+      mockFetch(null, { ok: false })
+      await expect(rejectFaces('p1', [])).rejects.toThrow('Failed to reject faces')
     })
   })
 

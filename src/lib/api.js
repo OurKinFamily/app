@@ -131,6 +131,74 @@ export async function skipCluster(clusterId) {
   if (!res.ok) throw new Error('Failed to skip cluster')
 }
 
+export async function getGroupedSuggestions({
+  threshold = 0.75,
+  margin = 0.05,
+  limit = 100,
+  minClusterSize = 3,
+  personIds = null,
+  interThreshold = 0.80,
+  minUnknownClusters = 2,
+  minUnknownFaces = 6,
+  maybeThreshold = 0.65,
+} = {}) {
+  const res = await fetch(`${BASE}/faces/unassigned/grouped`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      threshold,
+      margin,
+      limit,
+      min_cluster_size: minClusterSize,
+      person_ids: personIds,
+      inter_threshold: interThreshold,
+      min_unknown_clusters: minUnknownClusters,
+      min_unknown_faces: minUnknownFaces,
+      maybe_threshold: maybeThreshold,
+    }),
+  })
+  if (!res.ok) throw new Error('Failed to fetch grouped suggestions')
+  return res.json()
+}
+
+export async function getLeftoverClusters({
+  threshold = 0.80,
+  interThreshold = 0.80,
+  minUnknownClusters = 2,
+  minUnknownFaces = 6,
+  minClusterSize = 3,
+  maybeThreshold = 0.55,
+  offset = 0,
+  limit = 50,
+} = {}) {
+  const res = await fetch(`${BASE}/faces/unassigned/leftover`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      threshold,
+      inter_threshold: interThreshold,
+      min_unknown_clusters: minUnknownClusters,
+      min_unknown_faces: minUnknownFaces,
+      min_cluster_size: minClusterSize,
+      maybe_threshold: maybeThreshold,
+      offset,
+      limit,
+    }),
+  })
+  if (!res.ok) throw new Error('Failed to fetch leftover clusters')
+  return res.json()
+}
+
+export async function rejectFaces(personId, faces) {
+  const res = await fetch(`${BASE}/faces/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ person_id: personId, faces }),
+  })
+  if (!res.ok) throw new Error('Failed to reject faces')
+  return res.json()
+}
+
 export async function unskipCluster(clusterId) {
   const res = await fetch(`${BASE}/faces/clusters/${clusterId}/unskip`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to unskip cluster')
