@@ -12,7 +12,7 @@ import { Select } from '../components/Select'
 import { Tag } from '../components/Tag'
 import { useToast } from '../components/Toast'
 
-const AUTO_ASSIGN_THRESHOLD = 0.9
+const AUTO_ASSIGN_THRESHOLDS = [0.90, 0.85, 0.80]
 
 const PAGE_SIZE = 400
 
@@ -172,13 +172,13 @@ export function SimilarFacesPage() {
     await assignFaces(personIdToAssign, faces, personName)
   }
 
-  async function autoAssignHighConfidence(personIdToAssign, personName) {
-    const faces = (allResults || []).filter(r => (r.similarity ?? 0) >= AUTO_ASSIGN_THRESHOLD)
+  async function autoAssignAtThreshold(personIdToAssign, personName, threshold) {
+    const faces = (allResults || []).filter(r => (r.similarity ?? 0) >= threshold)
     if (!faces.length) {
-      toast.info(`No results ≥${AUTO_ASSIGN_THRESHOLD} similarity to auto-assign`)
+      toast.info(`No results ≥${Math.round(threshold * 100)}% similarity to auto-assign`)
       return
     }
-    if (!confirm(`Auto-assign ${faces.length.toLocaleString()} faces (≥${AUTO_ASSIGN_THRESHOLD * 100}% similarity) to ${personName}?`)) return
+    if (!confirm(`Auto-assign ${faces.length.toLocaleString()} faces (≥${Math.round(threshold * 100)}% similarity) to ${personName}?`)) return
     await assignFaces(personIdToAssign, faces, personName)
   }
 
@@ -261,20 +261,21 @@ export function SimilarFacesPage() {
                 return allVisibleSelected ? 'Deselect all' : `Select all ${visibleCount.toLocaleString()} loaded`
               })()}
             </Button>
-            {knownPerson && (() => {
-              const highConfCount = (allResults || []).filter(r => (r.similarity ?? 0) >= AUTO_ASSIGN_THRESHOLD).length
-              if (highConfCount === 0) return null
+            {knownPerson && AUTO_ASSIGN_THRESHOLDS.map(t => {
+              const count = (allResults || []).filter(r => (r.similarity ?? 0) >= t).length
+              if (count === 0) return null
               return (
                 <Button
+                  key={t}
                   size="sm"
                   disabled={assigning}
-                  onClick={() => autoAssignHighConfidence(knownPerson.id, knownPerson.known_as || knownPerson.name)}
-                  title={`Auto-assign all results with ≥${AUTO_ASSIGN_THRESHOLD * 100}% similarity`}
+                  onClick={() => autoAssignAtThreshold(knownPerson.id, knownPerson.known_as || knownPerson.name, t)}
+                  title={`Auto-assign all results with ≥${Math.round(t * 100)}% similarity`}
                 >
-                  Auto-assign {highConfCount.toLocaleString()} ≥{AUTO_ASSIGN_THRESHOLD * 100}% to {knownPerson.known_as || knownPerson.name}
+                  Auto-assign {count.toLocaleString()} ≥{Math.round(t * 100)}% to {knownPerson.known_as || knownPerson.name}
                 </Button>
               )
-            })()}
+            })}
             {selected.size > 0 && (
               <>
                 <span className="text-[11px] text-white/50">{selected.size.toLocaleString()} selected</span>
