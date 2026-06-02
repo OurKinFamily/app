@@ -8,15 +8,34 @@ import { mediaUrl } from '../lib/media'
 import { EntityChip } from '../components/EntityChip'
 import { AddRelativeModal } from '../components/AddRelativeModal'
 
-const NODE_W = 128
+const NODE_W = 160
 const NODE_H = 96
-const SMALL_W = 96
+const SMALL_W = 128
 const SMALL_H = 64
 const H_GAP = 20
-const PARENT_GAP = H_GAP
 const UNIT_GAP = 44
 const V_GAP = 60
 const ACT = 28  // action node size
+
+// Grandparent row: 4 evenly-spaced slots so inner grandparents never overlap.
+// Slot 0=outer-left, 1=inner-left, 2=inner-right, 3=outer-right.
+const GP_PITCH = SMALL_W + H_GAP            // 148px per slot
+const GP_TOTAL_W = 4 * SMALL_W + 3 * H_GAP  // 572px total
+const gpSlotX  = (slot) => -GP_TOTAL_W / 2 + slot * GP_PITCH
+// gpSlotX: 0→-286, 1→-138, 2→10, 3→158
+
+// Parents centered above their two grandparent slots.
+// Parent 0 → slots 0+1, Parent 1 → slots 2+3.
+const gpParentX = (i) => {
+  const firstSlot = i * 2
+  const pairCenter = (gpSlotX(firstSlot) + gpSlotX(firstSlot + 1)) / 2 + SMALL_W / 2
+  return pairCenter - NODE_W / 2
+}
+// gpParentX(0) = (-286 + -138)/2 + 64 - 80 = -212 + 64 - 80 = -228
+// gpParentX(1) = (10 + 158)/2 + 64 - 80 = 84 + 64 - 80 = 68
+
+// Fallback parent gap for when no grandparents are rendered.
+const PARENT_GAP = gpParentX(1) - (gpParentX(0) + NODE_W)  // 68 - (-228+160) = 136
 
 function buildGraph(person, relatives, childRelatives) {
   const { parents, spouses, children, siblings } = relatives
@@ -29,16 +48,11 @@ function buildGraph(person, relatives, childRelatives) {
   const Y_CHILDREN = Y_SELF + NODE_H + V_GAP
   const Y_GRANDCHILDREN = Y_CHILDREN + NODE_H + V_GAP
 
-  // Each parent's x-anchor (center). Centered: parent0 left of self, parent1 right.
-  const parentCenterX = (i) => i === 0
-    ? -(NODE_W + PARENT_GAP / 2) + NODE_W / 2  // = -PARENT_GAP/2 - NODE_W/2
-    : PARENT_GAP / 2 + NODE_W / 2
-
-  // Parents — centered over self (x=0)
+  // Parents — use gpParentX so they align with grandparent slots.
   ;[0, 1].forEach(i => {
     const par = parents[i]
     if (!par) return
-    const parX = i === 0 ? -(NODE_W + PARENT_GAP / 2) : PARENT_GAP / 2
+    const parX = gpParentX(i)
     nodes.push({
       id: `p-${par.id}`, type: 'person',
       position: { x: parX, y: Y_PARENTS },
@@ -50,18 +64,14 @@ function buildGraph(person, relatives, childRelatives) {
       style: { stroke: 'rgba(255,255,255,0.2)', strokeDasharray: '4 3' },
     })
 
-    // Grandparents above this parent — two slots side-by-side, centered on parent
+    // Grandparents: each in its dedicated slot (parent i → slots i*2 and i*2+1)
     const gps = par.parents || []
     ;[0, 1].forEach(gi => {
       const gp = gps[gi]
       if (!gp) return
-      const cx = parentCenterX(i)
-      const gpX = gi === 0
-        ? cx - (NODE_W + PARENT_GAP / 2)
-        : cx + PARENT_GAP / 2
       nodes.push({
         id: `gp-${gp.id}`, type: 'person',
-        position: { x: gpX, y: Y_GRANDPARENTS },
+        position: { x: gpSlotX(i * 2 + gi), y: Y_GRANDPARENTS },
         data: { ...gp, personId: gp.id, relationship: 'Grandparent', small: true },
       })
       edges.push({
@@ -76,8 +86,8 @@ function buildGraph(person, relatives, childRelatives) {
   // Add-parent button — only if fewer than 2 parents
   if (parents.length < 2) {
     const parentX = parents.length === 0
-      ? -ACT / 2                              // centered above self
-      : PARENT_GAP / 2 + (NODE_W - ACT) / 2  // where the second parent would go
+      ? -ACT / 2                                        // centered above self
+      : gpParentX(1) + (NODE_W - ACT) / 2              // where the second parent would go
     nodes.push({
       id: 'action-parent', type: 'action',
       position: { x: parentX, y: Y_PARENTS + (NODE_H - ACT) / 2 },
@@ -344,13 +354,14 @@ function PersonNode({ data }) {
   const label = data.known_as || data.name
   const relType = REL_TYPE_MAP[data.relationship]
   const small = data.small
-  const baseSize = small ? 'w-24 h-16' : 'w-32 h-24'
+  const nodeW = small ? SMALL_W : NODE_W
+  const nodeH = small ? SMALL_H : NODE_H
   const avatarSrc = data.avatar ? mediaUrl(data.avatar) : null
 
   const caption = data.relationship && !data.isSelf ? data.relationship : null
 
   return (
-    <div className={`${baseSize} group/node relative flex items-center justify-center`}>
+    <div style={{ width: nodeW, height: nodeH }} className="group/node relative flex items-center justify-center">
       <Handle type="target" id="top"    position={Position.Top}    className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
       <Handle type="source" id="bottom" position={Position.Bottom} className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
       <Handle type="target" id="left"   position={Position.Left}   className="!opacity-0 !w-1 !h-1 !min-w-0 !min-h-0" />
@@ -364,7 +375,7 @@ function PersonNode({ data }) {
           className="w-full justify-center"
           avatar={avatarSrc}
           initials={!avatarSrc}
-          text={<span className="truncate">{label}</span>}
+          text={<span className="break-words text-center leading-tight">{label}</span>}
           caption={caption}
           to={data.isSelf ? undefined : `/manage/people/${data.personId}`}
           onRemove={!data.isSelf && relType && onRemove
