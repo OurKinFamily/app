@@ -1,35 +1,78 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { Lock, Album, Trash2, Pencil } from 'lucide-react'
+import { Lock, LockOpen, Trash2, X, Pencil } from 'lucide-react'
 import { Container } from '../components/Container'
 import { Tag } from '../components/Tag'
 import { Button } from '../components/Button'
+import { Input } from '../components/Input'
+import { Label } from '../components/Label'
+import { Drawer } from '../components/Drawer'
 import { Media } from '../components/Media'
 import { MediaLightbox } from '../components/MediaLightbox'
 import { MediaDetail } from '../components/MediaDetail'
 import { useFavorites } from '../lib/useFavorites'
+import { useMe } from '../contexts/MeContext'
 
 export function AlbumPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { me, previewPersonId } = useMe()
   const [album, setAlbum] = useState(null)
   const [error, setError] = useState(null)
   const [viewer, setViewer] = useState(null)
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [saving, setSaving] = useState(false)
   const { favs, toggle: toggleFav } = useFavorites()
 
   function load() {
-    fetch(`/api/albums/${id}`)
+    const url = previewPersonId ? `/api/albums/${id}?viewer_id=${previewPersonId}` : `/api/albums/${id}`
+    fetch(url)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(setAlbum)
       .catch(e => setError(String(e)))
   }
 
-  useEffect(load, [id])
+  useEffect(load, [id, previewPersonId])
+
+  function openEdit() {
+    setEditName(album.name)
+    setEditDesc(album.description || '')
+    setEditing(true)
+  }
+
+  async function saveEdit() {
+    if (!editName.trim() || saving) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/albums/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim(), description: editDesc.trim() || null }),
+      })
+      if (res.ok) {
+        setAlbum(a => ({ ...a, name: editName.trim(), description: editDesc.trim() || null }))
+        setEditing(false)
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function removeFromAlbum(path) {
     await fetch(`/api/albums/${id}/media?path=${encodeURIComponent(path)}`, { method: 'DELETE' })
     load()
     setViewer(null)
+  }
+
+  async function togglePrivacy() {
+    const res = await fetch(`/api/albums/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_private: !album.is_private }),
+    })
+    if (res.ok) setAlbum(a => ({ ...a, is_private: !a.is_private }))
   }
 
   async function deleteAlbum() {
@@ -43,6 +86,8 @@ export function AlbumPage() {
   if (!album) return <Container className="py-6"><p className="text-[13px] text-white/30">Loading…</p></Container>
 
   const items = album.items || []
+  const effectiveUserId = previewPersonId ?? me?.person?.id
+  const isOwner = effectiveUserId === album.created_by_id
 
   return (
     <Container className="py-6">
@@ -54,7 +99,7 @@ export function AlbumPage() {
             <h1 className="text-2xl font-semibold text-white">{album.name}</h1>
             {album.is_private
               ? <Tag tone="slate"><Lock size={10} className="-mt-0.5 mr-1 inline" />Private</Tag>
-              : <Tag tone="green"><Album size={10} className="-mt-0.5 mr-1 inline" />Shared</Tag>}
+              : <Tag tone="green"><LockOpen size={10} className="-mt-0.5 mr-1 inline" />Shared</Tag>}
             <Tag tone="amber">{album.total} photo{album.total === 1 ? '' : 's'}</Tag>
           </div>
           {album.description && <p className="mt-1 text-[13px] text-white/50">{album.description}</p>}
@@ -62,9 +107,19 @@ export function AlbumPage() {
             <p className="mt-1 text-[11px] text-white/30">Created by {album.created_by_name}</p>
           )}
         </div>
-        <Button size="sm" variant="secondary" onClick={deleteAlbum} className="border-red-500/30 text-red-300 hover:bg-red-500/10">
-          <Trash2 size={14} /> Delete
-        </Button>
+        {isOwner && (
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={openEdit}>
+              <Pencil size={14} /> Edit
+            </Button>
+            <Button size="sm" variant="secondary" onClick={togglePrivacy}>
+              {album.is_private ? <><LockOpen size={14} /> Make shared</> : <><Lock size={14} /> Make private</>}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={deleteAlbum} className="border-red-500/30 text-red-300 hover:bg-red-500/10">
+              <Trash2 size={14} /> Delete
+            </Button>
+          </div>
+        )}
       </div>
 
       {items.length === 0 && (
@@ -74,7 +129,7 @@ export function AlbumPage() {
       {items.length > 0 && (
         <div className="grid gap-1 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
           {items.map((it, i) => (
-            <div key={it.path} className="aspect-square">
+            <div key={it.path} className="group/item relative aspect-square">
               <Media
                 thumb={it.thumbnail_url}
                 isVideo={it.is_video}
@@ -83,6 +138,15 @@ export function AlbumPage() {
                 onFavorite={() => toggleFav(it)}
                 onClick={() => setViewer(i)}
               />
+              {isOwner && (
+                <button
+                  onClick={e => { e.stopPropagation(); removeFromAlbum(it.path) }}
+                  className="absolute left-1 top-1 z-10 rounded-full bg-black/60 p-1 text-white/80 opacity-0 transition-opacity hover:bg-black/80 hover:text-white group-hover/item:opacity-100 leading-none"
+                  title="Remove from album"
+                >
+                  <X size={10} strokeWidth={2.5} className="block" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -108,6 +172,25 @@ export function AlbumPage() {
           renderDetail={(it, ctx, v) => <MediaDetail key={`${it.path}-${v}`} item={it} ctx={ctx} />}
         />
       )}
+
+      <Drawer open={editing} onClose={() => setEditing(false)} title="Edit Album">
+        <div className="space-y-4">
+          <div>
+            <Label>Name</Label>
+            <Input value={editName} onChange={e => setEditName(e.target.value)} autoFocus />
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Input value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="(optional)" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button size="sm" variant="secondary" onClick={() => setEditing(false)} disabled={saving}>Cancel</Button>
+            <Button size="sm" onClick={saveEdit} disabled={saving || !editName.trim()}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </Drawer>
     </Container>
   )
 }

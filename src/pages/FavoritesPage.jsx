@@ -5,10 +5,12 @@ import { Media } from '../components/Media'
 import { MediaLightbox } from '../components/MediaLightbox'
 import { MediaDetail } from '../components/MediaDetail'
 import { useFavorites } from '../lib/useFavorites'
+import { useMe } from '../contexts/MeContext'
 
 const PAGE_SIZE = 100
 
 export function FavoritesPage() {
+  const { previewPersonId } = useMe()
   const [items, setItems] = useState(null)
   const [total, setTotal] = useState(0)
   const [viewer, setViewer] = useState(null)
@@ -16,7 +18,10 @@ export function FavoritesPage() {
 
   useEffect(() => {
     let alive = true
-    fetch(`/api/me/favorites?limit=${PAGE_SIZE}`)
+    const url = previewPersonId
+      ? `/api/me/favorites?limit=${PAGE_SIZE}&viewer_id=${previewPersonId}`
+      : `/api/me/favorites?limit=${PAGE_SIZE}`
+    fetch(url)
       .then(r => r.ok ? r.json() : { items: [], total: 0 })
       .then(d => {
         if (!alive) return
@@ -25,7 +30,7 @@ export function FavoritesPage() {
       })
       .catch(() => alive && setItems([]))
     return () => { alive = false }
-  }, [])
+  }, [previewPersonId])
 
   // Drop locally any item the user un-favorites without a full refetch.
   const visible = items?.filter(it => favs.has(it.path)) || []

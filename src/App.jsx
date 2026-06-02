@@ -2,6 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { RootLayout } from './components/RootLayout'
 import { MainLayout } from './components/MainLayout'
 import { ToastProvider } from './components/Toast'
+import { MeProvider } from './contexts/MeContext'
+import { AdminOnly } from './components/AdminOnly'
+import { ViewerPreviewBadge } from './components/ViewerPreviewBadge'
 import { PeoplePage } from './pages/PeoplePage'
 import { PersonPage } from './pages/PersonPage'
 import { PersonOverview } from './pages/PersonOverview'
@@ -42,69 +45,74 @@ import './index.css'
 export default function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
-      <Routes>
-        <Route element={<RootLayout />}>
-          <Route element={<MainLayout />}>
-            {/* "/" goes back to /gallery as the default landing. The home-page
-                napkin POC + its demo rooms still live at /home/* for when we
-                pick the vision work back up. */}
-            <Route path="/" element={<Navigate to="/gallery" replace />} />
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/home/mom-childhood" element={<MomChildhoodHomePage />} />
-            <Route path="/home/grandma-before-mom" element={<GrandmaBeforeMomPage />} />
+      <MeProvider>
+        <ToastProvider>
+          <Routes>
+            <Route element={<RootLayout />}>
+              <Route element={<MainLayout />}>
+                {/* "/" goes back to /gallery as the default landing. The home-page
+                    napkin POC + its demo rooms still live at /home/* for when we
+                    pick the vision work back up. */}
+                <Route path="/" element={<Navigate to="/gallery" replace />} />
+                <Route path="/home" element={<HomePage />} />
+                <Route path="/home/mom-childhood" element={<MomChildhoodHomePage />} />
+                <Route path="/home/grandma-before-mom" element={<GrandmaBeforeMomPage />} />
 
-            <Route path="/search" element={<SearchPage />} />
+                <Route path="/search" element={<SearchPage />} />
 
-            <Route path="/gallery" element={<GalleryPage />}>
-              <Route path="photo/*" element={<LightboxPage />} />
+                <Route path="/gallery" element={<GalleryPage />}>
+                  <Route path="photo/*" element={<LightboxPage />} />
+                </Route>
+                <Route path="/gallery/:year" element={<GalleryPage />}>
+                  <Route path="photo/*" element={<LightboxPage />} />
+                </Route>
+                <Route path="/gallery/places" element={<PlacesPage />} />
+                <Route path="/gallery/people" element={<PeoplePage />} />
+                <Route path="/gallery/scrapbook" element={<ScrapbookPage />} />
+                <Route path="/gallery/albums" element={<AlbumsPage />} />
+                <Route path="/gallery/albums/:id" element={<AlbumPage />} />
+                <Route path="/gallery/favorites" element={<FavoritesPage />} />
+                <Route path="/gallery/family" element={<FamilyPage />} />
+
+                {/* Admin-only routes — redirect to /gallery when not admin */}
+                <Route element={<AdminOnly />}>
+                  <Route path="/design" element={<DesignPage />} />
+                  <Route path="/manage" element={<Navigate to="/manage/faces/unassigned" replace />} />
+                  <Route path="/manage/people" element={<Navigate to="/gallery/people" replace />} />
+                  <Route path="/manage/faces" element={<Navigate to="/manage/faces/suggestions" replace />} />
+                  <Route path="/manage/faces/suggestions" element={<FaceSuggestionsPage />} />
+                  <Route path="/manage/faces/unassigned" element={<UnassignedFacesPage />} />
+                  <Route path="/manage/faces/assigned" element={<AssignedFacesPage />} />
+                  <Route path="/manage/faces/confirm"  element={<ConfirmFacesPage />} />
+                  <Route path="/manage/faces/similar" element={<SimilarFacesPage />} />
+                  <Route path="/manage/groups" element={<GroupsPage />} />
+                  <Route path="/manage/groups/:id" element={<GroupPage />} />
+                  <Route path="/manage/suggestions" element={<SuggestionsPage />} />
+                  <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
+                  <Route path="/admin/overview" element={<AdminOverviewPage />} />
+                  <Route path="/admin/filesystem" element={<FilesystemPage />} />
+                  <Route path="/admin/health" element={<HealthPage />} />
+                  <Route path="/admin/mosaic" element={<MosaicPage />} />
+                  <Route path="/admin/jobs" element={<JobsPage />} />
+                </Route>
+
+                <Route path="/manage/people/:id" element={<PersonPage />}>
+                  <Route index            element={<Navigate to="overview" replace />} />
+                  <Route path="overview"  element={<PersonOverview />} />
+                  <Route path="circles"   element={<PersonCircles />} />
+                  <Route path="timeline"  element={<PersonTimeline />} />
+                  <Route path="ancestry"  element={<PersonAncestry />} />
+                  <Route path="scrapbook" element={<PersonScrapbook />} />
+                  <Route path="scrapbook/:collectionId" element={<PersonScrapbook />} />
+                  <Route path="travel"    element={<PersonTravel />} />
+                  <Route path="ai"        element={<PersonAI />} />
+                </Route>
+              </Route>
             </Route>
-            <Route path="/gallery/:year" element={<GalleryPage />}>
-              <Route path="photo/*" element={<LightboxPage />} />
-            </Route>
-            <Route path="/gallery/places" element={<PlacesPage />} />
-            <Route path="/gallery/people" element={<PeoplePage />} />
-            <Route path="/gallery/scrapbook" element={<ScrapbookPage />} />
-            <Route path="/gallery/albums" element={<AlbumsPage />} />
-            <Route path="/gallery/albums/:id" element={<AlbumPage />} />
-            <Route path="/gallery/favorites" element={<FavoritesPage />} />
-            <Route path="/gallery/family" element={<FamilyPage />} />
-            <Route path="/design" element={<DesignPage />} />
-
-            <Route path="/manage" element={<Navigate to="/manage/faces/unassigned" replace />} />
-            <Route path="/manage/people" element={<Navigate to="/gallery/people" replace />} />
-            <Route path="/manage/faces" element={<Navigate to="/manage/faces/suggestions" replace />} />
-            <Route path="/manage/faces/suggestions" element={<FaceSuggestionsPage />} />
-            <Route path="/manage/faces/unassigned" element={<UnassignedFacesPage />} />
-            <Route path="/manage/faces/assigned" element={<AssignedFacesPage />} />
-            <Route path="/manage/faces/confirm"  element={<ConfirmFacesPage />} />
-            <Route path="/manage/faces/similar" element={<SimilarFacesPage />} />
-            <Route path="/manage/groups" element={<GroupsPage />} />
-            <Route path="/manage/groups/:id" element={<GroupPage />} />
-            <Route path="/manage/suggestions" element={<SuggestionsPage />} />
-
-            <Route path="/manage/people/:id" element={<PersonPage />}>
-              <Route index            element={<Navigate to="overview" replace />} />
-              <Route path="overview"  element={<PersonOverview />} />
-              <Route path="circles"   element={<PersonCircles />} />
-              <Route path="timeline"  element={<PersonTimeline />} />
-              <Route path="ancestry"  element={<PersonAncestry />} />
-              <Route path="scrapbook" element={<PersonScrapbook />} />
-              <Route path="scrapbook/:collectionId" element={<PersonScrapbook />} />
-              <Route path="travel"    element={<PersonTravel />} />
-              <Route path="ai"        element={<PersonAI />} />
-            </Route>
-
-            <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
-            <Route path="/admin/overview" element={<AdminOverviewPage />} />
-            <Route path="/admin/filesystem" element={<FilesystemPage />} />
-            <Route path="/admin/health" element={<HealthPage />} />
-            <Route path="/admin/mosaic" element={<MosaicPage />} />
-            <Route path="/admin/jobs" element={<JobsPage />} />
-          </Route>
-        </Route>
-      </Routes>
-      </ToastProvider>
+          </Routes>
+          <ViewerPreviewBadge />
+        </ToastProvider>
+      </MeProvider>
     </BrowserRouter>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Album, Lock } from 'lucide-react'
+import { useMe } from '../contexts/MeContext'
 import { Container } from '../components/Container'
 import { Tag } from '../components/Tag'
 import { Button } from '../components/Button'
@@ -12,6 +13,8 @@ import { mediumUrl } from '../lib/media'
 
 export function AlbumsPage() {
   const navigate = useNavigate()
+  const { me, previewPersonId } = useMe()
+  const effectiveUserId = previewPersonId ?? me?.person?.id
   const [albums, setAlbums]     = useState(null)
   const [creating, setCreating] = useState(false)
   const [name, setName]         = useState('')
@@ -20,10 +23,11 @@ export function AlbumsPage() {
   const [saving, setSaving]     = useState(false)
 
   function load() {
-    fetch('/api/albums/').then(r => r.ok ? r.json() : []).then(setAlbums).catch(() => setAlbums([]))
+    const url = previewPersonId ? `/api/albums/?viewer_id=${previewPersonId}` : '/api/albums/'
+    fetch(url).then(r => r.ok ? r.json() : []).then(setAlbums).catch(() => setAlbums([]))
   }
 
-  useEffect(load, [])
+  useEffect(load, [previewPersonId])
 
   async function create() {
     if (!name.trim() || saving) return
@@ -67,7 +71,12 @@ export function AlbumsPage() {
               coverBadge={a.item_count > 0 ? `${a.item_count} photo${a.item_count === 1 ? '' : 's'}` : 'empty'}
               icon={a.is_private ? <Lock size={13} /> : <Album size={13} />}
               text={a.name}
-              subtitle={a.is_private ? 'Private' : 'Shared'}
+              subtitle={a.is_private
+                ? 'Private'
+                : a.created_by_id && a.created_by_id !== effectiveUserId
+                  ? `Shared by ${a.created_by_name?.split(' ')[0] ?? 'someone'}`
+                  : 'Shared'
+              }
               description={a.description}
               onClick={() => navigate(`/gallery/albums/${a.id}`)}
             />
