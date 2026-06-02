@@ -1,5 +1,10 @@
 # ourkin — app
 
+> Part of the **ourkin stack** at `/home/stephen/Documents/ourkin/`.
+> Siblings: `api`, `db`, `workers`, `workshop`, `deploy`. Read the root
+> [`../CLAUDE.md`](../CLAUDE.md) for stack-wide conventions and
+> [`../CLAUDE.index.md`](../CLAUDE.index.md) for the full repo map.
+
 React frontend for the ourkin family archive.
 
 ## GitHub
