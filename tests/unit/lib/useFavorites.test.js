@@ -15,6 +15,20 @@ async function fresh() {
   useFavorites = mod.useFavorites
 }
 
+// Variant of fresh() that seeds MeContext with a non-null previewPersonId.
+// vi.doMock must be called before the dynamic import so the module receives
+// the mock when it calls useMe().
+async function freshWithPreview(previewPersonId) {
+  vi.resetModules()
+  global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [] })
+  localStorage.clear()
+  vi.doMock('../../../src/contexts/MeContext', () => ({
+    useMe: () => ({ previewPersonId }),
+  }))
+  const mod = await import('../../../src/lib/useFavorites')
+  useFavorites = mod.useFavorites
+}
+
 describe('useFavorites', () => {
   beforeEach(fresh)
 
@@ -168,6 +182,31 @@ describe('useFavorites', () => {
       await expect(
         act(async () => { await other.result.current.toggle('y.jpg') })
       ).resolves.not.toThrow()
+    })
+  })
+
+  describe('preview mode (previewPersonId set)', () => {
+    it('GETs favorites with viewer_id query param when previewPersonId is set', async () => {
+      // Covers line 33: the viewerId-truthy branch of the URL ternary.
+      await freshWithPreview('person-uuid-123')
+      global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ['p.jpg'] })
+      const { result } = renderHook(() => useFavorites())
+      await waitFor(() => expect(result.current.favs.size).toBe(1))
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/me/favorites/paths?viewer_id=person-uuid-123',
+      )
+    })
+
+    it('toggle is a no-op when previewPersonId is set', async () => {
+      // Covers line 71: the early-return guard that disables mutations in preview mode.
+      await freshWithPreview('person-uuid-123')
+      const { result } = renderHook(() => useFavorites())
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+      global.fetch = vi.fn().mockResolvedValue({ ok: true })
+      await act(async () => { await result.current.toggle('preview.jpg') })
+      // No PUT/DELETE — the preview guard returned early.
+      expect(global.fetch).not.toHaveBeenCalled()
+      expect(result.current.favs.has('preview.jpg')).toBe(false)
     })
   })
 })
