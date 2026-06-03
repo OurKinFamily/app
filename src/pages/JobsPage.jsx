@@ -14,16 +14,24 @@ const API = '/api/jobs'  // Vite proxy strips /api → FastAPI sees /jobs
 const STATUS_TONE = {
   running:   'blue',
   completed: 'green',
+  completed_with_warnings: 'amber',
   failed:    'red',
   cancelled: 'slate',
   queued:    'amber',
   unknown:   'amber',
 }
 
+// Friendlier labels for statuses whose raw value is ugly/long.
+const STATUS_LABEL = {
+  unknown: 'running',
+  completed_with_warnings: 'completed ⚠',
+}
+
 function StatusTag({ status }) {
-  const display = status === 'unknown' ? 'running' : status
+  const tone = STATUS_TONE[status === 'unknown' ? 'running' : status] || 'slate'
+  const display = STATUS_LABEL[status] || status
   return (
-    <Tag tone={STATUS_TONE[display] || 'slate'} className="uppercase tracking-wider">{display}</Tag>
+    <Tag tone={tone} className="uppercase tracking-wider">{display}</Tag>
   )
 }
 
@@ -146,7 +154,7 @@ export function JobsPage() {
       }
 
       setLogRun(run)
-      if (logData.done || ['completed', 'failed', 'cancelled'].includes(run.status)) {
+      if (logData.done || ['completed', 'completed_with_warnings', 'failed', 'cancelled'].includes(run.status)) {
         setLogDone(true)
         refreshRuns()
         return
@@ -184,7 +192,7 @@ export function JobsPage() {
   }
 
   const sortedRuns = [...runs].sort((a, b) => {
-    const order = { running: 0, queued: 1, unknown: 2, failed: 3, cancelled: 4, completed: 5 }
+    const order = { running: 0, queued: 1, unknown: 2, failed: 3, cancelled: 4, completed_with_warnings: 5, completed: 6 }
     const sd = (order[a.status] ?? 5) - (order[b.status] ?? 5)
     return sd !== 0 ? sd : (b.started_at || '').localeCompare(a.started_at || '')
   })
