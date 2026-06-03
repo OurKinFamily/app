@@ -359,7 +359,7 @@ venv/bin/python scripts/cleanup_stale_media.py --dry-run
 
 # 2. Apply for real — drops the listed Media nodes + their rels
 venv/bin/python scripts/cleanup_stale_media.py --apply`
-    : `cd /home/stephen/photo-intelligence
+    : `cd /home/stephen/Documents/ourkin/workshop
 
 # 1. Preview only — see what would move, no changes made
 mm archive /photos/staging/ -r --dry-run ${bucket.flags}
