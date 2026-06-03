@@ -49,7 +49,6 @@ describe('SidebarNav', () => {
       ['Favorites',         '/gallery/favorites'],
       ['Unassigned faces',  '/manage/faces/unassigned'],
       ['Assigned faces',    '/manage/faces/assigned'],
-      ['Confirm faces',     '/manage/faces/confirm'],
       ['Groups',            '/manage/groups'],
       ['Suggestions',       '/manage/suggestions'],
       ['Overview (legacy)', '/admin/overview'],

@@ -17,7 +17,6 @@ import { PersonAI } from './pages/PersonAI'
 import { UnassignedFacesPage } from './pages/UnassignedFacesPage'
 import { FaceSuggestionsPage } from './pages/FaceSuggestionsPage'
 import { AssignedFacesPage } from './pages/AssignedFacesPage'
-import { ConfirmFacesPage } from './pages/ConfirmFacesPage'
 import { GroupsPage } from './pages/GroupsPage'
 import { GroupPage } from './pages/GroupPage'
 import { SimilarFacesPage } from './pages/SimilarFacesPage'
@@ -83,7 +82,6 @@ export default function App() {
                   <Route path="/manage/faces/suggestions" element={<FaceSuggestionsPage />} />
                   <Route path="/manage/faces/unassigned" element={<UnassignedFacesPage />} />
                   <Route path="/manage/faces/assigned" element={<AssignedFacesPage />} />
-                  <Route path="/manage/faces/confirm"  element={<ConfirmFacesPage />} />
                   <Route path="/manage/faces/similar" element={<SimilarFacesPage />} />
                   <Route path="/manage/groups" element={<GroupsPage />} />
                   <Route path="/manage/groups/:id" element={<GroupPage />} />
