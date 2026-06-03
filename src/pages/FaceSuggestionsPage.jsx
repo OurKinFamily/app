@@ -553,20 +553,36 @@ function LeftoverClusterRow({ cluster, onAssign, onCreate, onSkipForever, onSame
 }
 
 function AmbiguousCard({ entry, onPick, busy }) {
+  const openPhoto = useOpenPhoto()
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-3">
       <div className="flex gap-3">
         <div className="flex flex-wrap gap-1">
-          {(entry.samples || []).slice(0, 6).map((s, i) => (
-            <img
-              key={i}
-              src={typeof s === 'string' ? s : s?.crop_url}
-              alt=""
-              loading="lazy"
-              className="h-12 w-12 rounded bg-white/5 object-cover ring-1 ring-white/10"
-              onError={e => { e.target.style.display = 'none' }}
-            />
-          ))}
+          {(entry.samples || []).slice(0, 6).map((s, i) => {
+            const crop_url = typeof s === 'string' ? s : s?.crop_url
+            const photo_path = typeof s === 'string' ? null : s?.photo_path
+            return (
+              <div key={i} className="relative group">
+                <img
+                  src={crop_url}
+                  alt=""
+                  loading="lazy"
+                  className="h-12 w-12 rounded bg-white/5 object-cover ring-1 ring-white/10"
+                  onError={e => { e.target.style.display = 'none' }}
+                />
+                {photo_path && (
+                  <button
+                    type="button"
+                    onClick={() => openPhoto && openPhoto(photo_path)}
+                    title="open original photo"
+                    className="absolute top-0.5 left-0.5 rounded bg-black/70 p-0.5 text-white/80 opacity-0 transition-opacity hover:bg-black hover:text-white group-hover:opacity-100"
+                  >
+                    <Maximize2 className="h-2.5 w-2.5" />
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
         <div className="flex-1">
           <div className="text-xs text-white/40">
@@ -779,13 +795,19 @@ function ClusterDetailModal({ clusterId, prefilledPersonId, prefilledPersonName,
   )
 }
 
+const THRESHOLD_KEY = 'ourkin:face-suggestions:threshold'
+
 export function FaceSuggestionsPage() {
   const { toast } = useToast()
-  const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD)
+  const [threshold, setThreshold] = useState(() => {
+    const saved = parseFloat(localStorage.getItem(THRESHOLD_KEY))
+    return Number.isFinite(saved) ? saved : DEFAULT_THRESHOLD
+  })
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [remaining, setRemaining] = useState(null)   // total unassigned faces left
   const [dismissed, setDismissed] = useState(new Set())   // person_ids hidden client-side
   const [dismissedCandidates, setDismissedCandidates] = useState(new Set())
   const [leftover, setLeftover] = useState({ items: [], total: 0, loading: false })
@@ -804,9 +826,17 @@ export function FaceSuggestionsPage() {
     })
   }, [])
 
+  const refreshRemaining = useCallback(() => {
+    fetch('/api/faces/unassigned/count')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d) setRemaining(d.remaining) })
+      .catch(() => {})
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    refreshRemaining()
     try {
       const result = await getGroupedSuggestions({ threshold, margin: DEFAULT_MARGIN, limit: DEFAULT_LIMIT })
       setData(result)
@@ -1020,6 +1050,11 @@ export function FaceSuggestionsPage() {
             <p className="mt-1 text-sm text-white/50">
               Your brain. Likely matches surfaced from confirmed faces. One click confirms a whole group.
             </p>
+            {remaining !== null && (
+              <p className="mt-1 text-sm font-medium text-amber-300/90">
+                {remaining.toLocaleString()} faces still unassigned
+              </p>
+            )}
           </div>
           <Button onClick={load} disabled={loading} className="bg-white/5 text-white/70 hover:bg-white/10">
             <RefreshCw className={`mr-1.5 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -1035,7 +1070,11 @@ export function FaceSuggestionsPage() {
             max={0.95}
             step={0.01}
             value={threshold}
-            onChange={e => setThreshold(parseFloat(e.target.value))}
+            onChange={e => {
+              const v = parseFloat(e.target.value)
+              setThreshold(v)
+              localStorage.setItem(THRESHOLD_KEY, String(v))
+            }}
             className="flex-1 accent-emerald-500"
           />
           <div className="w-12 text-right tabular-nums text-white/80">{threshold.toFixed(2)}</div>
