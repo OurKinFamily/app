@@ -22,11 +22,15 @@ describe('CoverPicker', () => {
       // can't assert on that. Instead, click "Save" and verify the saved value.
       expect(screen.getByRole('button', { name: 'Align Top' })).toBeInTheDocument()
     })
-    it('defaults to center when person.cover_position is missing', async () => {
+    it('defaults to fit when person.cover_position is missing', async () => {
       const { onSaved } = renderPicker({ id: 'p1' })
       fireEvent.click(screen.getByRole('button', { name: 'Save' }))
       await waitFor(() => expect(onSaved).toHaveBeenCalled())
-      expect(onSaved).toHaveBeenCalledWith({ cover_image: null, cover_position: 'center' })
+      expect(onSaved).toHaveBeenCalledWith({ cover_image: null, cover_position: 'fit' })
+    })
+    it('offers the Fit option', () => {
+      renderPicker({ id: 'p1' })
+      expect(screen.getByRole('button', { name: 'Align Fit' })).toBeInTheDocument()
     })
   })
 
@@ -37,6 +41,13 @@ describe('CoverPicker', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Save' }))
       await waitFor(() => expect(onSaved).toHaveBeenCalled())
       expect(onSaved).toHaveBeenCalledWith({ cover_image: 'archive/x.jpg', cover_position: 'bottom' })
+    })
+    it('saves fit when the Fit option is picked', async () => {
+      const { onSaved } = renderPicker({ id: 'p1', cover_image: 'archive/x.jpg', cover_position: 'top' })
+      fireEvent.click(screen.getByRole('button', { name: 'Align Fit' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(onSaved).toHaveBeenCalled())
+      expect(onSaved).toHaveBeenCalledWith({ cover_image: 'archive/x.jpg', cover_position: 'fit' })
     })
   })
 

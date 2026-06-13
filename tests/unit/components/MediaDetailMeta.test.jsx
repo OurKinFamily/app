@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 
 // Mock the Leaflet-backed map — its real impl needs a real canvas which
 // jsdom doesn't have, and it's excluded from coverage anyway.
@@ -9,8 +9,11 @@ vi.mock('../../../src/components/MiniMap', () => ({
 
 vi.mock('../../../src/lib/api', () => ({
   redateMedia: vi.fn(),
+  setMediaLocation: vi.fn(),
+  getPlaceShortcuts: vi.fn(),
+  geocodePlace: vi.fn(),
 }))
-import { redateMedia } from '../../../src/lib/api'
+import { redateMedia, setMediaLocation, getPlaceShortcuts, geocodePlace } from '../../../src/lib/api'
 
 import { MediaDetailMeta } from '../../../src/components/MediaDetailMeta'
 
@@ -93,9 +96,12 @@ describe('MediaDetailMeta', () => {
       renderMeta({ location: { primary: { latitude: 42.776123456, longitude: -71.065432 } } })
       expect(screen.getByText('42.77612, -71.06543')).toBeInTheDocument()
     })
-    it('omits the Location section when none of the cues are present', () => {
-      renderMeta({})
-      expect(screen.queryByText('Location')).not.toBeInTheDocument()
+    it('always renders the Location section (so a no-GPS file can be located)', () => {
+      // The section now always shows — even with no coordinates — to expose the
+      // "Set location" affordance. (Was previously omitted when empty.)
+      renderMeta({}, null, { path: 'a.jpg' })
+      expect(screen.getByText('Location')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Set location' })).toBeInTheDocument()
     })
   })
 
@@ -399,6 +405,198 @@ describe('MediaDetailMeta', () => {
         location: { landmarks: [{ landmark: { name: 'X' } }] },
       }, { place_name: '_' })
       expect(screen.queryByText(/X \(/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('LocationEditor', () => {
+    beforeEach(() => {
+      setMediaLocation.mockReset()
+      getPlaceShortcuts.mockReset().mockResolvedValue([])
+      geocodePlace.mockReset().mockResolvedValue([])
+    })
+
+    it('shows "Set location" when there is no GPS', () => {
+      renderMeta({}, null, { path: 'archive/x.jpg' })
+      expect(screen.getByRole('button', { name: 'Set location' })).toBeInTheDocument()
+    })
+
+    it('shows "Edit location" when the source is manual', () => {
+      renderMeta({ location: { primary: { latitude: 1, longitude: 2, source: 'manual' } } }, null, { path: 'a.jpg' })
+      expect(screen.getByRole('button', { name: 'Edit location' })).toBeInTheDocument()
+    })
+
+    it('shows "Correct location" when GPS came from a non-manual source', () => {
+      renderMeta({ location: { primary: { latitude: 1, longitude: 2, source: 'exif' } } }, null, { path: 'a.jpg' })
+      expect(screen.getByRole('button', { name: 'Correct location' })).toBeInTheDocument()
+    })
+
+    it('opens lat/lng inputs on click and saves, trickling to the API', async () => {
+      setMediaLocation.mockResolvedValue({})
+      const onRedated = vi.fn()
+      renderMeta({}, null, { path: 'archive/x.jpg', onRedated })
+      fireEvent.click(screen.getByRole('button', { name: 'Set location' }))
+      fireEvent.change(screen.getByPlaceholderText('lat'), { target: { value: '42.8' } })
+      fireEvent.change(screen.getByPlaceholderText('lng'), { target: { value: '-71.1' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(setMediaLocation).toHaveBeenCalledWith('archive/x.jpg', {
+        latitude: 42.8, longitude: -71.1, place_name: null,
+      }))
+      await waitFor(() => expect(onRedated).toHaveBeenCalled())
+    })
+
+    it('populates lat/lng from a quick-pick place and sends its name', async () => {
+      getPlaceShortcuts.mockResolvedValue([{ name: 'plaistow', latitude: 42.84, longitude: -71.11 }])
+      setMediaLocation.mockResolvedValue({})
+      renderMeta({}, null, { path: 'a.jpg' })
+      fireEvent.click(screen.getByRole('button', { name: 'Set location' }))
+      // dropdown appears once shortcuts load
+      const select = await screen.findByRole('combobox')
+      fireEvent.change(select, { target: { value: 'plaistow' } })
+      expect(screen.getByPlaceholderText('lat').value).toBe('42.84')
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(setMediaLocation).toHaveBeenCalledWith('a.jpg', {
+        latitude: 42.84, longitude: -71.11, place_name: 'plaistow',
+      }))
+    })
+
+    it('rejects out-of-range coordinates without calling the API', () => {
+      renderMeta({}, null, { path: 'a.jpg' })
+      fireEvent.click(screen.getByRole('button', { name: 'Set location' }))
+      fireEvent.change(screen.getByPlaceholderText('lat'), { target: { value: '999' } })
+      fireEvent.change(screen.getByPlaceholderText('lng'), { target: { value: '0' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      expect(setMediaLocation).not.toHaveBeenCalled()
+      expect(screen.getByText('Enter valid lat, lng')).toBeInTheDocument()
+    })
+
+    it('rejects a non-numeric latitude', () => {
+      renderMeta({}, null, { path: 'a.jpg' })
+      fireEvent.click(screen.getByRole('button', { name: 'Set location' }))
+      fireEvent.change(screen.getByPlaceholderText('lat'), { target: { value: 'abc' } })
+      fireEvent.change(screen.getByPlaceholderText('lng'), { target: { value: '1' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      expect(setMediaLocation).not.toHaveBeenCalled()
+    })
+
+    it('rejects a non-numeric longitude', () => {
+      renderMeta({}, null, { path: 'a.jpg' })
+      fireEvent.click(screen.getByRole('button', { name: 'Set location' }))
+      fireEvent.change(screen.getByPlaceholderText('lat'), { target: { value: '1' } })
+      fireEvent.change(screen.getByPlaceholderText('lng'), { target: { value: 'abc' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      expect(setMediaLocation).not.toHaveBeenCalled()
+    })
+
+    it('pre-fills the inputs from an existing location when editing', () => {
+      renderMeta({ location: { primary: { latitude: 42.5, longitude: -71.2, source: 'manual' } } }, null, { path: 'a.jpg' })
+      fireEvent.click(screen.getByRole('button', { name: 'Edit location' }))
+      expect(screen.getByPlaceholderText('lat').value).toBe('42.5')
+      expect(screen.getByPlaceholderText('lng').value).toBe('-71.2')
+    })
+
+    it('falls back to a generic message when the error has none', async () => {
+      setMediaLocation.mockRejectedValue(new Error(''))
+      renderMeta({}, null, { path: 'a.jpg' })
+      fireEvent.click(screen.getByRole('button', { name: 'Set location' }))
+      fireEvent.change(screen.getByPlaceholderText('lat'), { target: { value: '1' } })
+      fireEvent.change(screen.getByPlaceholderText('lng'), { target: { value: '2' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.getByText('Save failed')).toBeInTheDocument())
+    })
+
+    it('surfaces an API error message', async () => {
+      setMediaLocation.mockRejectedValue(new Error('boom'))
+      renderMeta({}, null, { path: 'a.jpg' })
+      fireEvent.click(screen.getByRole('button', { name: 'Set location' }))
+      fireEvent.change(screen.getByPlaceholderText('lat'), { target: { value: '1' } })
+      fireEvent.change(screen.getByPlaceholderText('lng'), { target: { value: '2' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(screen.getByText('boom')).toBeInTheDocument())
+    })
+
+    it('cancels back to the button without saving', () => {
+      renderMeta({}, null, { path: 'a.jpg' })
+      fireEvent.click(screen.getByRole('button', { name: 'Set location' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(screen.getByRole('button', { name: 'Set location' })).toBeInTheDocument()
+      expect(setMediaLocation).not.toHaveBeenCalled()
+    })
+
+    describe('geocode search (debounced, auto)', () => {
+      function openEditor() {
+        renderMeta({}, null, { path: 'a.jpg' })
+        fireEvent.click(screen.getByRole('button', { name: 'Set location' }))
+      }
+      const type = v => fireEvent.change(screen.getByPlaceholderText('Search a city, state…'), { target: { value: v } })
+
+      it('auto-searches after typing and fills coords when a result is picked', async () => {
+        geocodePlace.mockResolvedValue([
+          { display_name: 'Haverhill, Essex County, Massachusetts', latitude: 42.78, longitude: -71.08 },
+        ])
+        openEditor()
+        type('Haverhill, MA')   // no button — debounce fires the search
+        const result = await screen.findByRole('button', { name: /Haverhill, Essex County/ })
+        await waitFor(() => expect(geocodePlace).toHaveBeenCalledWith('Haverhill, MA'))
+        fireEvent.click(result)
+        expect(screen.getByPlaceholderText('lat').value).toBe('42.78')
+        expect(screen.getByPlaceholderText('lng').value).toBe('-71.08')
+        // the chosen city flows into the saved place_name
+        setMediaLocation.mockResolvedValue({})
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+        await waitFor(() => expect(setMediaLocation).toHaveBeenCalledWith('a.jpg', {
+          latitude: 42.78, longitude: -71.08, place_name: 'Haverhill',
+        }))
+      })
+
+      it('picks a result with no display_name (place_name falls back to empty)', async () => {
+        geocodePlace.mockResolvedValue([{ latitude: 5, longitude: 6 }])
+        setMediaLocation.mockResolvedValue({})
+        openEditor()
+        type('somewhere')
+        const result = await screen.findByRole('button', { name: '' })
+        fireEvent.click(result)
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+        await waitFor(() => expect(setMediaLocation).toHaveBeenCalledWith('a.jpg', {
+          latitude: 5, longitude: 6, place_name: null,
+        }))
+      })
+
+      it('does not search for a query under 2 characters', () => {
+        openEditor()
+        type(' x ')   // trims to 1 char → no search scheduled
+        expect(geocodePlace).not.toHaveBeenCalled()
+      })
+
+      it('shows "No matches" when the search returns nothing', async () => {
+        geocodePlace.mockResolvedValue([])
+        openEditor()
+        type('Nowhere')
+        await waitFor(() => expect(screen.getByText('No matches')).toBeInTheDocument())
+      })
+
+      it('shows "Search failed" when geocode throws', async () => {
+        geocodePlace.mockRejectedValue(new Error('net'))
+        openEditor()
+        type('Boom')
+        await waitFor(() => expect(screen.getByText('Search failed')).toBeInTheDocument())
+      })
+
+      it('discards an in-flight result when the query changes mid-search', async () => {
+        let resolveFirst
+        const firstPromise = new Promise(res => { resolveFirst = res })
+        geocodePlace
+          .mockReturnValueOnce(firstPromise)                                              // 'AAAA' (slow)
+          .mockResolvedValueOnce([{ display_name: 'Second', latitude: 9, longitude: 9 }]) // 'BBBB'
+        openEditor()
+        type('AAAA')
+        await waitFor(() => expect(geocodePlace).toHaveBeenCalledWith('AAAA'))
+        type('BBBB')   // effect cleanup marks the first search stale (alive=false)
+        await waitFor(() => expect(geocodePlace).toHaveBeenCalledWith('BBBB'))
+        // resolve the stale first AFTER the query moved on → must be ignored
+        await act(async () => { resolveFirst([{ display_name: 'First-STALE', latitude: 1, longitude: 1 }]); await Promise.resolve() })
+        expect(await screen.findByRole('button', { name: /Second/ })).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /First-STALE/ })).not.toBeInTheDocument()
+      })
     })
   })
 })

@@ -15,6 +15,7 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: true,        // expose on the LAN (view from phone at http://<machine-ip>:5173)
     port: 5173,
     proxy: {
       '/api': {

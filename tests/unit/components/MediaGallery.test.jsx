@@ -494,4 +494,28 @@ describe('MediaGallery', () => {
       expect(onSelect).not.toHaveBeenCalled()
     })
   })
+
+  describe('selection', () => {
+    it('renders a checkbox per tile and reports (item, index, shiftKey) on toggle', () => {
+      const onToggleSelect = vi.fn()
+      const items = [
+        item('a.jpg', '2024-01-02T00:00:00Z'),
+        item('b.jpg', '2024-01-01T00:00:00Z'),
+      ]
+      renderGallery({ items, onSelect: vi.fn(), onToggleSelect, selectedPaths: new Set(['a.jpg']) })
+      const boxes = screen.getAllByRole('checkbox')
+      expect(boxes).toHaveLength(2)
+      expect(boxes.some(b => b.getAttribute('aria-checked') === 'true')).toBe(true)
+      fireEvent.click(boxes[0], { shiftKey: true })
+      const [item0, index0, shift0] = onToggleSelect.mock.calls[0]
+      expect(item0.path).toBe('a.jpg')
+      expect(index0).toBe(0)
+      expect(shift0).toBe(true)
+    })
+
+    it('renders no checkboxes when onToggleSelect is absent', () => {
+      renderGallery({ items: [item('a.jpg', '2024-01-01T00:00:00Z')], onSelect: vi.fn() })
+      expect(screen.queryByRole('checkbox')).toBe(null)
+    })
+  })
 })

@@ -126,8 +126,12 @@ function RelationshipLine({ personId }) {
 
 function PersonGalleryInline({ personId }) {
   const { person, setPerson } = useOutletContext()
+  // min_confidence:'all' (not a CONFIDENCE_SET key) bypasses the date-confidence
+  // filter — a person's gallery should show every photo they're in regardless of
+  // how sure we are of the date. The default 'high' hid medium/low-dated photos
+  // (e.g. freshly-assigned singleton straggler faces).
   const { media, total, loading, hasMoreOlder, loadOlder, fillGap } = useGallery({
-    params: { person_ids: personId },
+    params: { person_ids: personId, min_confidence: 'all' },
   })
   const { favs, toggle: toggleFav } = useFavorites()
   const [viewer, setViewer] = useState(null)

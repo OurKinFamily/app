@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useNavigate, Outlet, useParams, useLocation } from 'react-router-dom'
+import { useNavigate, Outlet, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { useGallery } from '../lib/useGallery'
 import { useFavorites } from '../lib/useFavorites'
+import { useSelection } from '../lib/useSelection'
 import { MediaGallery } from '../components/MediaGallery'
+import { GalleryBulkBar } from '../components/GalleryBulkBar'
 import { HeaderTrailingPortal } from '../components/HeaderTrailingPortal'
 import { Drawer } from '../components/Drawer'
 import { Dot } from '../components/Dot'
@@ -24,8 +26,59 @@ export function GalleryPage() {
     yearParam && /^\d{4}$/.test(yearParam) ? Number(yearParam) : null
   )
   const [years, setYears] = useState([])
+  // Filter state is mirrored into the URL query (?confidence=, ?undated=) so
+  // any view is deep-linkable. Seed initial state from those params.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const CONF_KEYS = ['high', 'medium', 'low', 'all']
+  // Date-confidence floor for the gallery ('high' = default app behavior).
+  // `undated` flips to the no-date ("0000") bucket — scanned albums etc.
+  const [confidence, setConfidence] = useState(() => {
+    const c = searchParams.get('confidence')
+    return CONF_KEYS.includes(c) ? c : 'high'
+  })
+  const [undated, setUndated] = useState(() => searchParams.get('undated') === 'true')
+  // GPS presence ('both' | 'has' | 'none'), camera model, unassigned-faces —
+  // all deep-linkable and combinable with the date filters.
+  const [gps, setGps] = useState(() => {
+    const g = searchParams.get('gps')
+    return ['has', 'none'].includes(g) ? g : 'both'
+  })
+  const [cameraModel, setCameraModel] = useState(() => searchParams.get('camera_model') || '')
+  const [unassignedFaces, setUnassignedFaces] = useState(() => searchParams.get('unassigned_faces') === 'true')
+
+  // Keep the URL query in sync with the filter state. Defaults are omitted to
+  // keep links clean; undated drops `confidence` since the date-confidence
+  // floor doesn't apply in the no-date bucket.
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams)
+    const set = (k, v, on) => (on ? next.set(k, v) : next.delete(k))
+    set('undated', 'true', undated)
+    set('confidence', confidence, !undated && confidence !== 'high')
+    set('gps', gps, gps !== 'both')
+    set('camera_model', cameraModel, !!cameraModel)
+    set('unassigned_faces', 'true', unassignedFaces)
+    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true })
+  }, [confidence, undated, gps, cameraModel, unassignedFaces]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bumped after a bulk edit to force useGallery to refetch (so just-edited
+  // items re-evaluate against any active filter). `_r` is ignored by the API.
+  const [refreshNonce, setRefreshNonce] = useState(0)
+  const selection = useSelection()
+
+  // Compose the gallery query params. The date axis is either the confidence
+  // floor or the undated bucket; GPS / camera / unassigned-faces stack on top.
+  const galleryParams = { ...(undated ? { undated: true } : { min_confidence: confidence }) }
+  if (gps !== 'both') galleryParams.gps = gps
+  if (cameraModel) galleryParams.camera_model = cameraModel
+  if (unassignedFaces) galleryParams.unassigned_faces = true
+  if (refreshNonce) galleryParams._r = refreshNonce
+
+  const anyFilterActive =
+    undated || confidence !== 'high' || gps !== 'both' || !!cameraModel || unassignedFaces
+
   const { media, loading, hasMoreOlder, hasMoreNewer, loadOlder, loadNewer, fillGap, removeItem } = useGallery({
-    anchor: yearFilter != null ? { year: yearFilter } : null,
+    anchor: (undated || yearFilter == null) ? null : { year: yearFilter },
+    params: galleryParams,
   })
   const { favs, toggle: toggleFav } = useFavorites()
 
@@ -48,10 +101,12 @@ export function GalleryPage() {
     localStorage.setItem(STORAGE_KEY, String(Math.round(rowHeight)))
   }, [rowHeight])
 
-  // One-shot fetch of years that actually exist in the catalog.
+  // Years that exist in the catalog at the chosen confidence floor (refetched
+  // when confidence changes — lower floors reveal more/older years).
   useEffect(() => {
-    fetch('/api/gallery/years').then(r => (r.ok ? r.json() : null)).then(d => d && setYears(d)).catch(() => {})
-  }, [])
+    fetch(`/api/gallery/years?min_confidence=${confidence}`)
+      .then(r => (r.ok ? r.json() : null)).then(d => d && setYears(d)).catch(() => {})
+  }, [confidence])
 
   // Bottom-edge loader (+velocity skip) is owned by MediaGallery.
   // Here we only handle the upward direction when an anchor exposed older years.
@@ -159,21 +214,45 @@ export function GalleryPage() {
     }
   }, [])
 
-  const open = item => navigate(`photo/${item.path}`)
+  // Current filter query (without the leading '?') — appended to year-jump and
+  // lightbox navigations so the filters survive route changes + deep links.
+  const filterQS = () => {
+    const qs = searchParams.toString()
+    return qs ? `?${qs}` : ''
+  }
+
+  const open = item => navigate(`photo/${item.path}${filterQS()}`)
 
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   return (
     <div className="p-4">
       <HeaderTrailingPortal>
-        {/* TODO: flip `show` when there are active filters (lifted from drawer state) */}
-        <Dot show={false} color="red">
-          <FiltersIconButton onClick={() => setFiltersOpen(true)} />
-        </Dot>
+        <div className="flex items-center gap-2">
+          <GalleryBulkBar
+            selectedPaths={selection.selectedPaths}
+            onClear={selection.clear}
+            onDone={() => setRefreshNonce(n => n + 1)}
+          />
+          <Dot show={anyFilterActive} color="red">
+            <FiltersIconButton onClick={() => setFiltersOpen(true)} />
+          </Dot>
+        </div>
       </HeaderTrailingPortal>
 
       <Drawer open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filters">
-        <GalleryFiltersBody />
+        <GalleryFiltersBody
+          confidence={confidence}
+          onConfidenceChange={setConfidence}
+          undated={undated}
+          onUndatedChange={setUndated}
+          gps={gps}
+          onGpsChange={setGps}
+          cameraModel={cameraModel}
+          onCameraModelChange={setCameraModel}
+          unassignedFaces={unassignedFaces}
+          onUnassignedFacesChange={setUnassignedFaces}
+        />
       </Drawer>
 
       <div ref={topSentinelRef} className="h-px" />
@@ -185,6 +264,9 @@ export function GalleryPage() {
           favorites={favs}
           onFavorite={toggleFav}
           onSelect={open}
+          selectedPaths={selection.selected}
+          selectionActive={selection.count > 0}
+          onToggleSelect={(item, index, shiftKey) => selection.toggle(item, index, shiftKey, media)}
           onLoadOlder={loadOlder}
           onFillGap={fillGap}
           scrubber={{
@@ -193,7 +275,7 @@ export function GalleryPage() {
               if (y === yearFilter) return
               window.scrollTo(0, 0)
               setYearFilterState(y)
-              navigate(y ? `/gallery/${y}` : '/gallery')
+              navigate((y ? `/gallery/${y}` : '/gallery') + filterQS())
             },
           }}
         />

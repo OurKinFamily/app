@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   Images, MapPin, Users, Album, Heart, TreeDeciduous,
-  UserPlus, UserCheck, Users2, Sparkles,
+  UserPlus, UserCheck, Users2, Sparkles, BookText,
   LayoutDashboard, Activity, Palette, Search, Wand2,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
@@ -15,6 +15,7 @@ const SECTIONS = [
       { to: '/gallery', label: 'Gallery', Icon: Images, end: true },
       { to: '/gallery/places', label: 'Places', Icon: MapPin },
       { to: '/gallery/people', label: 'People', Icon: Users },
+      { to: '/gallery/biographies', label: 'Biographies', Icon: BookText },
       { to: '/gallery/albums', label: 'Albums', Icon: Album },
       { to: '/gallery/favorites', label: 'Favorites', Icon: Heart },
       { to: '/gallery/family', label: 'Family', Icon: TreeDeciduous },

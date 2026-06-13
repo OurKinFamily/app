@@ -92,4 +92,37 @@ describe('Media', () => {
       expect(onFavorite).not.toHaveBeenCalled()
     })
   })
+
+  describe('selection checkbox', () => {
+    it('renders no checkbox without onToggleSelect', () => {
+      renderMedia({ onClick: vi.fn() })
+      expect(screen.queryByRole('checkbox')).toBe(null)
+    })
+    it('renders an unchecked checkbox when selectable', () => {
+      renderMedia({ onToggleSelect: vi.fn() })
+      expect(screen.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false')
+    })
+    it('reflects the selected state via aria-checked', () => {
+      renderMedia({ onToggleSelect: vi.fn(), selected: true })
+      expect(screen.getByRole('checkbox')).toHaveAttribute('aria-checked', 'true')
+    })
+    it('calls onToggleSelect (with the event) on click and stops propagation', () => {
+      const onToggleSelect = vi.fn()
+      const onClick = vi.fn()
+      renderMedia({ onClick, onToggleSelect })
+      fireEvent.click(screen.getByRole('checkbox'))
+      expect(onToggleSelect).toHaveBeenCalledTimes(1)
+      expect(onToggleSelect.mock.calls[0][0]).toBeTruthy()  // the event
+      expect(onClick).not.toHaveBeenCalled()
+    })
+    it('toggles on Enter / Space and ignores other keys', () => {
+      const onToggleSelect = vi.fn()
+      renderMedia({ onToggleSelect })
+      const box = screen.getByRole('checkbox')
+      fireEvent.keyDown(box, { key: 'Enter' })
+      fireEvent.keyDown(box, { key: ' ' })
+      fireEvent.keyDown(box, { key: 'a' })
+      expect(onToggleSelect).toHaveBeenCalledTimes(2)
+    })
+  })
 })

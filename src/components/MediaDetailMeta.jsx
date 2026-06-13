@@ -5,7 +5,8 @@ import { Field } from './Field'
 import { Tag } from './Tag'
 import { Swatch } from './Swatch'
 import { MiniMap } from './MiniMap'
-import { redateMedia } from '../lib/api'
+import { redateMedia, setMediaLocation } from '../lib/api'
+import { LocationPicker, parseLatLng } from './LocationPicker'
 
 const CONF_TONE = { high: 'green', medium: 'amber', low: 'red' }
 
@@ -97,23 +98,28 @@ export function MediaDetailMeta({ sidecar, heritage, path, onRedated }) {
         </DetailSection>
       )}
 
-      {(heritage?.place_name || primaryLoc.latitude != null || geoloc.city) && (
-        <DetailSection title="Location">
-          {primaryLoc.latitude != null && (
-            <div className="mb-2"><MiniMap lat={primaryLoc.latitude} lng={primaryLoc.longitude} /></div>
-          )}
-          {heritage?.place_name && <Field label="Place" value={heritage.place_name} />}
-          {geoloc.city && (geoloc.confidence ?? 0) >= 0.5 && (
-            <Field label="City" value={`${geoloc.city}${geoloc.state_code ? `, ${geoloc.state_code}` : ''}`} />
-          )}
-          {topLandmark && (
-            <Field label="Near" value={`${topLandmark.landmark?.name} (${Math.round((topLandmark.distance || 0))}m)`} />
-          )}
-          {primaryLoc.latitude != null && (
-            <Field label="GPS" value={`${primaryLoc.latitude.toFixed(5)}, ${primaryLoc.longitude.toFixed(5)}`} />
-          )}
-        </DetailSection>
-      )}
+      <DetailSection title="Location">
+        {primaryLoc.latitude != null && (
+          <div className="mb-2"><MiniMap lat={primaryLoc.latitude} lng={primaryLoc.longitude} /></div>
+        )}
+        {heritage?.place_name && <Field label="Place" value={heritage.place_name} />}
+        {geoloc.city && (geoloc.confidence ?? 0) >= 0.5 && (
+          <Field label="City" value={`${geoloc.city}${geoloc.state_code ? `, ${geoloc.state_code}` : ''}`} />
+        )}
+        {topLandmark && (
+          <Field label="Near" value={`${topLandmark.landmark?.name} (${Math.round((topLandmark.distance || 0))}m)`} />
+        )}
+        {primaryLoc.latitude != null && (
+          <Field label="GPS" value={`${primaryLoc.latitude.toFixed(5)}, ${primaryLoc.longitude.toFixed(5)}`} />
+        )}
+        <LocationEditor
+          path={path}
+          lat={primaryLoc.latitude}
+          lng={primaryLoc.longitude}
+          source={primaryLoc.source}
+          onLocated={onRedated}
+        />
+      </DetailSection>
 
       {heritage?.context_notes && (
         <DetailSection title="Notes">
@@ -331,6 +337,71 @@ function DateEditor({ path, value, precision, isHeritageString, heritageString, 
         </button>
       )}
     </div>
+  )
+}
+
+// Manually set / correct a media file's GPS. Pencil (or "Set location" when
+// none) → place quick-pick (mmp shortcuts) + lat/lng inputs. Save trickles to
+// graph + sidecar + EXIF via the API, then refetches the detail.
+function LocationEditor({ path, lat, lng, source, onLocated }) {
+  const has = lat != null
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft]     = useState({ latStr: '', lngStr: '', place: '' })
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState(null)
+
+  const start  = () => { setError(null); setEditing(true) }
+  const cancel = () => { setEditing(false); setError(null) }
+
+  const commit = async () => {
+    const parsed = parseLatLng(draft.latStr, draft.lngStr)
+    if (!parsed) { setError('Enter valid lat, lng'); return }
+    setSaving(true)
+    try {
+      await setMediaLocation(path, {
+        latitude: parsed.lat,
+        longitude: parsed.lng,
+        place_name: draft.place || null,
+      })
+      setEditing(false)
+      setError(null)
+      onLocated?.()
+    } catch (e) {
+      setError(e.message || 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="mt-2 space-y-2">
+        <LocationPicker initialLat={lat} initialLng={lng} disabled={saving} onChange={setDraft} />
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={commit} disabled={saving}
+                  className="rounded bg-white/15 px-2 py-0.5 text-[11px] text-white transition-colors hover:bg-white/25 disabled:opacity-50">
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button type="button" onClick={cancel} disabled={saving}
+                  className="text-[11px] text-white/45 transition-colors hover:text-white/70 disabled:opacity-50">
+            Cancel
+          </button>
+        </div>
+        <p className="text-[10px] leading-snug text-white/30">Writes to the graph, sidecar, and the file&apos;s EXIF GPS.</p>
+        {error && <p className="text-[11px] text-rose-400/80">{error}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={start}
+      className="mt-1 inline-flex items-center gap-1 text-[11px] text-white/40 transition-colors hover:text-white/75"
+    >
+      <Pencil size={11} />
+      {has ? (source === 'manual' ? 'Edit location' : 'Correct location') : 'Set location'}
+    </button>
   )
 }
 

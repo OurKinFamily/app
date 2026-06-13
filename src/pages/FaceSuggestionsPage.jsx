@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, createContext, useContext } from 'react'
 import { RefreshCw, Check, X, UserPlus, Search, EyeOff, Maximize2, LayoutGrid } from 'lucide-react'
-import { getGroupedSuggestions, assignCluster, rejectFaces, createPerson, searchPeople, skipCluster, getLeftoverClusters, getCluster } from '../lib/api'
+import { getGroupedSuggestions, assignCluster, assignClustersBulk, rejectFaces, createPerson, searchPeople, skipCluster, getLeftoverClusters, getCluster } from '../lib/api'
 import { mediaUrl, isVideo } from '../lib/media'
 import { Container } from '../components/Container'
 import { Button } from '../components/Button'
@@ -62,8 +62,11 @@ function pickThumbs(clusters, target = TARGET_THUMBS) {
 function GroupCard({ group, onConfirm, onDismiss, onInspect, busy }) {
   const openPhoto = useOpenPhoto()
   const [excluded, setExcluded] = useState(() => new Set())
+  const [showAll, setShowAll] = useState(false)
   const pct = Math.round((group.avg_similarity || 0) * 100)
-  const thumbs = pickThumbs(group.clusters, TARGET_THUMBS)
+  // Collapsed: preview a handful. Expanded: one thumb per cluster so every
+  // face can be eyeballed before confirming (singletons are weak evidence).
+  const thumbs = pickThumbs(group.clusters, showAll ? Infinity : TARGET_THUMBS)
   const shownClusterIds = new Set(thumbs.map(t => t.cluster_id))
   const hiddenClusters = group.clusters.length - shownClusterIds.size
 
@@ -167,12 +170,23 @@ function GroupCard({ group, onConfirm, onDismiss, onInspect, busy }) {
               )
             })}
             {hiddenClusters > 0 && (
-              <div
-                className="flex h-16 items-center justify-center rounded bg-white/5 px-3 text-xs text-white/50 ring-1 ring-white/10"
-                title={`${hiddenClusters} more cluster${hiddenClusters !== 1 ? 's' : ''} not previewed — included in confirm`}
+              <button
+                type="button"
+                onClick={() => setShowAll(true)}
+                className="flex h-16 items-center justify-center rounded bg-white/5 px-3 text-xs text-white/60 ring-1 ring-white/10 hover:bg-white/10 hover:text-white/90"
+                title={`Show all ${group.clusters.length} clusters`}
               >
-                +{hiddenClusters} clusters
-              </div>
+                +{hiddenClusters} more — show all
+              </button>
+            )}
+            {showAll && group.clusters.length > TARGET_THUMBS && (
+              <button
+                type="button"
+                onClick={() => setShowAll(false)}
+                className="flex h-16 items-center justify-center rounded bg-white/5 px-3 text-xs text-white/60 ring-1 ring-white/10 hover:bg-white/10 hover:text-white/90"
+              >
+                show less
+              </button>
             )}
           </div>
 
@@ -796,12 +810,38 @@ function ClusterDetailModal({ clusterId, prefilledPersonId, prefilledPersonName,
 }
 
 const THRESHOLD_KEY = 'ourkin:face-suggestions:threshold'
+const MIN_CLUSTER_SIZE_KEY = 'ourkin:face-suggestions:min-cluster-size'
+
+// Render sections incrementally — each card mounts crop <img>s, so dumping
+// 100 groups at once janks the page. Start small, reveal more on click.
+const SECTION_PAGE = 5
+const SECTION_STEP = 10
+
+function LoadMoreBar({ shown, total, onMore, noun = 'more' }) {
+  if (total <= shown) return null
+  return (
+    <button
+      type="button"
+      onClick={onMore}
+      className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 py-2 text-sm text-white/60 hover:bg-white/10 hover:text-white/90"
+    >
+      Load more — {(total - shown).toLocaleString()} {noun} hidden
+    </button>
+  )
+}
 
 export function FaceSuggestionsPage() {
   const { toast } = useToast()
   const [threshold, setThreshold] = useState(() => {
     const saved = parseFloat(localStorage.getItem(THRESHOLD_KEY))
     return Number.isFinite(saved) ? saved : DEFAULT_THRESHOLD
+  })
+  // Smallest cluster the brain will score. 1 surfaces stranded singleton
+  // faces (e.g. a lone "me" shot that never clustered); 3 is the calmer
+  // default that ignores noise-sized clusters.
+  const [minClusterSize, setMinClusterSize] = useState(() => {
+    const saved = parseInt(localStorage.getItem(MIN_CLUSTER_SIZE_KEY), 10)
+    return Number.isFinite(saved) && saved >= 1 ? saved : 3
   })
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -814,6 +854,10 @@ export function FaceSuggestionsPage() {
   const [dismissedLeftover, setDismissedLeftover] = useState(new Set())
   const [inspect, setInspect] = useState(null)   // { clusterId, prefilledPersonId?, prefilledPersonName? }
   const [lightbox, setLightbox] = useState(null) // { path, is_video }
+  // How many cards to render per section (incremental reveal).
+  const [groupsShown, setGroupsShown] = useState(SECTION_PAGE)
+  const [ambigShown, setAmbigShown] = useState(SECTION_PAGE)
+  const [candShown, setCandShown] = useState(SECTION_PAGE)
 
   const openPhoto = useCallback((photoPath) => {
     if (!photoPath) return
@@ -836,9 +880,12 @@ export function FaceSuggestionsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setGroupsShown(SECTION_PAGE)
+    setAmbigShown(SECTION_PAGE)
+    setCandShown(SECTION_PAGE)
     refreshRemaining()
     try {
-      const result = await getGroupedSuggestions({ threshold, margin: DEFAULT_MARGIN, limit: DEFAULT_LIMIT })
+      const result = await getGroupedSuggestions({ threshold, margin: DEFAULT_MARGIN, limit: DEFAULT_LIMIT, minClusterSize })
       setData(result)
     } catch (e) {
       setError(e.message)
@@ -853,7 +900,7 @@ export function FaceSuggestionsPage() {
     } catch (e) {
       setLeftover({ items: [], total: 0, loading: false })
     }
-  }, [threshold])
+  }, [threshold, minClusterSize])
 
   const loadMoreLeftover = useCallback(async () => {
     setLeftover(prev => ({ ...prev, loading: true }))
@@ -873,25 +920,19 @@ export function FaceSuggestionsPage() {
 
   const handleConfirm = async (group, clusters) => {
     setBusy(true)
-    let assigned = 0
-    let failed = 0
-    for (const cluster of clusters) {
-      try {
-        await assignCluster(cluster.cluster_id, group.person_id)
-        assigned += cluster.n_faces
-      } catch (e) {
-        failed++
-      }
-    }
-    setBusy(false)
-    if (assigned) {
+    // One bulk call → one Neo4j sync + one brain rebuild for the whole group.
+    // (Per-cluster assigns stampeded the transaction-memory pool on big groups.)
+    try {
+      const res = await assignClustersBulk(clusters.map(c => c.cluster_id), group.person_id)
+      const assigned = res.assigned ?? clusters.reduce((s, c) => s + c.n_faces, 0)
       toast.success(`Confirmed ${assigned} face${assigned !== 1 ? 's' : ''} as ${group.person_name}`)
-    }
-    if (failed) {
-      toast.error(`${failed} cluster${failed !== 1 ? 's' : ''} failed to assign`)
+    } catch (e) {
+      toast.error(`Failed to assign — ${e.message}`)
+    } finally {
+      setBusy(false)
     }
     setDismissed(prev => new Set(prev).add(group.person_id))
-    setTimeout(load, 1500)
+    refreshRemaining()  // cheap count refresh; full re-score only on explicit Refresh (it's a ~25s pass)
   }
 
   const handleDismiss = (group) => {
@@ -911,7 +952,7 @@ export function FaceSuggestionsPage() {
       toast.error(`Assign failed: ${e.message}`)
     }
     setBusy(false)
-    setTimeout(load, 1500)
+    refreshRemaining()  // cheap count refresh; full re-score only on explicit Refresh (it's a ~25s pass)
   }
 
   const handleCreatePerson = async (candidate, fullName) => {
@@ -931,7 +972,7 @@ export function FaceSuggestionsPage() {
       if (assigned) toast.success(`Created ${fullName} and assigned ${assigned} face${assigned !== 1 ? 's' : ''}`)
       if (failed) toast.error(`${failed} cluster${failed !== 1 ? 's' : ''} failed`)
       setDismissedCandidates(prev => new Set(prev).add(candidate.candidate_id))
-      setTimeout(load, 1500)
+      refreshRemaining()  // cheap count refresh; full re-score only on explicit Refresh (it's a ~25s pass)
     } catch (e) {
       toast.error(`Create person failed: ${e.message}`)
     }
@@ -953,7 +994,7 @@ export function FaceSuggestionsPage() {
     if (assigned) toast.success(`Assigned ${assigned} face${assigned !== 1 ? 's' : ''} to ${personName}`)
     if (failed) toast.error(`${failed} cluster${failed !== 1 ? 's' : ''} failed`)
     setDismissedCandidates(prev => new Set(prev).add(candidate.candidate_id))
-    setTimeout(load, 1500)
+    refreshRemaining()  // cheap count refresh; full re-score only on explicit Refresh (it's a ~25s pass)
     setBusy(false)
   }
 
@@ -1025,7 +1066,7 @@ export function FaceSuggestionsPage() {
     if (skipped) toast.info(`Skipped ${skipped} cluster${skipped !== 1 ? 's' : ''} forever (${candidate.n_faces} faces)`)
     if (failed) toast.error(`${failed} cluster${failed !== 1 ? 's' : ''} failed to skip`)
     setDismissedCandidates(prev => new Set(prev).add(candidate.candidate_id))
-    setTimeout(load, 1500)
+    refreshRemaining()  // cheap count refresh; full re-score only on explicit Refresh (it's a ~25s pass)
     setBusy(false)
   }
 
@@ -1037,7 +1078,7 @@ export function FaceSuggestionsPage() {
     // Cluster has been written to Neo4j. Hide it from any visible section.
     setDismissedLeftover(prev => new Set(prev).add(clusterId))
     // Brain rebuilds in background — refresh shortly to surface newly-promoted matches.
-    setTimeout(load, 1500)
+    refreshRemaining()  // cheap count refresh; full re-score only on explicit Refresh (it's a ~25s pass)
   }
 
   return (
@@ -1081,6 +1122,24 @@ export function FaceSuggestionsPage() {
           <div className="text-xs text-white/40">
             lower = more (noisier) · higher = fewer (safer)
           </div>
+          <div className="ml-2 flex items-center gap-2 border-l border-white/10 pl-4">
+            <label className="text-white/60">Min cluster size</label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={minClusterSize}
+              onChange={e => {
+                const v = Math.max(1, parseInt(e.target.value, 10) || 1)
+                setMinClusterSize(v)
+                localStorage.setItem(MIN_CLUSTER_SIZE_KEY, String(v))
+              }}
+              className="w-16 rounded border border-white/10 bg-white/5 px-2 py-1 text-right tabular-nums text-white/80"
+            />
+            <div className="text-xs text-white/40">
+              1 = include lone faces
+            </div>
+          </div>
         </div>
 
         {error && (
@@ -1112,7 +1171,7 @@ export function FaceSuggestionsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {visibleGroups.map(g => (
+                  {visibleGroups.slice(0, groupsShown).map(g => (
                     <GroupCard
                       key={g.person_id}
                       group={g}
@@ -1124,6 +1183,7 @@ export function FaceSuggestionsPage() {
                   ))}
                 </div>
               )}
+              <LoadMoreBar shown={groupsShown} total={visibleGroups.length} noun="groups" onMore={() => setGroupsShown(n => n + SECTION_STEP)} />
             </section>
 
             {data.ambiguous?.length > 0 && (
@@ -1135,7 +1195,7 @@ export function FaceSuggestionsPage() {
                   <div className="text-xs text-white/40">close-call clusters · pick the right person</div>
                 </div>
                 <div className="space-y-2">
-                  {data.ambiguous.map(a => (
+                  {data.ambiguous.slice(0, ambigShown).map(a => (
                     <AmbiguousCard
                       key={a.cluster_id}
                       entry={a}
@@ -1144,6 +1204,7 @@ export function FaceSuggestionsPage() {
                     />
                   ))}
                 </div>
+                <LoadMoreBar shown={ambigShown} total={data.ambiguous.length} noun="clusters" onMore={() => setAmbigShown(n => n + SECTION_STEP)} />
               </section>
             )}
 
@@ -1158,7 +1219,7 @@ export function FaceSuggestionsPage() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  {visibleCandidates.map(c => (
+                  {visibleCandidates.slice(0, candShown).map(c => (
                     <UnknownCandidateCard
                       key={c.candidate_id}
                       candidate={c}
@@ -1172,6 +1233,7 @@ export function FaceSuggestionsPage() {
                     />
                   ))}
                 </div>
+                <LoadMoreBar shown={candShown} total={visibleCandidates.length} noun="candidates" onMore={() => setCandShown(n => n + SECTION_STEP)} />
               </section>
             )}
 

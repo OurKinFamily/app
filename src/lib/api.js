@@ -80,6 +80,60 @@ export async function redateMedia(path, { timestamp, precision }) {
   return res.json()
 }
 
+export async function setMediaLocation(path, { latitude, longitude, place_name }) {
+  const res = await fetch(`${BASE}/gallery/media/location?path=${encodeURIComponent(path)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ latitude, longitude, place_name }),
+  })
+  if (!res.ok) {
+    let detail = ''
+    try { detail = (await res.json())?.detail || '' } catch { /* noop */ }
+    throw new Error(detail || 'Failed to set location')
+  }
+  return res.json()
+}
+
+export async function getPlaceShortcuts() {
+  const res = await fetch(`${BASE}/gallery/place-shortcuts`)
+  if (!res.ok) return []
+  return res.json()
+}
+
+export async function geocodePlace(q) {
+  const res = await fetch(`${BASE}/gallery/geocode?q=${encodeURIComponent(q)}`)
+  if (!res.ok) return []
+  return res.json()
+}
+
+export async function bulkSetLocation(paths, { latitude, longitude, place_name }) {
+  const res = await fetch(`${BASE}/gallery/media/location/bulk`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths, latitude, longitude, place_name }),
+  })
+  if (!res.ok) {
+    let detail = ''
+    try { detail = (await res.json())?.detail || '' } catch { /* noop */ }
+    throw new Error(detail || 'Failed to set locations')
+  }
+  return res.json()
+}
+
+export async function bulkRedateMedia(paths, { timestamp, precision }) {
+  const res = await fetch(`${BASE}/gallery/media/bulk`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths, timestamp, precision }),
+  })
+  if (!res.ok) {
+    let detail = ''
+    try { detail = (await res.json())?.detail || '' } catch { /* noop */ }
+    throw new Error(detail || 'Failed to set dates')
+  }
+  return res.json()
+}
+
 export async function setCover(personId, photoPath, position) {
   const res = await fetch(`${BASE}/people/${personId}/cover`, {
     method: 'PUT',
@@ -124,6 +178,16 @@ export async function assignCluster(clusterId, personId, { exclude = [], include
     }),
   })
   if (!res.ok) throw new Error('Failed to assign cluster')
+}
+
+export async function assignClustersBulk(clusterIds, personId, { exclude = [] } = {}) {
+  const res = await fetch(`${BASE}/faces/clusters/assign-bulk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ person_id: personId, cluster_ids: clusterIds, exclude: exclude.length ? exclude : null }),
+  })
+  if (!res.ok) throw new Error('Failed to bulk-assign clusters')
+  return res.json()
 }
 
 export async function skipCluster(clusterId) {

@@ -6,8 +6,10 @@ import { MeProvider } from './contexts/MeContext'
 import { AdminOnly } from './components/AdminOnly'
 import { ViewerPreviewBadge } from './components/ViewerPreviewBadge'
 import { PeoplePage } from './pages/PeoplePage'
+import { BiographiesPage } from './pages/BiographiesPage'
 import { PersonPage } from './pages/PersonPage'
 import { PersonOverview } from './pages/PersonOverview'
+import { PersonBiography } from './pages/PersonBiography'
 import { PersonCircles } from './pages/PersonCircles'
 import { PersonTimeline } from './pages/PersonTimeline'
 import { PersonAncestry } from './pages/PersonAncestry'
@@ -67,6 +69,7 @@ export default function App() {
                 </Route>
                 <Route path="/gallery/places" element={<PlacesPage />} />
                 <Route path="/gallery/people" element={<PeoplePage />} />
+                <Route path="/gallery/biographies" element={<BiographiesPage />} />
                 <Route path="/gallery/scrapbook" element={<ScrapbookPage />} />
                 <Route path="/gallery/albums" element={<AlbumsPage />} />
                 <Route path="/gallery/albums/:id" element={<AlbumPage />} />
@@ -97,6 +100,7 @@ export default function App() {
                 <Route path="/manage/people/:id" element={<PersonPage />}>
                   <Route index            element={<Navigate to="overview" replace />} />
                   <Route path="overview"  element={<PersonOverview />} />
+                  <Route path="biography" element={<PersonBiography />} />
                   <Route path="circles"   element={<PersonCircles />} />
                   <Route path="timeline"  element={<PersonTimeline />} />
                   <Route path="ancestry"  element={<PersonAncestry />} />

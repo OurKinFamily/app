@@ -19,11 +19,21 @@ const DAY_MS = 86400 * 1000
 export function MediaGallery({
   items, onSelect, favorites, onFavorite, rowHeight = 200, gap = 4,
   onLoadOlder, onFillGap, scrubber,
+  selectedPaths, selectionActive = false, onToggleSelect,
 }) {
   const ref = useRef(null)
   const [width, setWidth] = useState(0)
   const [currentYear, setCurrentYear] = useState(null)
   const velocityRef = useRef({ y: 0, t: 0, v: 0 })
+
+  // Flat index per path so a shift-click can resolve the range against the
+  // gallery's real order (the rendered tiles are grouped by day/shelf).
+  const indexByPath = new Map(items.map((it, i) => [it.path, i]))
+  const selectProps = item => (onToggleSelect && !item.__gap ? {
+    selected: !!selectedPaths?.has(item.path),
+    selectionActive,
+    onToggleSelect: e => onToggleSelect(item, indexByPath.get(item.path), e.shiftKey),
+  } : {})
 
   useLayoutEffect(() => {
     const ro = new ResizeObserver(e => setWidth(Math.floor(e[0].contentRect.width)))
@@ -161,6 +171,7 @@ export function MediaGallery({
                         favorited={!item.__gap && favorites?.has(item.path)}
                         onFavorite={item.__gap || !onFavorite ? undefined : () => onFavorite(item)}
                         onClick={item.__gap || !onSelect ? undefined : () => onSelect(item)}
+                        {...selectProps(item)}
                       />
                     </div>
                   </section>
@@ -203,6 +214,7 @@ export function MediaGallery({
                         favorited={!item.__gap && favorites?.has(item.path)}
                         onFavorite={item.__gap || !onFavorite ? undefined : () => onFavorite(item)}
                         onClick={item.__gap || !onSelect ? undefined : () => onSelect(item)}
+                        {...selectProps(item)}
                       />
                     </div>
                   ))}

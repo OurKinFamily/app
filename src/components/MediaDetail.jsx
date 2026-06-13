@@ -136,6 +136,15 @@ export function MediaDetail({ item, ctx }) {
           )}
         </DetailSection>
       )}
+      {/* The personal thread — why an archival/scraped item belongs in *this*
+          person's scrapbook ("his regiment", "the day he was wounded"). Set on
+          Document.notes; surfaced prominently so the link is never lost. */}
+      {heritage?.context_notes && (
+        <div className="mb-4 rounded-r-md border-l-2 border-amber-400/60 bg-amber-400/[0.06] py-2 pl-3 pr-2">
+          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300/70">Connection</p>
+          <p className="text-[13px] leading-snug text-white/80">{heritage.context_notes}</p>
+        </div>
+      )}
       {loading && <p className="text-[11px] text-white/20">Loading…</p>}
       {detail && (
         <>

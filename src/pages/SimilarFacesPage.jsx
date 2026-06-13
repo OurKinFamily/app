@@ -16,6 +16,42 @@ const AUTO_ASSIGN_THRESHOLDS = [0.90, 0.85, 0.80]
 
 const PAGE_SIZE = 400
 
+// Live person search → dropdown. Picks a person to view similar faces for.
+function PersonPicker({ onPick }) {
+  const [q, setQ] = useState('')
+  const [results, setResults] = useState([])
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    const s = q.trim()
+    if (s.length < 2) { setResults([]); setOpen(false); return }
+    let alive = true
+    const t = setTimeout(async () => {
+      try { const r = await searchPeople(s); if (alive) { setResults(r); setOpen(true) } }
+      catch { if (alive) setResults([]) }
+    }, 250)
+    return () => { alive = false; clearTimeout(t) }
+  }, [q])
+  return (
+    <div className="relative w-64">
+      <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Switch person…" />
+      {open && results.length > 0 && (
+        <ul className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-white/10 bg-neutral-900 py-1 shadow-xl">
+          {results.map(p => (
+            <li key={p.id}>
+              <button
+                onClick={() => { onPick(p); setQ(''); setResults([]); setOpen(false) }}
+                className="block w-full px-3 py-1.5 text-left text-[13px] text-white/75 transition-colors hover:bg-white/10"
+              >
+                {p.known_as && p.known_as !== p.name ? `${p.name} (${p.known_as})` : p.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function personToOption(p) {
   return {
     value: p.id,
@@ -32,7 +68,7 @@ function personToOption(p) {
 }
 
 export function SimilarFacesPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const photoPath = searchParams.get('photo_path')
   const faceIndex = parseInt(searchParams.get('face_index') ?? '0', 10)
   const seedCrop  = searchParams.get('seed_crop')
@@ -126,6 +162,15 @@ export function SimilarFacesPage() {
     } catch { setPersonOpts([]) }
   }
 
+  // Switch which person's similar faces we're viewing — drives everything off
+  // the URL's person_id (auto-search + person-info effects key off it).
+  const pickPerson = p => {
+    setActivePath(null)
+    setActiveSeedCrop(null)
+    setKnownPerson(null)
+    setSearchParams(new URLSearchParams({ person_id: p.id }))
+  }
+
   // "Select all" operates on the VISIBLE batch only — anything past `shown`
   // hasn't been loaded into the grid yet and shouldn't be assignable.
   function toggleAll() {
@@ -185,8 +230,10 @@ export function SimilarFacesPage() {
   if (!activePath && !personId) {
     return (
       <Container className="py-6">
-        <p className="text-[13px] text-white/30">
-          No face selected. Open a photo, click a face crop, then &ldquo;Find similar&rdquo;.
+        <h1 className="mb-3 text-lg font-medium text-white/80">Similar Faces</h1>
+        <PersonPicker onPick={pickPerson} />
+        <p className="mt-4 text-[13px] text-white/30">
+          Pick a person above, or open a photo, click a face crop, then &ldquo;Find similar&rdquo;.
         </p>
       </Container>
     )
@@ -196,7 +243,7 @@ export function SimilarFacesPage() {
 
   return (
     <Container className="py-6">
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-lg font-medium text-white/80">Similar Faces</h1>
         {knownPerson && (
           <Link to={`/manage/people/${personId}`}
@@ -204,6 +251,7 @@ export function SimilarFacesPage() {
             <ChevronLeft size={12} /> {knownPerson.known_as || knownPerson.name}
           </Link>
         )}
+        <div className="ml-auto"><PersonPicker onPick={pickPerson} /></div>
       </div>
 
       {/* Seed + controls */}

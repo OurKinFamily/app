@@ -1,11 +1,16 @@
-import { Play, Heart } from 'lucide-react'
+import { Play, Heart, Check } from 'lucide-react'
 import { cn } from '../lib/cn'
 
 // Single media tile — a photo or video thumbnail. Fills its container; the parent
 // (e.g. the justified MediaGallery) decides the box shape, so cover never crops.
 // - dominant color fills the box before the image loads
 // - favorite heart: hidden until hover; once favorited it stays visible and red
-export function Media({ thumb, isVideo, color, alt = '', favorited, onFavorite, onClick, className }) {
+// - selection checkbox (top-left): shown when onToggleSelect is provided —
+//   visible on hover, or always once a selection is active / this tile is picked
+export function Media({
+  thumb, isVideo, color, alt = '', favorited, onFavorite, onClick, className,
+  selected = false, selectionActive = false, onToggleSelect,
+}) {
   const Comp = onClick ? 'button' : 'div'
   return (
     <Comp
@@ -14,6 +19,7 @@ export function Media({ thumb, isVideo, color, alt = '', favorited, onFavorite, 
       className={cn(
         'group relative h-full w-full overflow-hidden rounded-md bg-white/5',
         onClick && 'cursor-pointer',
+        selected && 'ring-2 ring-sky-400 ring-offset-1 ring-offset-black',
         className,
       )}
     >
@@ -24,6 +30,24 @@ export function Media({ thumb, isVideo, color, alt = '', favorited, onFavorite, 
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
         />
+      )}
+
+      {onToggleSelect && (
+        <span
+          role="checkbox"
+          aria-checked={selected}
+          aria-label={selected ? 'Deselect' : 'Select'}
+          tabIndex={0}
+          onClick={e => { e.stopPropagation(); onToggleSelect(e) }}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleSelect(e) } }}
+          className={cn(
+            'absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-md border shadow-sm transition-all',
+            selected ? 'border-sky-300 bg-sky-500 text-white' : 'border-white/70 bg-black/40 text-transparent backdrop-blur',
+            selected || selectionActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+          )}
+        >
+          <Check size={13} strokeWidth={3} />
+        </span>
       )}
 
       {isVideo && (

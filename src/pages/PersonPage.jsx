@@ -18,6 +18,7 @@ function formatDate(date, precision) {
 
 const TABS = [
   { to: 'overview', label: 'Overview' },
+  { to: 'biography', label: 'Biography' },
   { to: 'circles', label: 'Circles' },
   { to: 'timeline', label: 'Timeline' },
   { to: 'ancestry', label: 'Ancestry' },
@@ -65,16 +66,35 @@ export function PersonPage() {
 
   if (!person) return <div className="p-8 text-white/40">Loading…</div>
 
+  // Cover display mode. 'top' | 'center' | 'bottom' crop the photo to fill the
+  // banner; 'fit' shows the whole photo centered over a blurred enlarged copy.
+  // 'fit' is the default when the person hasn't picked an alignment.
+  const coverPos = person.cover_position || 'fit'
+  const isFit = coverPos === 'fit'
+
   return (
     <>
       {/* Full-bleed hero — sits outside Container so the photo spans edge-to-edge */}
-      <div
-        className="group/hero relative h-[400px] overflow-hidden bg-cover"
-        style={hero ? {
-          backgroundImage: `url(${mediumUrl(hero)})`,
-          backgroundPosition: person.cover_position || 'center',
-        } : undefined}
-      >
+      <div className="group/hero relative h-[400px] overflow-hidden bg-zinc-900">
+        {hero && (isFit ? (
+          <>
+            {/* Blurred, enlarged copy fills the banner behind the fitted image */}
+            <div
+              className="absolute inset-0 scale-125 bg-cover bg-center blur-2xl"
+              style={{ backgroundImage: `url(${mediumUrl(hero)})` }}
+            />
+            <img
+              src={mediumUrl(hero)}
+              alt=""
+              className="absolute inset-0 m-auto max-h-full max-w-full object-contain"
+            />
+          </>
+        ) : (
+          <div
+            className="absolute inset-0 bg-cover"
+            style={{ backgroundImage: `url(${mediumUrl(hero)})`, backgroundPosition: coverPos }}
+          />
+        ))}
         {hero && <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />}
         {isAdmin && (
           <button

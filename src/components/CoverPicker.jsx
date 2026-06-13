@@ -1,22 +1,24 @@
 import { useState } from 'react'
-import { X, AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal } from 'lucide-react'
+import { X, AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal, Frame } from 'lucide-react'
 import { setCover } from '../lib/api'
 import { Button } from './Button'
 import { cn } from '../lib/cn'
 
 const POSITIONS = [
+  { value: 'fit',    label: 'Fit',    Icon: Frame },
   { value: 'top',    label: 'Top',    Icon: AlignStartHorizontal },
   { value: 'center', label: 'Center', Icon: AlignCenterHorizontal },
   { value: 'bottom', label: 'Bottom', Icon: AlignEndHorizontal },
 ]
 
 // Cover-image alignment picker for a Person. The actual image-picking
-// happens in the lightbox via the "Set as cover" action; this dialog only
-// adjusts vertical alignment (top / center / bottom) and lets the user clear
-// the cover entirely (fall back to a random photo).
+// happens in the lightbox via the "Set as cover" action; this dialog adjusts
+// how the cover fills the banner — 'fit' (whole photo centered over a blurred
+// enlarged copy, the default) or a top/center/bottom crop — and lets the user
+// clear the cover entirely (fall back to a random photo).
 export function CoverPicker({ person, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
-  const [position, setPosition] = useState(person.cover_position || 'center')
+  const [position, setPosition] = useState(person.cover_position || 'fit')
 
   async function save() {
     setSaving(true)
@@ -59,7 +61,7 @@ export function CoverPicker({ person, onClose, onSaved }) {
 
         <div className="space-y-4 p-4">
           <p className="text-[12px] text-white/40">
-            Pick a cover photo from any image in the lightbox via the &ldquo;Set as cover&rdquo; action. This dialog adjusts vertical crop only.
+            Pick a cover photo from any image in the lightbox via the &ldquo;Set as cover&rdquo; action. This dialog adjusts how it fills the banner.
           </p>
           <div className="flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
             {POSITIONS.map(({ value, label, Icon }) => (

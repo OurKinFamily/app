@@ -17,8 +17,14 @@ export function useGallery({ anchor = null, params = {} } = {}) {
   const loadingRef = useRef(false)
   const newestRef = useRef(null)
   const oldestRef = useRef(null)
+  const offsetRef = useRef(0)        // offset cursor for undated mode (null timestamps)
   const mediaRef = useRef([])
   const key = JSON.stringify({ anchor, params })
+
+  // Undated media all have timestamp === null, so the timestamp-cursor
+  // pagination below can't advance (the cursor is null). Fall back to plain
+  // offset pagination in that mode.
+  const undatedMode = !!params.undated
 
   useEffect(() => {
     let alive = true
@@ -42,6 +48,7 @@ export function useGallery({ anchor = null, params = {} } = {}) {
           newestRef.current = batch[0].timestamp
           oldestRef.current = batch[batch.length - 1].timestamp
         }
+        offsetRef.current = batch.length
         setMedia(batch)
         setTotal(typeof d.total === 'number' ? d.total : null)
         setLoading(false)
@@ -55,6 +62,32 @@ export function useGallery({ anchor = null, params = {} } = {}) {
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOlder = useCallback(async (skipMs = 0) => {
+    // Undated mode: timestamps are null, so paginate by offset instead of the
+    // timestamp cursor (which would never advance). No gap/skip logic here —
+    // there's no timeline to skip across.
+    if (undatedMode) {
+      if (loadingRef.current) return
+      loadingRef.current = true
+      setLoading(true)
+      try {
+        const qs = new URLSearchParams({ limit: LIMIT, sort: 'desc', ...params })
+        qs.set('offset', offsetRef.current)
+        const res = await fetch(`/api/gallery?${qs}`)
+        const d = await res.json()
+        const batch = d.media || []
+        if (batch.length) {
+          const seen = new Set(mediaRef.current.map(m => m.path))
+          const fresh = batch.filter(m => m.path && !seen.has(m.path))
+          mediaRef.current = [...mediaRef.current, ...fresh]
+          offsetRef.current += batch.length
+          setMedia([...mediaRef.current])
+        }
+        const total = typeof d.total === 'number' ? d.total : null
+        setHasMoreOlder(total != null ? offsetRef.current < total : batch.length >= LIMIT)
+      } catch { /* ignore */ }
+      finally { loadingRef.current = false; setLoading(false) }
+      return
+    }
     if (loadingRef.current || !oldestRef.current) return
     loadingRef.current = true
     setLoading(true)

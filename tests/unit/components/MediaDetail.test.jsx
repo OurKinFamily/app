@@ -56,6 +56,23 @@ describe('MediaDetail', () => {
     })
   })
 
+  describe('Connection callout (heritage.context_notes)', () => {
+    it('renders the Connection note when present', async () => {
+      mockDetail({ heritage: { context_notes: 'This is his regiment.' }, people: [], unidentified: [], objects: [] })
+      renderWithRouter(<MediaDetail item={ITEM} ctx={makeCtx()} />)
+      // context_notes shows in the Connection callout here AND in the Notes
+      // section inside MediaDetailMeta — so it appears more than once.
+      await waitFor(() => expect(screen.getAllByText('This is his regiment.').length).toBeGreaterThan(0))
+      expect(screen.getByText('Connection')).toBeInTheDocument()
+    })
+    it('omits the callout when there is no context_notes', async () => {
+      mockDetail({ heritage: { context_subject: 'X' }, people: [], unidentified: [], objects: [] })
+      renderWithRouter(<MediaDetail item={ITEM} ctx={makeCtx()} />)
+      await waitFor(() => expect(screen.getByText('X')).toBeInTheDocument())
+      expect(screen.queryByText('Connection')).not.toBeInTheDocument()
+    })
+  })
+
   describe('People section', () => {
     it('renders an EntityChip per identified person, linking to their page', async () => {
       mockDetail({

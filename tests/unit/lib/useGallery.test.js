@@ -199,6 +199,86 @@ describe('useGallery', () => {
     })
   })
 
+  describe('undated mode (offset pagination)', () => {
+    // regression(2026-06-11): undated media all have timestamp===null, so the
+    // timestamp-cursor loadOlder bailed on `!oldestRef.current` and only the
+    // first 48 items ever loaded (which happened to be all yearbook pages).
+    // Undated mode must paginate by offset instead.
+    function nul(path) { return { path, timestamp: null, width: 1, height: 1 } }
+
+    it('paginates by offset (not timestamp cursor) and appends the next page', async () => {
+      const fetchMock = queueResponses([
+        { data: { media: [nul('y1.jpg')], total: 5 } },
+        // 2nd page defensively echoes y1 (dup) + a fresh y2 — dedupe keeps y2.
+        { data: { media: [nul('y1.jpg'), nul('y2.jpg')], total: 5 } },
+      ])
+      const { result } = renderHook(() => useGallery({ params: { undated: true } }))
+      await waitFor(() => expect(result.current.media).toHaveLength(1))
+      await act(async () => { await result.current.loadOlder() })
+      expect(result.current.media.map(x => x.path)).toEqual(['y1.jpg', 'y2.jpg'])
+      const url = fetchMock.mock.calls[1][0]
+      expect(url).toContain('undated=true')
+      expect(url).toContain('offset=1')
+      expect(result.current.hasMoreOlder).toBe(true)  // offset now 3 < total 5
+    })
+
+    it('flips hasMoreOlder false once offset reaches total (empty trailing page)', async () => {
+      queueResponses([
+        { data: { media: [nul('y1.jpg')], total: 1 } },
+        { data: { media: [], total: 1 } },  // nothing left
+      ])
+      const { result } = renderHook(() => useGallery({ params: { undated: true } }))
+      await waitFor(() => expect(result.current.media).toHaveLength(1))
+      await act(async () => { await result.current.loadOlder() })
+      expect(result.current.hasMoreOlder).toBe(false)
+    })
+
+    it('falls back to batch-length heuristic when the server omits total', async () => {
+      queueResponses([
+        { data: { media: [nul('y1.jpg')] } },          // no total
+        { data: { media: [nul('y2.jpg')] } },          // no total, short page
+      ])
+      const { result } = renderHook(() => useGallery({ params: { undated: true } }))
+      await waitFor(() => expect(result.current.media).toHaveLength(1))
+      await act(async () => { await result.current.loadOlder() })
+      // short page (< LIMIT) with no total → no more.
+      expect(result.current.hasMoreOlder).toBe(false)
+    })
+
+    it('handles an undated page response with no media key', async () => {
+      queueResponses([
+        { data: { media: [nul('y1.jpg')], total: 5 } },
+        { data: {} },  // no media key → `|| []` fallback, no append, no throw
+      ])
+      const { result } = renderHook(() => useGallery({ params: { undated: true } }))
+      await waitFor(() => expect(result.current.media).toHaveLength(1))
+      await act(async () => { await result.current.loadOlder() })
+      expect(result.current.media).toHaveLength(1)
+    })
+
+    it('swallows fetch rejections during undated loadOlder', async () => {
+      queueResponses([{ data: { media: [nul('y1.jpg')], total: 5 } }])
+      const { result } = renderHook(() => useGallery({ params: { undated: true } }))
+      await waitFor(() => expect(result.current.media).toHaveLength(1))
+      global.fetch = vi.fn().mockRejectedValue(new Error('net'))
+      await act(async () => { await result.current.loadOlder() })
+      expect(result.current.media).toHaveLength(1)
+    })
+
+    it('is a no-op when a load is already in flight', async () => {
+      queueResponses([{ data: { media: [nul('y1.jpg')], total: 5 } }])
+      const { result } = renderHook(() => useGallery({ params: { undated: true } }))
+      await waitFor(() => expect(result.current.media).toHaveLength(1))
+      global.fetch = vi.fn().mockImplementation(() => new Promise(() => {}))
+      const before = global.fetch.mock.calls.length
+      const p1 = result.current.loadOlder()
+      const p2 = result.current.loadOlder()
+      await Promise.resolve()
+      expect(global.fetch.mock.calls.length).toBe(before + 1)
+      void p1; void p2
+    })
+  })
+
   describe('loadNewer', () => {
     it('prepends newer items in reverse (ASC → DESC) order', async () => {
       queueResponses([

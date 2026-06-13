@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   getPeople, getPerson, getRelatives, searchPeople, createPerson,
-  getFaces, getPhotos, setAvatar, unassignFace, deleteMedia, redateMedia, setCover,
-  addRelationship, getClusters, getCluster, assignCluster, skipCluster,
+  getFaces, getPhotos, setAvatar, unassignFace, deleteMedia, redateMedia, setMediaLocation, getPlaceShortcuts, geocodePlace,
+  bulkSetLocation, bulkRedateMedia, setCover,
+  addRelationship, getClusters, getCluster, assignCluster, assignClustersBulk, skipCluster,
   unskipCluster, search, getGroupedSuggestions, getLeftoverClusters, rejectFaces,
 } from '../../../src/lib/api'
 import { mockFetch, mockFetchFail } from '../helpers'
@@ -197,6 +198,106 @@ describe('api', () => {
     })
   })
 
+  describe('setMediaLocation', () => {
+    it('PATCHes /api/gallery/media/location with the lat/lng/place body', async () => {
+      mockFetch({ path: 'x', latitude: 42.8, longitude: -71.1, source: 'manual' })
+      const out = await setMediaLocation('archive/1989/04/x.jpg', { latitude: 42.8, longitude: -71.1, place_name: 'Plaistow' })
+      const [url, init] = lastCall()
+      expect(url).toBe('/api/gallery/media/location?path=archive%2F1989%2F04%2Fx.jpg')
+      expect(init.method).toBe('PATCH')
+      expect(lastBody()).toEqual({ latitude: 42.8, longitude: -71.1, place_name: 'Plaistow' })
+      expect(out.source).toBe('manual')
+    })
+    it('surfaces the server-side detail message when present', async () => {
+      mockFetch({ detail: 'latitude must be between -90 and 90' }, { ok: false })
+      await expect(
+        setMediaLocation('x', { latitude: 999, longitude: 0 })
+      ).rejects.toThrow('latitude must be between -90 and 90')
+    })
+    it('falls back to a generic message when the body has no detail', async () => {
+      mockFetch({}, { ok: false })
+      await expect(setMediaLocation('x', { latitude: 1, longitude: 2 })).rejects.toThrow('Failed to set location')
+    })
+    it('falls back to a generic message when the response is unparseable', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, json: () => Promise.reject(new Error('nope')) })
+      await expect(setMediaLocation('x', { latitude: 1, longitude: 2 })).rejects.toThrow('Failed to set location')
+    })
+  })
+
+  describe('getPlaceShortcuts', () => {
+    it('GETs /api/gallery/place-shortcuts and returns the list', async () => {
+      mockFetch([{ name: 'plaistow', latitude: 42.84, longitude: -71.11 }])
+      const out = await getPlaceShortcuts()
+      expect(lastCall()[0]).toBe('/api/gallery/place-shortcuts')
+      expect(out).toEqual([{ name: 'plaistow', latitude: 42.84, longitude: -71.11 }])
+    })
+    it('returns [] on a non-ok response', async () => {
+      mockFetch(null, { ok: false })
+      expect(await getPlaceShortcuts()).toEqual([])
+    })
+  })
+
+  describe('geocodePlace', () => {
+    it('GETs /api/gallery/geocode with the query and returns candidates', async () => {
+      mockFetch([{ display_name: 'Haverhill, MA', latitude: 42.78, longitude: -71.08 }])
+      const out = await geocodePlace('Haverhill, MA')
+      expect(lastCall()[0]).toBe('/api/gallery/geocode?q=Haverhill%2C%20MA')
+      expect(out[0].latitude).toBe(42.78)
+    })
+    it('returns [] on a non-ok response', async () => {
+      mockFetch(null, { ok: false })
+      expect(await geocodePlace('x')).toEqual([])
+    })
+  })
+
+  describe('bulkSetLocation', () => {
+    it('PATCHes /api/gallery/media/location/bulk with paths + coords', async () => {
+      mockFetch({ updated: 2, requested: 2 })
+      const out = await bulkSetLocation(['a.jpg', 'b.jpg'], { latitude: 1, longitude: 2, place_name: 'X' })
+      const [url, init] = lastCall()
+      expect(url).toBe('/api/gallery/media/location/bulk')
+      expect(init.method).toBe('PATCH')
+      expect(lastBody()).toEqual({ paths: ['a.jpg', 'b.jpg'], latitude: 1, longitude: 2, place_name: 'X' })
+      expect(out.updated).toBe(2)
+    })
+    it('surfaces a server detail message', async () => {
+      mockFetch({ detail: 'nope' }, { ok: false })
+      await expect(bulkSetLocation(['a'], { latitude: 1, longitude: 2 })).rejects.toThrow('nope')
+    })
+    it('falls back to a generic message', async () => {
+      mockFetch({}, { ok: false })
+      await expect(bulkSetLocation(['a'], { latitude: 1, longitude: 2 })).rejects.toThrow('Failed to set locations')
+    })
+    it('falls back to generic when the body is unparseable', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, json: () => Promise.reject(new Error('x')) })
+      await expect(bulkSetLocation(['a'], { latitude: 1, longitude: 2 })).rejects.toThrow('Failed to set locations')
+    })
+  })
+
+  describe('bulkRedateMedia', () => {
+    it('PATCHes /api/gallery/media/bulk with paths + timestamp', async () => {
+      mockFetch({ updated: 3, requested: 3 })
+      const out = await bulkRedateMedia(['a', 'b', 'c'], { timestamp: '2000-01-01T12:00:00', precision: 'year' })
+      const [url, init] = lastCall()
+      expect(url).toBe('/api/gallery/media/bulk')
+      expect(init.method).toBe('PATCH')
+      expect(lastBody()).toEqual({ paths: ['a', 'b', 'c'], timestamp: '2000-01-01T12:00:00', precision: 'year' })
+      expect(out.updated).toBe(3)
+    })
+    it('surfaces a server detail message', async () => {
+      mockFetch({ detail: 'bad date' }, { ok: false })
+      await expect(bulkRedateMedia(['a'], { timestamp: 'x', precision: 'day' })).rejects.toThrow('bad date')
+    })
+    it('falls back to a generic message', async () => {
+      mockFetch({}, { ok: false })
+      await expect(bulkRedateMedia(['a'], { timestamp: 'x', precision: 'day' })).rejects.toThrow('Failed to set dates')
+    })
+    it('falls back to generic when the body is unparseable', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, json: () => Promise.reject(new Error('x')) })
+      await expect(bulkRedateMedia(['a'], { timestamp: 'x', precision: 'day' })).rejects.toThrow('Failed to set dates')
+    })
+  })
+
   describe('setCover', () => {
     it('PUTs { photo_path, position } to /api/people/{id}/cover', async () => {
       mockFetch(null)
@@ -271,6 +372,31 @@ describe('api', () => {
     it('throws on non-ok', async () => {
       mockFetch(null, { ok: false })
       await expect(assignCluster('c1', 'p1')).rejects.toThrow('Failed to assign cluster')
+    })
+  })
+
+  describe('assignClustersBulk', () => {
+    it('POSTs { person_id, cluster_ids, exclude: null } by default', async () => {
+      mockFetch({ assigned: 0 })
+      await assignClustersBulk(['c1', 'c2'], 'p1')
+      const [url, init] = lastCall()
+      expect(url).toBe('/api/faces/clusters/assign-bulk')
+      expect(init.method).toBe('POST')
+      expect(lastBody()).toEqual({ person_id: 'p1', cluster_ids: ['c1', 'c2'], exclude: null })
+    })
+    it('passes exclude as an array when non-empty', async () => {
+      mockFetch({ assigned: 0 })
+      await assignClustersBulk(['c1'], 'p1', { exclude: [['x.jpg', 0]] })
+      expect(lastBody()).toEqual({ person_id: 'p1', cluster_ids: ['c1'], exclude: [['x.jpg', 0]] })
+    })
+    it('returns the parsed response body', async () => {
+      mockFetch({ assigned: 12, clusters: 3, missing: [] })
+      const res = await assignClustersBulk(['c1'], 'p1')
+      expect(res).toEqual({ assigned: 12, clusters: 3, missing: [] })
+    })
+    it('throws on non-ok', async () => {
+      mockFetch(null, { ok: false })
+      await expect(assignClustersBulk(['c1'], 'p1')).rejects.toThrow('Failed to bulk-assign clusters')
     })
   })
 
