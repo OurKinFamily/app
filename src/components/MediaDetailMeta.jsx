@@ -7,6 +7,7 @@ import { Swatch } from './Swatch'
 import { MiniMap } from './MiniMap'
 import { redateMedia, setMediaLocation } from '../lib/api'
 import { LocationPicker, parseLatLng } from './LocationPicker'
+import { useIsAdmin } from '../contexts/MeContext'
 
 const CONF_TONE = { high: 'green', medium: 'amber', low: 'red' }
 
@@ -218,6 +219,7 @@ export function MediaDetailMeta({ sidecar, heritage, path, onRedated }) {
 // malformed input entirely — no free-text date parsing here.
 const MODES = ['day', 'month', 'year']
 function DateEditor({ path, value, precision, isHeritageString, heritageString, onRedated }) {
+  const isAdmin = useIsAdmin()           // editing the date is owner-only
   const [editing, setEditing] = useState(false)
   const [mode, setMode]       = useState(precision)
   const [d, setD]             = useState('')   // YYYY-MM-DD
@@ -326,7 +328,7 @@ function DateEditor({ path, value, precision, isHeritageString, heritageString, 
       <p className="text-[13px] text-white/80">
         {isHeritageString ? heritageString : formatDate(value, precision)}
       </p>
-      {path && (
+      {path && isAdmin && (
         <button
           type="button"
           onClick={start}
@@ -344,6 +346,7 @@ function DateEditor({ path, value, precision, isHeritageString, heritageString, 
 // none) → place quick-pick (mmp shortcuts) + lat/lng inputs. Save trickles to
 // graph + sidecar + EXIF via the API, then refetches the detail.
 function LocationEditor({ path, lat, lng, source, onLocated }) {
+  const isAdmin = useIsAdmin()           // editing location is owner-only
   const has = lat != null
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState({ latStr: '', lngStr: '', place: '' })
@@ -372,6 +375,8 @@ function LocationEditor({ path, lat, lng, source, onLocated }) {
       setSaving(false)
     }
   }
+
+  if (!isAdmin) return null              // family see the map/GPS value, no editor
 
   if (editing) {
     return (

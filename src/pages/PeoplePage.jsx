@@ -8,8 +8,10 @@ import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 import { EntityItem } from '../components/EntityItem'
 import { AddPersonModal } from '../components/AddPersonModal'
+import { useIsAdmin } from '../contexts/MeContext'
 
 export function PeoplePage() {
+  const isAdmin = useIsAdmin()           // adding people is owner-only
   const [people, setPeople] = useState([])
   const [query, setQuery] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -42,9 +44,11 @@ export function PeoplePage() {
           placeholder="Search…"
           className="md:ml-auto md:max-w-xs"
         />
-        <Button variant="secondary" size="sm" onClick={() => setShowModal(true)} className="self-start md:self-auto">
-          + Add person
-        </Button>
+        {isAdmin && (
+          <Button variant="secondary" size="sm" onClick={() => setShowModal(true)} className="self-start md:self-auto">
+            + Add person
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
@@ -60,7 +64,7 @@ export function PeoplePage() {
         ))}
       </div>
 
-      {showModal && <AddPersonModal onClose={() => setShowModal(false)} onCreated={handleCreated} />}
+      {isAdmin && showModal && <AddPersonModal onClose={() => setShowModal(false)} onCreated={handleCreated} />}
     </Container>
   )
 }

@@ -12,11 +12,17 @@ vi.mock('../../../src/components/MediaLightboxSheet', () => ({
   MediaLightboxSheet: ({ children }) => <div data-testid="sheet">{children}</div>,
 }))
 
+vi.mock('../../../src/contexts/MeContext', () => ({ useIsAdmin: vi.fn(() => true) }))
+
 import { MediaLightbox } from '../../../src/components/MediaLightbox'
 import { MEDIA_VERSION } from '../../../src/lib/media'
+import { useIsAdmin } from '../../../src/contexts/MeContext'
 
 const PHOTO = { path: 'archive/a.jpg', filename: 'a.jpg' }
 const VIDEO = { path: 'archive/v.mp4', filename: 'v.mp4', is_video: true }
+
+// Every test runs as admin unless it overrides useIsAdmin for the non-admin case.
+beforeEach(() => { useIsAdmin.mockReturnValue(true) })
 
 function renderLightbox(props = {}) {
   const onClose = vi.fn()
@@ -25,6 +31,28 @@ function renderLightbox(props = {}) {
 }
 
 describe('MediaLightbox', () => {
+  describe('edit controls are owner-only', () => {
+    const EDIT_HANDLERS = {
+      onFavorite: vi.fn(), onRotate: vi.fn(), onAlbum: vi.fn(),
+      onMosaic: vi.fn(), onSetCover: vi.fn(), onDelete: vi.fn(),
+    }
+    it('shows edit buttons for an admin', () => {
+      renderLightbox(EDIT_HANDLERS)
+      expect(screen.getByLabelText('Rotate')).toBeInTheDocument()
+      expect(screen.getByLabelText('Delete')).toBeInTheDocument()
+    })
+    it('hides every edit button for a non-admin', () => {
+      useIsAdmin.mockReturnValue(false)
+      renderLightbox({ ...EDIT_HANDLERS, onDownload: vi.fn() })
+      for (const label of ['Favorite', 'Rotate', 'Add to album', 'Mosaic', 'Set as cover', 'Delete']) {
+        expect(screen.queryByLabelText(label)).not.toBeInTheDocument()
+      }
+      // read-only affordances stay
+      expect(screen.getByLabelText('Close')).toBeInTheDocument()
+      expect(screen.getByLabelText('Download')).toBeInTheDocument()
+    })
+  })
+
   beforeEach(() => { vi.clearAllMocks() })
 
   describe('rendering', () => {
@@ -458,6 +486,42 @@ describe('MediaLightbox', () => {
       const { container } = render(<MediaLightbox items={[PHOTO]} onClose={onClose} />)
       const stage = container.querySelector('div[class*="flex-1"]')
       fireTouch(stage, 'touchend', 200, 200)
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('ignores a two-finger pinch (no navigate, no close, no detail sheet)', () => {
+      // regression(2026-06-15): on mobile, pinch-to-zoom spread the two fingers and
+      // the single-finger swipe handler read it as a swipe-up, opening the detail
+      // panel every time. A gesture with a second finger must be ignored.
+      const onClose = vi.fn(); const onNavigate = vi.fn()
+      const { container } = render(
+        <MediaLightbox items={[PHOTO, { path: 'b.jpg' }]} onClose={onClose} onNavigate={onNavigate} />
+      )
+      onNavigate.mockClear()
+      const stage = container.querySelector('div[class*="flex-1"]')
+      const start = new Event('touchstart', { bubbles: true })
+      start.touches = [{ clientX: 200, clientY: 400 }, { clientX: 220, clientY: 410 }]
+      start.changedTouches = []
+      fireEvent(stage, start)
+      const end = new Event('touchend', { bubbles: true })
+      end.touches = []
+      end.changedTouches = [{ clientX: 200, clientY: 300 }]  // would be swipe-up
+      fireEvent(stage, end)
+      expect(onNavigate).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('ignores a gesture that ends with a finger still down (pinch release)', () => {
+      // regression(2026-06-15): lifting one finger of a pinch fires touchend while
+      // the other is still down — not a swipe.
+      const onClose = vi.fn()
+      const { container } = render(<MediaLightbox items={[PHOTO]} onClose={onClose} />)
+      const stage = container.querySelector('div[class*="flex-1"]')
+      fireTouch(stage, 'touchstart', 200, 200)
+      const end = new Event('touchend', { bubbles: true })
+      end.touches = [{ clientX: 220, clientY: 360 }]          // a finger still down
+      end.changedTouches = [{ clientX: 200, clientY: 350 }]   // would be swipe-down
+      fireEvent(stage, end)
       expect(onClose).not.toHaveBeenCalled()
     })
   })

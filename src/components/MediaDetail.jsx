@@ -9,6 +9,7 @@ import { EntityChip } from './EntityChip'
 import { Button } from './Button'
 import { Select } from './Select'
 import { MediaDetailMeta } from './MediaDetailMeta'
+import { useIsAdmin } from '../contexts/MeContext'
 
 const FACE_PREVIEW = 6
 
@@ -30,6 +31,7 @@ function personToOption(p) {
 // Mount one per item (key by item.path) so state resets cleanly on navigation.
 // ctx (from MediaLightbox): { setHighlight, setFaces, setBumpDetail, openAssign, ... }
 export function MediaDetail({ item, ctx }) {
+  const isAdmin = useIsAdmin()           // tagging/untagging people is owner-only
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showAllFaces, setShowAllFaces] = useState(false)
@@ -167,7 +169,7 @@ export function MediaDetail({ item, ctx }) {
                       initials
                       text={p.known_as || p.name}
                       caption={age}
-                      onRemove={async () => {
+                      onRemove={isAdmin ? async () => {
                         if (p.face_index == null || !item?.path) return
                         if (!confirm(`Unassign ${p.known_as || p.name} from this photo?`)) return
                         try {
@@ -176,15 +178,15 @@ export function MediaDetail({ item, ctx }) {
                         } catch (e) {
                           alert('Failed to unassign: ' + e.message)
                         }
-                      }}
-                      removeLabel={`Unassign ${p.known_as || p.name}`}
+                      } : undefined}
+                      removeLabel={isAdmin ? `Unassign ${p.known_as || p.name}` : undefined}
                     />
                   </span>
                   )
                 })}
               </div>
             )}
-            {addPersonOpen ? (
+            {isAdmin && (addPersonOpen ? (
               <div className="space-y-2">
                 {addQuery.trim() && !addResults.some(o => o.text?.toLowerCase() === addQuery.trim().toLowerCase()) && (
                   <button
@@ -206,7 +208,7 @@ export function MediaDetail({ item, ctx }) {
               </div>
             ) : (
               <Button variant="secondary" size="sm" onClick={() => setAddPersonOpen(true)}>+ Add person</Button>
-            )}
+            ))}
           </DetailSection>
 
           {detail.unidentified?.length > 0 && (() => {

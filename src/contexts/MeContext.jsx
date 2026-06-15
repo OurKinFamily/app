@@ -30,9 +30,12 @@ export function MeProvider({ children }) {
 
   const previewAsViewer = previewPersonId !== null
   const isAdmin = !previewAsViewer && (me?.is_admin ?? false)
+  // Whose perspective relationship lines are computed from: an admin's chosen
+  // "preview as" person, otherwise the logged-in family member's own node.
+  const viewerPersonId = previewPersonId || me?.person?.id || null
 
   return (
-    <MeContext.Provider value={{ isAdmin, me, loading, previewPersonId, previewAsViewer, setPreviewPersonId }}>
+    <MeContext.Provider value={{ isAdmin, me, loading, previewPersonId, previewAsViewer, viewerPersonId, setPreviewPersonId }}>
       {children}
     </MeContext.Provider>
   )

@@ -102,20 +102,20 @@ export function PersonOverview() {
 // mother's side", based on the graph walk from the logged-in viewer to this
 // person. Stays silent when no path can be computed.
 function RelationshipLine({ personId }) {
-  const { previewPersonId } = useMe()
+  const { viewerPersonId } = useMe()
   const [data, setData] = useState(null)
   useEffect(() => {
     if (!personId) return
     let alive = true
-    const url = previewPersonId
-      ? `/api/people/${personId}/relationship?viewer_id=${previewPersonId}`
+    const url = viewerPersonId
+      ? `/api/people/${personId}/relationship?viewer_id=${viewerPersonId}`
       : `/api/people/${personId}/relationship`
     fetch(url)
       .then(r => (r.ok ? r.json() : null))
       .then(d => { if (alive) setData(d) })
       .catch(() => { if (alive) setData(null) })
     return () => { alive = false }
-  }, [personId, previewPersonId])
+  }, [personId, viewerPersonId])
   if (!data?.label) return null
   return (
     <p className="text-sm capitalize text-white/65">

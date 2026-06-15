@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor, fireEvent } from '@testing-library/react'
+vi.mock('../../../src/contexts/MeContext', () => ({ useIsAdmin: vi.fn(() => true) }))
 import { MediaDetail } from '../../../src/components/MediaDetail'
+import { useIsAdmin } from '../../../src/contexts/MeContext'
 import { renderWithRouter } from '../helpers'
+
+beforeEach(() => { useIsAdmin.mockReturnValue(true) })
 
 const ITEM = { path: 'archive/x.jpg', filename: 'x.jpg' }
 
@@ -74,6 +78,19 @@ describe('MediaDetail', () => {
   })
 
   describe('People section', () => {
+    it('shows "+ Add person" for an admin', async () => {
+      mockDetail({ people: [{ id: 'p1', name: 'Stephen', face_index: 0 }], unidentified: [], objects: [] })
+      renderWithRouter(<MediaDetail item={ITEM} ctx={makeCtx()} />)
+      await waitFor(() => expect(screen.getByText('+ Add person')).toBeInTheDocument())
+    })
+    it('hides "+ Add person" (and unassign) for a non-admin', async () => {
+      useIsAdmin.mockReturnValue(false)
+      mockDetail({ people: [{ id: 'p1', name: 'Stephen', face_index: 0 }], unidentified: [], objects: [] })
+      renderWithRouter(<MediaDetail item={ITEM} ctx={makeCtx()} />)
+      await waitFor(() => expect(screen.getByRole('link', { name: /Stephen/ })).toBeInTheDocument())
+      expect(screen.queryByText('+ Add person')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Unassign/)).not.toBeInTheDocument()
+    })
     it('renders an EntityChip per identified person, linking to their page', async () => {
       mockDetail({
         people: [

@@ -15,13 +15,38 @@ vi.mock('../../../src/lib/api', () => ({
 }))
 import { redateMedia, setMediaLocation, getPlaceShortcuts, geocodePlace } from '../../../src/lib/api'
 
+vi.mock('../../../src/contexts/MeContext', () => ({ useIsAdmin: vi.fn(() => true) }))
+import { useIsAdmin } from '../../../src/contexts/MeContext'
+
 import { MediaDetailMeta } from '../../../src/components/MediaDetailMeta'
+
+// Every test runs as admin unless it overrides useIsAdmin for the non-admin case.
+beforeEach(() => { useIsAdmin.mockReturnValue(true) })
 
 function renderMeta(sidecar, heritage, extra = {}) {
   return render(<MediaDetailMeta sidecar={sidecar} heritage={heritage} {...extra} />)
 }
 
 describe('MediaDetailMeta', () => {
+  describe('edit controls are owner-only', () => {
+    const DATED = { timestamps: { primary: { timestamp: '2000-04-15T12:00:00', source: 'exif', confidence: 'high' } }, latitude: 42.7, longitude: -71.1 }
+    it('shows the date pencil for an admin', () => {
+      renderMeta(DATED, null, { path: 'x.jpg' })
+      expect(screen.getByLabelText('Edit date')).toBeInTheDocument()
+    })
+    it('hides the date pencil and location editor for a non-admin', () => {
+      useIsAdmin.mockReturnValue(false)
+      renderMeta(DATED, null, { path: 'x.jpg' })
+      expect(screen.queryByLabelText('Edit date')).not.toBeInTheDocument()
+      // the location *editor* is gone, but the read-only Location section stays
+      expect(screen.queryByText('Edit location')).not.toBeInTheDocument()
+      expect(screen.queryByText('Correct location')).not.toBeInTheDocument()
+      expect(screen.queryByText('Set location')).not.toBeInTheDocument()
+      expect(screen.getByText('Date')).toBeInTheDocument()
+      expect(screen.getByText('Location')).toBeInTheDocument()
+    })
+  })
+
   describe('Date section', () => {
     it('prefers heritage.content_date over EXIF', () => {
       renderMeta({}, { content_date: '1995-12-25' })

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { X, ChevronLeft, ChevronRight, Heart, RotateCw, Download, Trash2, Album, Volume2, Square, Image as ImageIcon, Palette } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { IconButton } from './IconButton'
+import { useIsAdmin } from '../contexts/MeContext'
 import { FaceAssignPopover } from './FaceAssignPopover'
 import { MediaLightboxSheet } from './MediaLightboxSheet'
 import { bboxRect, onMediaError } from './mediaLightboxHelpers'
@@ -15,6 +16,7 @@ export function MediaLightbox({
   favorites, onFavorite, onRotate, onDownload, onDelete, onSetCover, currentCoverPath,
   onClose, onNavigate, onNeedMore, onAlbum, onMosaic, renderDetail, children,
 }) {
+  const isAdmin = useIsAdmin()           // edit controls are owner-only
   const [index, setIndex] = useState(initialIndex)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chrome, setChrome] = useState(true)
@@ -133,9 +135,16 @@ export function MediaLightbox({
     <div className="fixed inset-0 z-[2000] flex flex-col bg-black md:flex-row">
       <div
         className="relative flex min-h-0 flex-1 items-center justify-center"
-        onTouchStart={e => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }}
+        onTouchStart={e => {
+          // A second finger = pinch-to-zoom — not a swipe. Cancel any tracked
+          // single-finger gesture so touchEnd doesn't read the spread as a swipe.
+          if (e.touches.length > 1) { touch.current = null; return }
+          touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        }}
         onTouchEnd={e => {
           if (!touch.current) return
+          // Still fingers down (lifting one finger of a pinch) — ignore.
+          if (e.touches.length > 0) { touch.current = null; return }
           const dx = e.changedTouches[0].clientX - touch.current.x
           const dy = e.changedTouches[0].clientY - touch.current.y
           touch.current = null
@@ -148,15 +157,15 @@ export function MediaLightbox({
           <IconButton label="Close" onClick={onClose}><X size={20} /></IconButton>
           {title && <span className="truncate text-[13px] text-white/80">{title}</span>}
           <div className="ml-auto flex items-center gap-1">
-            {onFavorite && (
+            {isAdmin && onFavorite && (
               <IconButton label="Favorite" active={fav} onClick={() => onFavorite(item)}>
                 <Heart size={18} className={fav ? 'fill-red-500' : ''} />
               </IconButton>
             )}
-            {onRotate && <IconButton label="Rotate" onClick={rotate}><RotateCw size={18} /></IconButton>}
-            {onAlbum && <IconButton label="Add to album" onClick={() => onAlbum(item)}><Album size={18} /></IconButton>}
-            {onMosaic && <IconButton label="Mosaic" onClick={() => onMosaic(item)}><Palette size={18} /></IconButton>}
-            {onSetCover && (
+            {isAdmin && onRotate && <IconButton label="Rotate" onClick={rotate}><RotateCw size={18} /></IconButton>}
+            {isAdmin && onAlbum && <IconButton label="Add to album" onClick={() => onAlbum(item)}><Album size={18} /></IconButton>}
+            {isAdmin && onMosaic && <IconButton label="Mosaic" onClick={() => onMosaic(item)}><Palette size={18} /></IconButton>}
+            {isAdmin && onSetCover && (
               <IconButton
                 label={item?.path === currentCoverPath ? 'Current cover' : 'Set as cover'}
                 onClick={() => onSetCover(item)}
@@ -175,7 +184,7 @@ export function MediaLightbox({
                 {audioPlaying ? <Square size={18} /> : <Volume2 size={18} />}
               </IconButton>
             )}
-            {onDelete && <IconButton label="Delete" onClick={() => setConfirmDelete(true)}><Trash2 size={18} /></IconButton>}
+            {isAdmin && onDelete && <IconButton label="Delete" onClick={() => setConfirmDelete(true)}><Trash2 size={18} /></IconButton>}
           </div>
         </div>
         <audio ref={audioRef} onEnded={() => setAudioPlaying(false)} className="hidden" />
