@@ -3,25 +3,31 @@ import { screen } from '@testing-library/react'
 import { SidebarNav } from '../../../src/components/SidebarNav'
 import { renderWithRouter } from '../helpers'
 
-// SidebarNav uses useIsAdmin() from MeContext. Mock the hook directly so
-// tests are synchronous — no fetch mocking or waitFor needed.
-const mockIsAdmin = vi.fn(() => false)
+// SidebarNav uses useMe() from MeContext (isAdmin + me.can_see_gallery). Mock the
+// hook directly so tests are synchronous — no fetch mocking or waitFor needed.
+const mockMe = vi.fn(() => ({ isAdmin: false, me: { can_see_gallery: false } }))
 vi.mock('../../../src/contexts/MeContext', () => ({
-  useIsAdmin: () => mockIsAdmin(),
+  useMe: () => mockMe(),
 }))
 
 function renderAsAdmin() {
-  mockIsAdmin.mockReturnValue(true)
+  mockMe.mockReturnValue({ isAdmin: true, me: { can_see_gallery: true } })
   renderWithRouter(<SidebarNav />)
 }
 
 function renderAsGuest() {
-  mockIsAdmin.mockReturnValue(false)
+  mockMe.mockReturnValue({ isAdmin: false, me: { can_see_gallery: false } })
+  renderWithRouter(<SidebarNav />)
+}
+
+// Cayce tier: not admin, but may see the gallery.
+function renderAsGalleryViewer() {
+  mockMe.mockReturnValue({ isAdmin: false, me: { can_see_gallery: true } })
   renderWithRouter(<SidebarNav />)
 }
 
 describe('SidebarNav', () => {
-  beforeEach(() => { mockIsAdmin.mockReturnValue(false) })
+  beforeEach(() => { mockMe.mockReturnValue({ isAdmin: false, me: { can_see_gallery: false } }) })
 
   describe('section headings (admin user)', () => {
     it.each([['Our Kin'], ['Manage'], ['Admin'], ['Tools']])('renders the %s section', heading => {
@@ -63,13 +69,32 @@ describe('SidebarNav', () => {
     })
   })
 
+  describe('item-level gating', () => {
+    it('hides Search/Albums/Favorites and Gallery/Places from a plain family viewer', () => {
+      renderAsGuest()
+      for (const label of ['Search', 'Albums', 'Favorites', 'Gallery', 'Places']) {
+        expect(screen.queryByRole('link', { name: label })).not.toBeInTheDocument()
+      }
+      // curated family items remain
+      expect(screen.getByRole('link', { name: 'People' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Biographies' })).toBeInTheDocument()
+    })
+    it('shows Gallery/Places to a gallery viewer (Cayce) but still hides admin-only items', () => {
+      renderAsGalleryViewer()
+      expect(screen.getByRole('link', { name: 'Gallery' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Places' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Search' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Albums' })).not.toBeInTheDocument()
+    })
+  })
+
   describe('active state (branch coverage)', () => {
     it('renders without throwing when a route is active', () => {
-      mockIsAdmin.mockReturnValue(true)
+      renderAsAdmin()
       expect(() => renderWithRouter(<SidebarNav />, { route: '/gallery' })).not.toThrow()
     })
     it('renders without throwing when no route is active', () => {
-      mockIsAdmin.mockReturnValue(true)
+      renderAsAdmin()
       expect(() => renderWithRouter(<SidebarNav />, { route: '/nowhere' })).not.toThrow()
     })
   })

@@ -9,6 +9,9 @@ import { AdminOnly } from '../../../src/components/AdminOnly'
 const mockMe = vi.fn()
 vi.mock('../../../src/contexts/MeContext', () => ({
   useMe: () => mockMe(),
+  // AdminOnly redirects non-admins to homePath(me); stub it to /gallery so the
+  // route-guard assertions below can land on a known sentinel route.
+  homePath: () => '/gallery',
 }))
 
 function makeMe({ isAdmin = false, loading = false } = {}) {

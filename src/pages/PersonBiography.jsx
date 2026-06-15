@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
-import { Pencil, X } from 'lucide-react'
+import { Pencil, X, Lock, Unlock } from 'lucide-react'
 import { mediumUrl, mediaUrl, thumbUrl, isVideo } from '../lib/media'
 import { cn } from '../lib/cn'
 import { Button } from '../components/Button'
@@ -41,6 +41,19 @@ export function PersonBiography() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // Owner-only: hide/show this bio from family viewers.
+  async function toggleBioPrivate() {
+    const next = !person.bio_private
+    try {
+      const res = await fetch(`/api/people/${person.id}/bio-private`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bio_private: next }),
+      })
+      if (res.ok) setPerson(p => ({ ...p, bio_private: next }))
+    } catch { /* leave state unchanged on failure */ }
   }
 
   const components = {
@@ -135,13 +148,30 @@ export function PersonBiography() {
   return (
     <div className="relative max-w-3xl">
       {isAdmin && (
-        <button
-          onClick={() => { setDraft(person.biography || ''); setEditing(true) }}
-          aria-label="Edit biography"
-          className="absolute right-0 top-0 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white"
-        >
-          <Pencil size={16} />
-        </button>
+        <div className="absolute right-0 top-0 z-10 flex items-center gap-1">
+          <button
+            onClick={toggleBioPrivate}
+            title={person.bio_private
+              ? 'Private — only you can read this bio. Click to make it visible to family.'
+              : 'Visible to family. Click to make this bio private (only you).'}
+            aria-label={person.bio_private ? 'Make biography public' : 'Make biography private'}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            {person.bio_private ? <Lock size={16} className="text-amber-400" /> : <Unlock size={16} />}
+          </button>
+          <button
+            onClick={() => { setDraft(person.biography || ''); setEditing(true) }}
+            aria-label="Edit biography"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <Pencil size={16} />
+          </button>
+        </div>
+      )}
+      {isAdmin && person.bio_private && (
+        <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-2.5 py-1 text-[11px] font-medium text-amber-300">
+          <Lock size={11} /> Private — hidden from family
+        </p>
       )}
 
       {person.biography ? (

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookText } from 'lucide-react'
+import { BookText, Lock, Unlock } from 'lucide-react'
 import { mediumUrl, mediaUrl } from '../lib/media'
 import { Container } from '../components/Container'
+import { useIsAdmin } from '../contexts/MeContext'
 
 // Index of everyone who has a written biography. Tiles link straight to the
 // person's Biography tab. Tile image = cover photo if set, else avatar.
 export function BiographiesPage() {
+  const isAdmin = useIsAdmin()
   const [people, setPeople] = useState(null)
 
   useEffect(() => {
@@ -15,6 +17,20 @@ export function BiographiesPage() {
       .then(setPeople)
       .catch(() => setPeople([]))
   }, [])
+
+  // Owner-only: hide/show a person's bio from family viewers, straight from the card.
+  async function toggleBioPrivate(p) {
+    const next = !p.bio_private
+    try {
+      const res = await fetch(`/api/people/${p.id}/bio-private`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bio_private: next }),
+      })
+      if (!res.ok) return
+      setPeople(list => list.map(x => (x.id === p.id ? { ...x, bio_private: next } : x)))
+    } catch { /* leave state unchanged on failure */ }
+  }
 
   return (
     <Container className="py-8">
@@ -30,7 +46,7 @@ export function BiographiesPage() {
       ) : (
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
           {people.map(p => (
-            <BioTile key={p.id} p={p} />
+            <BioTile key={p.id} p={p} isAdmin={isAdmin} onTogglePrivate={() => toggleBioPrivate(p)} />
           ))}
         </div>
       )}
@@ -47,15 +63,30 @@ function lifespan(p) {
   return ''
 }
 
-function BioTile({ p }) {
+function BioTile({ p, isAdmin, onTogglePrivate }) {
   const img = p.cover_image ? mediumUrl(p.cover_image) : p.avatar ? mediaUrl(p.avatar) : null
   const span = lifespan(p)
   return (
     <Link
       to={`/manage/people/${p.id}/biography`}
-      className="group block overflow-hidden rounded-xl border border-white/10 bg-zinc-900 transition-colors hover:border-white/25"
+      className={`group block overflow-hidden rounded-xl border bg-zinc-900 transition-colors hover:border-white/25 ${p.bio_private ? 'border-amber-400/30' : 'border-white/10'}`}
     >
       <div className="relative aspect-[4/3] bg-zinc-800">
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={e => { e.preventDefault(); e.stopPropagation(); onTogglePrivate() }}
+            title={p.bio_private
+              ? 'Private — only you can read this. Click to make it visible to family.'
+              : 'Visible to family. Click to make private (only you).'}
+            aria-label={p.bio_private ? 'Make biography public' : 'Make biography private'}
+            className="absolute right-2 top-2 z-10 rounded-full bg-black/60 p-1.5 backdrop-blur transition hover:bg-black/80"
+          >
+            {p.bio_private
+              ? <Lock size={14} className="text-amber-400" />
+              : <Unlock size={14} className="text-white/60" />}
+          </button>
+        )}
         {img ? (
           <img
             src={img}

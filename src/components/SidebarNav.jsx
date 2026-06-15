@@ -5,19 +5,19 @@ import {
   LayoutDashboard, Activity, Palette, Search, Wand2,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
-import { useIsAdmin } from '../contexts/MeContext'
+import { useMe } from '../contexts/MeContext'
 
 const SECTIONS = [
   {
     title: 'Our Kin',
     items: [
-      { to: '/search', label: 'Search', Icon: Search },
-      { to: '/gallery', label: 'Gallery', Icon: Images, end: true },
-      { to: '/gallery/places', label: 'Places', Icon: MapPin },
+      { to: '/search', label: 'Search', Icon: Search, adminOnly: true },
+      { to: '/gallery', label: 'Gallery', Icon: Images, end: true, galleryOnly: true },
+      { to: '/gallery/places', label: 'Places', Icon: MapPin, galleryOnly: true },
       { to: '/gallery/people', label: 'People', Icon: Users },
       { to: '/gallery/biographies', label: 'Biographies', Icon: BookText },
-      { to: '/gallery/albums', label: 'Albums', Icon: Album },
-      { to: '/gallery/favorites', label: 'Favorites', Icon: Heart },
+      { to: '/gallery/albums', label: 'Albums', Icon: Album, adminOnly: true },
+      { to: '/gallery/favorites', label: 'Favorites', Icon: Heart, adminOnly: true },
       { to: '/gallery/family', label: 'Family', Icon: TreeDeciduous },
     ],
   },
@@ -53,8 +53,10 @@ const SECTIONS = [
 ]
 
 export function SidebarNav() {
-  const isAdmin = useIsAdmin()
+  const { isAdmin, me } = useMe()
+  const canGallery = me?.can_see_gallery ?? false
   const visible = SECTIONS.filter(s => isAdmin || !s.adminOnly)
+  const itemVisible = it => (isAdmin || !it.adminOnly) && (canGallery || !it.galleryOnly)
 
   return (
     <nav className="flex flex-col gap-5">
@@ -62,7 +64,7 @@ export function SidebarNav() {
         <div key={section.title}>
           <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-white/25">{section.title}</p>
           <ul className="space-y-0.5">
-            {section.items.map(({ to, label, Icon, end }) => (
+            {section.items.filter(itemVisible).map(({ to, label, Icon, end }) => (
               <li key={to}>
                 <NavLink
                   to={to}

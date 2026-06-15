@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { useMe } from '../contexts/MeContext'
+import { useMe, homePath } from '../contexts/MeContext'
 
 /**
  * Route guard — wrap admin-only routes as a layout route:
@@ -11,8 +11,8 @@ import { useMe } from '../contexts/MeContext'
  *   <AdminOnly>{children}</AdminOnly>  — renders nothing when not admin
  */
 export function AdminOnly({ children }) {
-  const { isAdmin, loading } = useMe()
+  const { isAdmin, loading, me } = useMe()
   if (loading) return null
-  if (!isAdmin) return children !== undefined ? null : <Navigate to="/gallery" replace />
+  if (!isAdmin) return children !== undefined ? null : <Navigate to={homePath(me)} replace />
   return children ?? <Outlet />
 }

@@ -3,11 +3,12 @@ import { useOutletContext, useParams, useNavigate } from 'react-router-dom'
 import {
   BookOpen, Image as ImageIcon, GraduationCap, HeartPulse, Newspaper,
   Notebook, Award, Mail, FileText, Film, Video, ChevronLeft, Search,
-  LayoutGrid, List,
+  LayoutGrid, List, Lock, Unlock,
 } from 'lucide-react'
 import { MediaCard, MediaRow } from '../components/MediaCard'
 import { PhotoLightbox } from '../components/PhotoLightbox'
 import { mediaUrl } from '../lib/media'
+import { useIsAdmin } from '../contexts/MeContext'
 
 const VIEW_STORAGE_KEY = 'scrapbook-view-mode'
 
@@ -50,9 +51,24 @@ function adaptItem(it) {
 export function PersonScrapbook() {
   const { person } = useOutletContext()
   const navigate = useNavigate()
+  const isAdmin = useIsAdmin()
   const { collectionId } = useParams()
   const [collections, setCollections] = useState(null)
   const [items, setItems] = useState(null)
+
+  // Owner-only: toggle a collection private (hidden from family viewers).
+  async function toggleCollectionPrivate(c) {
+    const next = !c.private
+    try {
+      const res = await fetch(`/api/collections/${c.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ private: next }),
+      })
+      if (!res.ok) return
+      setCollections(cols => cols.map(x => (x.id === c.id ? { ...x, private: next } : x)))
+    } catch { /* leave state unchanged on failure */ }
+  }
 
   // Drill-down — driven by the URL. `:collectionId` present → drilled view;
   // absent → top-level scrapbook. openItems is fetched lazily on entry.
@@ -255,16 +271,32 @@ export function PersonScrapbook() {
           </h2>
           <div className={gridCls}>
             {visibleCollections.map(c => (
-              <ItemComp
-                key={c.id}
-                cover={c.cover_path ? mediaUrl(c.cover_path) : null}
-                coverBadge={`${c.item_count} ${c.is_series ? 'pages' : 'items'}`}
-                icon={typeIcon(c.type)}
-                text={c.name}
-                subtitle={TYPE_LABELS[c.type] || c.type}
-                description={c.description}
-                onClick={() => enterCollection(c)}
-              />
+              <div key={c.id} className={`relative ${c.private ? 'opacity-80' : ''}`}>
+                <ItemComp
+                  cover={c.cover_path ? mediaUrl(c.cover_path) : null}
+                  coverBadge={`${c.item_count} ${c.is_series ? 'pages' : 'items'}`}
+                  icon={typeIcon(c.type)}
+                  text={c.name}
+                  subtitle={TYPE_LABELS[c.type] || c.type}
+                  description={c.description}
+                  onClick={() => enterCollection(c)}
+                />
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); toggleCollectionPrivate(c) }}
+                    title={c.private
+                      ? 'Private — only you can see this. Click to make it visible to family.'
+                      : 'Visible to family. Click to make private (only you).'}
+                    aria-label={c.private ? 'Make collection public' : 'Make collection private'}
+                    className="absolute right-2 top-2 z-10 rounded-full bg-black/60 p-1.5 backdrop-blur transition hover:bg-black/80"
+                  >
+                    {c.private
+                      ? <Lock size={14} className="text-amber-400" />
+                      : <Unlock size={14} className="text-white/60" />}
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </>

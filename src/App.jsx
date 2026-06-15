@@ -2,8 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { RootLayout } from './components/RootLayout'
 import { MainLayout } from './components/MainLayout'
 import { ToastProvider } from './components/Toast'
-import { MeProvider } from './contexts/MeContext'
+import { MeProvider, useMe, homePath } from './contexts/MeContext'
 import { AdminOnly } from './components/AdminOnly'
+import { GalleryOnly } from './components/GalleryOnly'
 import { ViewerPreviewBadge } from './components/ViewerPreviewBadge'
 import { PeoplePage } from './pages/PeoplePage'
 import { BiographiesPage } from './pages/BiographiesPage'
@@ -43,6 +44,14 @@ import { MomChildhoodHomePage } from './pages/MomChildhoodHomePage'
 import { GrandmaBeforeMomPage } from './pages/GrandmaBeforeMomPage'
 import './index.css'
 
+// "/" and the header "OK" logo both land here, then bounce to the right home for
+// the user: the gallery for owner+Cayce, their own person page for family.
+function LandingRedirect() {
+  const { me, loading } = useMe()
+  if (loading) return null
+  return <Navigate to={homePath(me)} replace />
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -54,20 +63,23 @@ export default function App() {
                 {/* "/" goes back to /gallery as the default landing. The home-page
                     napkin POC + its demo rooms still live at /home/* for when we
                     pick the vision work back up. */}
-                <Route path="/" element={<Navigate to="/gallery" replace />} />
+                <Route path="/" element={<LandingRedirect />} />
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/home/mom-childhood" element={<MomChildhoodHomePage />} />
                 <Route path="/home/grandma-before-mom" element={<GrandmaBeforeMomPage />} />
 
                 <Route path="/search" element={<SearchPage />} />
 
-                <Route path="/gallery" element={<GalleryPage />}>
-                  <Route path="photo/*" element={<LightboxPage />} />
+                {/* The full photo gallery + places are owner+Cayce only. */}
+                <Route element={<GalleryOnly />}>
+                  <Route path="/gallery" element={<GalleryPage />}>
+                    <Route path="photo/*" element={<LightboxPage />} />
+                  </Route>
+                  <Route path="/gallery/:year" element={<GalleryPage />}>
+                    <Route path="photo/*" element={<LightboxPage />} />
+                  </Route>
+                  <Route path="/gallery/places" element={<PlacesPage />} />
                 </Route>
-                <Route path="/gallery/:year" element={<GalleryPage />}>
-                  <Route path="photo/*" element={<LightboxPage />} />
-                </Route>
-                <Route path="/gallery/places" element={<PlacesPage />} />
                 <Route path="/gallery/people" element={<PeoplePage />} />
                 <Route path="/gallery/biographies" element={<BiographiesPage />} />
                 <Route path="/gallery/scrapbook" element={<ScrapbookPage />} />

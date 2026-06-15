@@ -32,11 +32,12 @@ describe('MainLayout', () => {
       renderLayout('/')
       expect(screen.getByRole('link', { name: /OK/ })).toBeInTheDocument()
     })
-    it('mounts BottomBar + SidebarNav (multiple Gallery links exist)', () => {
+    it('mounts BottomBar + SidebarNav (multiple People links exist)', () => {
       renderLayout('/')
-      // Both BottomBar and SidebarNav render a Gallery link — count > 1
-      // confirms both nav components mounted.
-      expect(screen.getAllByRole('link', { name: /Gallery/ }).length).toBeGreaterThan(1)
+      // Both BottomBar and SidebarNav render a People link (ungated) — count > 1
+      // confirms both nav components mounted. (Gallery is now gallery-tier-gated,
+      // so it isn't a reliable "both mounted" signal for a null/family viewer.)
+      expect(screen.getAllByRole('link', { name: /People/ }).length).toBeGreaterThan(1)
     })
     it('renders a hamburger button via AppHeader\'s onMenu prop', () => {
       renderLayout('/')
