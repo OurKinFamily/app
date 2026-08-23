@@ -13,7 +13,10 @@ import { useIsAdmin } from '../contexts/MeContext'
 function formatDate(date, precision) {
   if (!date) return null
   if (precision === 'year') return date.slice(0, 4)
-  return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  // A date-only ISO string parses as UTC, so in western timezones it renders a
+  // day early. Pin it to local midnight and the calendar date survives.
+  const local = /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T00:00:00` : date
+  return new Date(local).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 const TABS = [
