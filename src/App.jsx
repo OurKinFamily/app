@@ -29,6 +29,7 @@ import { FilesystemPage } from './pages/FilesystemPage'
 import { HealthPage } from './pages/HealthPage'
 import { MosaicPage } from './pages/MosaicPage'
 import { GalleryPage } from './pages/GalleryPage'
+import { UploadPage } from './pages/UploadPage'
 import { PlacesPage } from './pages/PlacesPage'
 import { ScrapbookPage } from './pages/ScrapbookPage'
 import { SuggestionsPage } from './pages/SuggestionsPage'
@@ -79,6 +80,7 @@ export default function App() {
                     <Route path="photo/*" element={<LightboxPage />} />
                   </Route>
                   <Route path="/gallery/places" element={<PlacesPage />} />
+                  <Route path="/upload" element={<UploadPage />} />
                 </Route>
                 <Route path="/gallery/people" element={<PeoplePage />} />
                 <Route path="/gallery/biographies" element={<BiographiesPage />} />

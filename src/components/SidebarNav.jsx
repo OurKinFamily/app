@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   Images, MapPin, Users, Album, Heart, TreeDeciduous,
   UserPlus, UserCheck, Users2, Sparkles, BookText,
-  LayoutDashboard, Activity, Palette, Search, Wand2,
+  LayoutDashboard, Activity, Palette, Search, Wand2, UploadCloud,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { useMe } from '../contexts/MeContext'
@@ -13,6 +13,7 @@ const SECTIONS = [
     items: [
       { to: '/search', label: 'Search', Icon: Search, adminOnly: true },
       { to: '/gallery', label: 'Gallery', Icon: Images, end: true, galleryOnly: true },
+      { to: '/upload', label: 'Upload', Icon: UploadCloud, galleryOnly: true },
       { to: '/gallery/places', label: 'Places', Icon: MapPin, galleryOnly: true },
       { to: '/gallery/people', label: 'People', Icon: Users },
       { to: '/gallery/biographies', label: 'Biographies', Icon: BookText },
