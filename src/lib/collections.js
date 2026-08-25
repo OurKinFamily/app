@@ -1,4 +1,4 @@
-import { Baby, Clapperboard, Building2, Pencil, Newspaper, FileText, Mail, Folder } from 'lucide-react'
+import { Baby, Clapperboard, Building2, Pencil, Newspaper, FileText, Mail, GraduationCap, Palette, Telescope, CircuitBoard, Folder } from 'lucide-react'
 
 const CATEGORIES = {
   baby_book:       { label: 'Baby Book',       Icon: Baby },
@@ -8,6 +8,10 @@ const CATEGORIES = {
   newspaper:       { label: 'Newspaper',       Icon: Newspaper },
   documents:       { label: 'Documents',       Icon: FileText },
   letters:         { label: 'Letters',         Icon: Mail },
+  high_school:     { label: 'High School',     Icon: GraduationCap },
+  art:             { label: 'Art',             Icon: Palette },
+  astro:           { label: 'Astro',           Icon: Telescope },
+  electronics_diy: { label: 'Electronics & DIY', Icon: CircuitBoard },
 }
 
 export function categoryLabel(category) {
