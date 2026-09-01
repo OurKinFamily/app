@@ -34,6 +34,9 @@ import { PlacesPage } from './pages/PlacesPage'
 import { ScrapbookPage } from './pages/ScrapbookPage'
 import { SuggestionsPage } from './pages/SuggestionsPage'
 import { DesignPage } from './pages/DesignPage'
+import { V2Layout } from './v2/layouts/V2Layout'
+import { V2HomePage } from './v2/pages/V2HomePage'
+import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
 import { LightboxPage } from './pages/LightboxPage'
 import { AlbumsPage } from './pages/AlbumsPage'
 import { AlbumPage } from './pages/AlbumPage'
@@ -60,6 +63,16 @@ export default function App() {
         <ToastProvider>
           <Routes>
             <Route element={<RootLayout />}>
+              {/* v2 reskin — deliberately OUTSIDE MainLayout, so it inherits no
+                  header, sidebar, or bottom bar. A clean surface to design on.
+                  Admin-only so family don't wander into half-built pages. */}
+              <Route element={<AdminOnly />}>
+                <Route element={<V2Layout />}>
+                  <Route path="/v2" element={<V2HomePage />} />
+                  <Route path="/v2/design/components" element={<V2ComponentsPage />} />
+                </Route>
+              </Route>
+
               <Route element={<MainLayout />}>
                 {/* "/" goes back to /gallery as the default landing. The home-page
                     napkin POC + its demo rooms still live at /home/* for when we
