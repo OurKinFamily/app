@@ -57,11 +57,11 @@ function NavItem({ to, label, icon: Icon, end }) {
       style={({ isActive }) => ({
         display: 'flex',
         alignItems: 'center',
-        gap: 20,
+        gap: 16,
         // Pill sits proud of the rail on the right, flush left — the shape
         // Google Photos uses to imply the sidebar continues off-screen.
-        padding: '0 24px 0 26px',
-        height: 48,
+        padding: '0 16px 0 22px',
+        height: 44,
         borderRadius: '0 24px 24px 0',
         marginRight: 12,
         color: isActive ? C.activeText : C.text,
@@ -164,7 +164,7 @@ export function V2Layout() {
           <nav
             style={{
               position: 'sticky', top: 64,
-              width: 256, flexShrink: 0,
+              width: 216, flexShrink: 0,
               height: 'calc(100vh - 64px)', overflowY: 'auto',
               paddingTop: 8, background: C.bg,
             }}
@@ -174,7 +174,7 @@ export function V2Layout() {
                 {group.heading && (
                   <>
                     <div style={{ height: 1, background: C.border, margin: '8px 12px 8px 0' }} />
-                    <div style={{ padding: '8px 24px 4px 26px', fontSize: 12,
+                    <div style={{ padding: '8px 16px 4px 22px', fontSize: 12,
                                   color: C.muted, fontWeight: 500 }}>
                       {group.heading}
                     </div>

@@ -7,6 +7,7 @@ import { C } from './tokens'
 import { useLongPress, usePrefersReducedMotion } from './hooks'
 import { TileControl } from './TileControl'
 import { TileCheckbox } from './TileCheckbox'
+import { TileFavourite } from './TileFavourite'
 
 /**
  * The one tile. Everywhere media is shown in a list or grid, this renders it.
@@ -187,7 +188,10 @@ function MediaTileBase({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         // React's onFocus/onBlur bubble, so these fire for the controls too.
-        onFocus={() => setFocusWithin(true)}
+        // Only KEYBOARD focus counts as hover. Any focus would do it too, but
+        // then clicking the heart leaves the checkbox stuck on after the
+        // pointer has moved away — the click focused the button.
+        onFocus={e => setFocusWithin(e.target.matches(':focus-visible'))}
         onBlur={e => {
           if (!e.currentTarget.contains(e.relatedTarget)) setFocusWithin(false)
         }}
@@ -229,10 +233,9 @@ function MediaTileBase({
           // The page shows through the margin the inset leaves behind.
           background: selected ? C.bg : 'transparent',
           // No radius, no border, by decision.
-          // Focus only. Selection is already said by the inset and the tick —
-          // an outline on top of both was one signal too many.
-          outline: focused ? `3px solid ${C.activeText}` : 'none',
-          outlineOffset: -3,
+          // No outline here: the scaling wrapper below is a child, and children
+          // paint above their parent's outline, so it was drawn and then
+          // covered. The ring is rendered as a top-most element instead.
           ...style,
         }}
       >
@@ -328,6 +331,23 @@ function MediaTileBase({
           {bottom}
           {loose}
         </div>
+
+        {/* Focus ring, above everything and outside the scaling wrapper. It
+            marks the TILE, which keeps its footprint even when selection
+            shrinks the picture inside it. Can't be an outline on the figure:
+            children paint above their parent's outline, so the wrapper covered
+            it and tabbing looked like nothing happened. */}
+        {focused && (
+          <span
+            aria-hidden="true"
+            style={{
+              position: 'absolute', inset: 0,
+              border: `3px solid ${C.activeText}`,
+              pointerEvents: 'none', zIndex: 5,
+            }}
+          />
+        )}
+
       </figure>
     </TileContext.Provider>
   )
@@ -348,3 +368,4 @@ MediaTile.Bottom = Bottom
 MediaTile.OnHover = OnHover
 MediaTile.Control = TileControl
 MediaTile.Checkbox = TileCheckbox
+MediaTile.Favourite = TileFavourite

@@ -36,3 +36,13 @@ export function describeMedia(item) {
   if (where) return `${kind} from ${where}`
   return kind
 }
+
+
+/** Seconds to m:ss, the way a video player writes it. */
+export function formatDuration(seconds) {
+  if (!seconds || seconds < 0) return null
+  const total = Math.round(seconds)
+  const m = Math.floor(total / 60)
+  const ss = String(total % 60).padStart(2, '0')
+  return `${m}:${ss}`
+}

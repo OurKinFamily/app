@@ -37,6 +37,7 @@ import { DesignPage } from './pages/DesignPage'
 import { V2Layout } from './v2/layouts/V2Layout'
 import { V2HomePage } from './v2/pages/V2HomePage'
 import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
+import { V2GridDemoPage } from './v2/pages/V2GridDemoPage'
 import { LightboxPage } from './pages/LightboxPage'
 import { AlbumsPage } from './pages/AlbumsPage'
 import { AlbumPage } from './pages/AlbumPage'
@@ -70,6 +71,7 @@ export default function App() {
                 <Route element={<V2Layout />}>
                   <Route path="/v2" element={<V2HomePage />} />
                   <Route path="/v2/design/components" element={<V2ComponentsPage />} />
+                  <Route path="/v2/design/grid" element={<V2GridDemoPage />} />
                 </Route>
               </Route>
 
