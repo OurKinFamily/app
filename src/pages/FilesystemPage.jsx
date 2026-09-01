@@ -546,6 +546,7 @@ export function FilesystemPage() {
   const [openPerson, setOpenPerson] = useState(null)
   const [peopleBuckets, setPeopleBuckets] = useState(null)
   const [faceClusters, setFaceClusters] = useState(null)
+  const [scenes, setScenes] = useState(null)
   const [showAllPeople, setShowAllPeople] = useState(false)
   const [showAllColors, setShowAllColors] = useState(false)
   const [weekdayBuckets, setWeekdayBuckets] = useState(null)
@@ -578,6 +579,10 @@ export function FilesystemPage() {
     fetch('/api/admin/analytics/face_clusters/summary')
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(d => setFaceClusters(d))
+      .catch(() => {})
+    fetch('/api/admin/analytics/scenes/summary')
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(d => setScenes(d))
       .catch(() => {})
     fetch('/api/admin/analytics/location/buckets?limit=15')
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
@@ -686,6 +691,23 @@ export function FilesystemPage() {
           <StatTile label="Assigned" value={fmt(faceClusters.assigned_faces)} sub="linked to a person" />
           <StatTile label="Unassigned" value={fmt(faceClusters.unassigned_faces)} sub="awaiting confirm" />
         </StatSection>
+      )}
+
+      {scenes?.available && (
+        <>
+          <StatSection title="Scene embeddings" subtitle="DINOv2 — powers place/structure similarity" cols="four">
+            <StatTile label="Embedded" value={fmt(scenes.total)} sub={scenes.pct != null ? `${scenes.pct}% of eligible` : undefined} />
+            <StatTile label="Images"   value={fmt(scenes.images)} />
+            <StatTile label="Videos"   value={fmt(scenes.videos)} />
+            <StatTile label="Missing"  value={fmt(scenes.missing)} sub="no .scenes.json" />
+          </StatSection>
+          {scenes.models?.length > 1 && (
+            <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/8 px-3 py-2.5 text-[12px] text-yellow-300">
+              Mixed DINOv2 models — {scenes.models.map(m => `${m.name} (${fmt(m.count)})`).join(', ')}.
+              Embeddings from different variants have different dimensions and cannot be compared.
+            </div>
+          )}
+        </>
       )}
 
       <StatSection title="People graph" cols="six">

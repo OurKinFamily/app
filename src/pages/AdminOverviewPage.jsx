@@ -39,8 +39,8 @@ function StatCard({ label, value, sub, accent }) {
 
 // ── Coverage ──────────────────────────────────────────────────────────────────
 
-const COVERAGE_FIELDS = ['mpp','objects','clip','md5','perceptual','gps','geo','landmarks']
-const FIELD_LABELS    = { mpp:'Sidecar (mpp)', objects:'Objects', clip:'CLIP', md5:'MD5', perceptual:'Perceptual Hash', gps:'GPS', geo:'Geocoded', landmarks:'Landmarks' }
+const COVERAGE_FIELDS = ['mpp','objects','clip','scenes','md5','perceptual','gps','geo','landmarks']
+const FIELD_LABELS    = { mpp:'Sidecar (mpp)', objects:'Objects', clip:'CLIP', scenes:'Scenes (DINOv2)', md5:'MD5', perceptual:'Perceptual Hash', gps:'GPS', geo:'Geocoded', landmarks:'Landmarks' }
 
 function CoverageSection({ coverage }) {
   return (
@@ -86,6 +86,7 @@ function IssuesSection({ issues }) {
     { label: 'Missing sidecar',  count: issues.missing_mpp,        warn: issues.missing_mpp > 0 },
     { label: 'Missing objects',  count: issues.missing_objects },
     { label: 'Missing CLIP',     count: issues.missing_clip },
+    { label: 'Missing scenes',   count: issues.missing_scenes },
     { label: 'Missing MD5',      count: issues.missing_md5,        warn: issues.missing_md5 > 0 },
     { label: 'Missing phash',    count: issues.missing_perceptual, warn: issues.missing_perceptual > 0 },
     { label: 'No GPS',           count: issues.no_gps },
@@ -425,6 +426,61 @@ function DirsSection({ byDir }) {
   )
 }
 
+
+// ── Scene embeddings ──────────────────────────────────────────────────────────
+
+// DINOv2 embeddings are what place/structure similarity runs on. The headline
+// number is coverage, but the one that bites is `mixed_models`: embeddings from
+// different DINOv2 variants have different dimensions and are not comparable,
+// so a mixed archive silently fails to match across the split.
+function ScenesSection({ scenes }) {
+  const models = Object.entries(scenes.models || {})
+  const dims   = Object.entries(scenes.dims || {})
+  return (
+    <section>
+      <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-white/30">Scene Embeddings (DINOv2)</h2>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard label="Embedded" value={fmt(scenes.total)} sub={`${scenes.pct ?? '—'}% of ${fmt(scenes.eligible)} eligible`} />
+        <StatCard label="Images"   value={fmt(scenes.images)} />
+        <StatCard label="Videos"   value={fmt(scenes.videos)} />
+      </div>
+      {scenes.mixed_models && (
+        <div className="mt-3 rounded-lg border border-yellow-500/30 bg-yellow-500/8 px-3 py-2.5">
+          <span className="text-[12px] text-yellow-300">
+            Mixed models — embeddings from different DINOv2 variants are not comparable to each other.
+          </span>
+        </div>
+      )}
+      {(models.length > 0 || dims.length > 0) && (
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {models.length > 0 && (
+            <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+              <div className="mb-2 text-[11px] uppercase tracking-wider text-white/30">Model</div>
+              {models.map(([name, count]) => (
+                <div key={name} className="flex justify-between py-0.5 text-[12px]">
+                  <span className="text-white/60">{name}</span>
+                  <span className="tabular-nums text-white/40">{fmt(count)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {dims.length > 0 && (
+            <div className="rounded-lg border border-white/8 bg-white/3 p-3">
+              <div className="mb-2 text-[11px] uppercase tracking-wider text-white/30">Dimensions</div>
+              {dims.map(([dim, count]) => (
+                <div key={dim} className="flex justify-between py-0.5 text-[12px]">
+                  <span className="text-white/60">{dim}-d</span>
+                  <span className="tabular-nums text-white/40">{fmt(count)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function AdminOverviewPage() {
@@ -443,7 +499,7 @@ export function AdminOverviewPage() {
   if (loading) return <div className="p-8 text-white/30 text-sm">Loading…</div>
   if (error)   return <div className="p-8 text-red-400 text-sm">Failed: {error} — run the "Archive Report" job first.</div>
 
-  const { totals, coverage, issues, extensions, processors, heritage, faces, people, by_dir, generated } = data
+  const { totals, coverage, issues, extensions, processors, heritage, faces, scenes, people, by_dir, generated } = data
 
   return (
     <div className="max-w-6xl space-y-8 p-4 md:p-6">
@@ -467,6 +523,7 @@ export function AdminOverviewPage() {
       {processors && <ProcessorsSection processors={processors} />}
       <HeritageSection heritage={heritage} />
       {faces   && <FacesSection faces={faces} />}
+      {scenes  && <ScenesSection scenes={scenes} />}
       {people  && <PeopleSection people={people} />}
       <DirsSection byDir={by_dir} />
       {extensions && <ExtensionsSection extensions={extensions} />}
