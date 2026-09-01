@@ -5,13 +5,25 @@ import { computeRows } from '../lib/justifiedRows'
 import { formatDay, groupByDay, citiesFor } from '../lib/galleryGrouping'
 
 const DAY_MS = 86400 * 1000
-
+// Minimum spacing between skips. One flick emits many scroll events; without
+// this they each skip again and the gallery overshoots wildly.
+const SKIP_COOLDOWN_MS = 900
+// Progressive skip: keep flicking and the stride grows. Deliberately NOT keyed
+// off instantaneous velocity — that jumped straight to a decade the moment you
+// scrolled hard, which overshot by years on a single gesture. Start small,
+// build up only if the user keeps going.
+const SKIP_LADDER_DAYS = [7, 14, 30, 90, 180, 365, 730, 1825]
+// Stop flicking for this long and the stride drops back to the bottom rung.
+const SKIP_RESET_MS = 1500
+// Below this the user is reading, not travelling — never skip.
+const FLICK_PX_PER_SEC = 5000
 
 // Justified-rows gallery, grouped by day with a section header per group.
 // Optional features:
 //  - onLoadOlder(skipMs):  when present, install a window scroll listener that
-//      pages older content near the bottom, escalating skipMs by scroll velocity
-//      so a long flick skips months/years/decade at a time.
+//      pages older content near the bottom. A sustained flick skips ahead on a
+//      progressive ramp (a week, then a fortnight, then a month…). Skipped
+//      ranges are marked with gap tiles and backfilled in full — see onFillGap.
 //  - scrubber: { years, anchor, onJump } — when present, render the right-edge
 //      DateScrubber and track which year is visible at the top of the viewport.
 //
@@ -25,6 +37,10 @@ export function MediaGallery({
   const [width, setWidth] = useState(0)
   const [currentYear, setCurrentYear] = useState(null)
   const velocityRef = useRef({ y: 0, t: 0, v: 0 })
+  // -Infinity, not 0: performance.now() is small right after load, so a 0 seed
+  // would swallow the first skip.
+  const lastSkipRef = useRef(-Infinity)
+  const skipStepRef = useRef(0)
 
   // Flat index per path so a shift-click can resolve the range against the
   // gallery's real order (the rendered tiles are grouped by day/shelf).
@@ -41,7 +57,7 @@ export function MediaGallery({
     return () => ro.disconnect()
   }, [])
 
-  // Bottom-edge loader with velocity-band skip-ahead.
+  // Bottom-edge loader with a progressive skip-ahead ramp.
   useEffect(() => {
     if (!onLoadOlder) return
     const onScroll = () => {
@@ -57,44 +73,61 @@ export function MediaGallery({
       velocityRef.current.t = now
 
       const doc = document.documentElement
-      if (y + window.innerHeight > doc.scrollHeight - 600) {
-        const v = velocityRef.current.v
-        const skipMs = v > 30000 ? 10 * 365 * DAY_MS
-          : v > 15000 ? 365 * DAY_MS
-          : v > 5000 ? 30 * DAY_MS
-          : 0
-        onLoadOlder(skipMs)
+      const fromEnd = doc.scrollHeight - (y + window.innerHeight)
+      // Prefetch a little ahead of the bottom so an ordinary scroll does not
+      // stall on empty space. Not too far ahead: with a 48-item page a wide
+      // band just means more requests in flight, which reads as slower.
+      if (fromEnd > 1200) return
+
+      // ...but only consider SKIPPING at the true bottom edge. These are two
+      // different decisions and they must not share a threshold: tying the skip
+      // to the wide prefetch band made it fire on almost every scroll event.
+      const v = velocityRef.current.v
+      let skipMs = 0
+      if (fromEnd <= 600) {
+        // Idle long enough and the ramp starts over from the smallest stride.
+        if (now - lastSkipRef.current > SKIP_RESET_MS) skipStepRef.current = 0
+        if (v > FLICK_PX_PER_SEC && now - lastSkipRef.current > SKIP_COOLDOWN_MS) {
+          const rung = Math.min(skipStepRef.current, SKIP_LADDER_DAYS.length - 1)
+          skipMs = SKIP_LADDER_DAYS[rung] * DAY_MS
+          skipStepRef.current = rung + 1
+          lastSkipRef.current = now
+        }
       }
+      onLoadOlder(skipMs)
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [onLoadOlder])
 
-  // Gap-fill on dwell: when scroll settles, look for any gap-placeholder tiles
-  // currently in viewport and ask onFillGap to fetch their range. Each unique
-  // (from,to) range is requested at most once (the fill side dedupes too).
+  // Gap-fill. A skip leaves placeholder tiles standing in for a range that was
+  // never fetched; this asks onFillGap to go get it.
+  //
+  // regression(2026-08-31): this used to wait 500ms for the scroll to SETTLE.
+  // A flick — the exact gesture that creates a gap — never settles over the
+  // placeholders, so the fill was never requested and the skipped photos were
+  // simply absent from the grid. Fire on every scroll instead, and use a tall
+  // margin so a gap about to come into view is already being fetched. Repeat
+  // calls are cheap: both sides dedupe by range.
   useEffect(() => {
     if (!onFillGap) return
-    let timer
     const checkGaps = () => {
-      const els = document.querySelectorAll('[data-gap-from]')
+      // Every outstanding gap, regardless of where it sits. Filling only what
+      // was near the viewport meant a hard flick — which leaves the gaps far
+      // behind — never backfilled them, so those photos stayed unreachable.
+      // Each range is fetched once (both sides dedupe), so the cost is bounded
+      // by the number of skips, not by scroll events.
       const seen = new Set()
-      for (const el of els) {
-        const r = el.getBoundingClientRect()
-        if (r.bottom <= 0 || r.top >= window.innerHeight) continue
+      for (const el of document.querySelectorAll('[data-gap-from]')) {
         const k = `${el.dataset.gapFrom}|${el.dataset.gapTo}`
         if (seen.has(k)) continue
         seen.add(k)
         onFillGap({ from: el.dataset.gapFrom, to: el.dataset.gapTo })
       }
     }
-    const onScroll = () => {
-      clearTimeout(timer)
-      timer = setTimeout(checkGaps, 500)
-    }
     checkGaps()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => { window.removeEventListener('scroll', onScroll); clearTimeout(timer) }
+    window.addEventListener('scroll', checkGaps, { passive: true })
+    return () => window.removeEventListener('scroll', checkGaps)
   }, [onFillGap, items])
 
   // Track "current year" via topmost element with data-year (used by scrubber).

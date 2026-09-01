@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
+// Page size for scrolling. Kept small on purpose: the API serves 200 as fast as
+// 48 (473ms vs 462ms), but the browser does not — a big page means that many
+// tiles laid out and that many thumbnails requested at once, which is what the
+// user actually waits for. Skip-ahead, not page size, is how you cover ground.
 const LIMIT = 48
+
+// Backfilling a skipped range is bulk background work with nothing rendering
+// until it lands, so it pays the per-request overhead as few times as possible.
+const GAP_LIMIT = 200
 
 // Bidirectional gallery hook with timestamp-cursor pagination.
 // anchor: { year } | null — on change, resets and loads that year (DESC).
@@ -143,12 +151,26 @@ export function useGallery({ anchor = null, params = {} } = {}) {
     if (fillingGapsRef.current.has(key2)) return
     fillingGapsRef.current.add(key2)
     try {
-      const qs = new URLSearchParams({ limit: 200, sort: 'desc', ...params })
-      qs.set('ts_from', from)
-      qs.set('ts_to', to)
-      const res = await fetch(`/api/gallery?${qs}`)
-      const d = await res.json()
-      const batch = d.media || []
+      // Page the WHOLE range, not one batch.
+      //
+      // regression(2026-08-31): this fetched a single limit=200 page. One real
+      // gap held 896 items, so 696 of them were dropped on the floor — and
+      // because the placeholders were replaced regardless, the grid then looked
+      // complete. Walk the cursor down until the range is exhausted.
+      const batch = []
+      let cursor = to
+      for (;;) {
+        const qs = new URLSearchParams({ limit: GAP_LIMIT, sort: 'desc', ...params })
+        qs.set('ts_from', from)
+        qs.set('ts_to', cursor)
+        const res = await fetch(`/api/gallery?${qs}`)
+        const d = await res.json()
+        const page = (d.media || []).filter(m => m.timestamp !== cursor)
+        if (!page.length) break
+        batch.push(...page)
+        cursor = page[page.length - 1].timestamp
+        if (page.length < GAP_LIMIT) break
+      }
       const without = mediaRef.current.filter(
         m => !(m.__gap && m.gapFromTs === from && m.gapToTs === to),
       )

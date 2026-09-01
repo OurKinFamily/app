@@ -144,15 +144,29 @@ describe('MediaGallery', () => {
   })
 
   describe('fill-gap wiring', () => {
-    it('debounces scroll events before checking for gap tiles in view', () => {
-      vi.useFakeTimers()
+    it('makes no fill request when there are no gap tiles', () => {
       const onFillGap = vi.fn()
       renderGallery({ onFillGap, items: [] })
       act(() => { window.dispatchEvent(new Event('scroll')) })
-      act(() => { vi.advanceTimersByTime(600) })
-      vi.useRealTimers()
-      // No gaps rendered → no fill calls.
       expect(onFillGap).not.toHaveBeenCalled()
+    })
+
+    it('requests the fill on the scroll itself, without waiting for it to settle', () => {
+      // regression(2026-08-31): the fill was debounced 500ms behind the scroll
+      // SETTLING. A flick is what creates a gap in the first place, and a flick
+      // does not settle over the placeholders — so the request never fired and
+      // the skipped photos stayed absent from the grid. 896 items sat behind
+      // one such gap. No timer advance here: the call must already have landed.
+      const onFillGap = vi.fn()
+      const items = [
+        item('a.jpg', '2024-01-01T00:00:00Z'),
+        { path: '__gap__1', __gap: true, gapFromTs: 'fts', gapToTs: 'tts',
+          timestamp: '2023-01-01T00:00:00Z', width: 1, height: 1, aspect: 1 },
+      ]
+      renderGallery({ onFillGap, items })
+      onFillGap.mockClear()
+      act(() => { window.dispatchEvent(new Event('scroll')) })
+      expect(onFillGap).toHaveBeenCalledWith({ from: 'fts', to: 'tts' })
     })
     it('calls onFillGap when a gap tile is in view after the debounce', () => {
       vi.useFakeTimers()
@@ -195,61 +209,115 @@ describe('MediaGallery', () => {
     })
   })
 
-  describe('bottom-edge loader with velocity bands', () => {
-    function setScrollState({ y, innerHeight = 800, scrollHeight = 2000 }) {
+  describe('bottom-edge loader', () => {
+    // scrollHeight must exceed the 2500px prefetch margin, or every position
+    // counts as "near the end" and the far-from-end case is untestable.
+    function setScrollState({ y, innerHeight = 800, scrollHeight = 20000 }) {
       Object.defineProperty(window, 'scrollY', { value: y, writable: true, configurable: true })
       Object.defineProperty(window, 'innerHeight', { value: innerHeight, writable: true, configurable: true })
       Object.defineProperty(document.documentElement, 'scrollHeight', { value: scrollHeight, writable: true, configurable: true })
     }
-    it('triggers onLoadOlder with skipMs=0 at low velocity', () => {
+
+    it('asks for the next batch when the viewport nears the end', () => {
       const onLoadOlder = vi.fn()
       renderGallery({ onLoadOlder, items: [item('a.jpg', '2024-01-01T00:00:00Z')] })
-      setScrollState({ y: 1500 })  // near bottom
+      setScrollState({ y: 18000 })
       act(() => { window.dispatchEvent(new Event('scroll')) })
-      expect(onLoadOlder).toHaveBeenCalledWith(0)
-    })
-    it('triggers onLoadOlder with skipMs > 0 at high velocity (covers band branches)', () => {
-      const onLoadOlder = vi.fn()
-      // Spy on performance.now to return controlled timestamps so the
-      // velocity calc lands in the highest band (> 30000 px/s).
-      let t = 1000
-      const nowSpy = vi.spyOn(performance, 'now').mockImplementation(() => t)
-      renderGallery({ onLoadOlder, items: [item('a.jpg', '2024-01-01T00:00:00Z')] })
-      setScrollState({ y: 0 })
-      act(() => { window.dispatchEvent(new Event('scroll')) })  // baseline
-      t = 1010  // 10ms later
-      setScrollState({ y: 1500 })  // 1500px in 10ms = 150000 px/s → top band
-      act(() => { window.dispatchEvent(new Event('scroll')) })
-      nowSpy.mockRestore()
-      // Top-band skip = 10 * 365 * DAY_MS.
-      const calls = onLoadOlder.mock.calls.map(c => c[0])
-      expect(calls.some(skip => skip > 0)).toBe(true)
-    })
-    it('triggers mid-band skip (>15000 but ≤30000)', () => {
-      const onLoadOlder = vi.fn()
-      let t = 1000
-      const nowSpy = vi.spyOn(performance, 'now').mockImplementation(() => t)
-      renderGallery({ onLoadOlder, items: [item('a.jpg', '2024-01-01T00:00:00Z')] })
-      setScrollState({ y: 0 })
-      act(() => { window.dispatchEvent(new Event('scroll')) })
-      t = 1100  // 100ms later
-      setScrollState({ y: 2000 })  // 2000px / 0.1s = 20000 px/s
-      act(() => { window.dispatchEvent(new Event('scroll')) })
-      nowSpy.mockRestore()
       expect(onLoadOlder).toHaveBeenCalled()
     })
-    it('triggers low-band skip (>5000 but ≤15000)', () => {
+
+    it('does not ask while still far from the end', () => {
       const onLoadOlder = vi.fn()
-      let t = 1000
-      const nowSpy = vi.spyOn(performance, 'now').mockImplementation(() => t)
+      renderGallery({ onLoadOlder, items: [item('a.jpg', '2024-01-01T00:00:00Z')] })
+      setScrollState({ y: 100 })
+      act(() => { window.dispatchEvent(new Event('scroll')) })
+      expect(onLoadOlder).not.toHaveBeenCalled()
+    })
+
+    // A flick is: at the bottom edge AND moving fast. Both must hold, so the
+    // helper advances y (for velocity) and grows scrollHeight alongside it —
+    // exactly what real paging does — to stay pinned at the edge.
+    function flicker() {
+      let y = 19000
+      return (onLoadOlder, { step = 6000, gapMs = 1000 } = {}) => {
+        y += step
+        vi.advanceTimersByTime(gapMs)
+        setScrollState({ y, scrollHeight: y + 800 + 200 })
+        act(() => { window.dispatchEvent(new Event('scroll')) })
+        return onLoadOlder.mock.calls.at(-1)[0]
+      }
+    }
+
+    it('starts with a small skip and grows it as the flick continues', () => {
+      // Progressive by design: an instantaneous velocity band jumped straight
+      // to a decade on one hard gesture and overshot badly.
+      vi.useFakeTimers()
+      const onLoadOlder = vi.fn()
       renderGallery({ onLoadOlder, items: [item('a.jpg', '2024-01-01T00:00:00Z')] })
       setScrollState({ y: 0 })
       act(() => { window.dispatchEvent(new Event('scroll')) })
-      t = 1100
-      setScrollState({ y: 1000 })  // 1000px / 0.1s = 10000 px/s
+
+      const flick = flicker()
+      const first  = flick(onLoadOlder)
+      const second = flick(onLoadOlder)
+      const third  = flick(onLoadOlder)
+      vi.useRealTimers()
+
+      expect(first).toBeGreaterThan(0)
+      expect(second).toBeGreaterThan(first)
+      expect(third).toBeGreaterThan(second)
+    })
+
+    it('caps the stride instead of growing without bound', () => {
+      vi.useFakeTimers()
+      const onLoadOlder = vi.fn()
+      renderGallery({ onLoadOlder, items: [item('a.jpg', '2024-01-01T00:00:00Z')] })
+      setScrollState({ y: 0 })
       act(() => { window.dispatchEvent(new Event('scroll')) })
-      nowSpy.mockRestore()
-      expect(onLoadOlder).toHaveBeenCalled()
+
+      const flick = flicker()
+      let last = 0
+      for (let i = 0; i < 20; i++) last = flick(onLoadOlder)
+      vi.useRealTimers()
+
+      // Top rung of the ladder: 1825 days.
+      expect(last).toBe(1825 * 86400 * 1000)
+    })
+
+    it('drops back to the smallest stride once the user stops flicking', () => {
+      // Otherwise a later gentle flick inherits a decade-wide stride from a
+      // gesture made minutes ago.
+      vi.useFakeTimers()
+      const onLoadOlder = vi.fn()
+      renderGallery({ onLoadOlder, items: [item('a.jpg', '2024-01-01T00:00:00Z')] })
+      setScrollState({ y: 0 })
+      act(() => { window.dispatchEvent(new Event('scroll')) })
+
+      const flick = flicker()
+      const first = flick(onLoadOlder)
+      flick(onLoadOlder)
+      flick(onLoadOlder)
+      // Long enough to reset the ramp; step raised so it still counts as a flick.
+      const afterPause = flick(onLoadOlder, { gapMs: 2000, step: 14000 })
+      vi.useRealTimers()
+
+      expect(afterPause).toBe(first)
+    })
+
+    it('does not skip when scrolling at a reading pace', () => {
+      // A skip leaves a gap to backfill. Only pay that cost for a real flick.
+      vi.useFakeTimers()
+      const onLoadOlder = vi.fn()
+      renderGallery({ onLoadOlder, items: [item('a.jpg', '2024-01-01T00:00:00Z')] })
+
+      setScrollState({ y: 0 })
+      act(() => { window.dispatchEvent(new Event('scroll')) })
+      vi.advanceTimersByTime(10000)
+      setScrollState({ y: 19000 })     // 1900 px/s — below the 5000 threshold
+      act(() => { window.dispatchEvent(new Event('scroll')) })
+      vi.useRealTimers()
+
+      expect(onLoadOlder.mock.calls.at(-1)[0]).toBe(0)
     })
   })
 

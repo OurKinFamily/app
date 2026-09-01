@@ -46,7 +46,8 @@ describe('useGallery', () => {
       await waitFor(() => expect(result.current.hasMoreNewer).toBe(true))
     })
     it('sets hasMoreOlder=true when the batch fills the page', async () => {
-      const fullPage = Array.from({ length: 48 }, (_, i) => m(`p${i}.jpg`, `2024-01-${String(i + 1).padStart(2, '0')}T00:00:00Z`))
+      const fullPage = Array.from({ length: 48 }, (_, i) =>
+        m(`p${i}.jpg`, new Date(Date.UTC(2024, 0, 1) - i * 86400000).toISOString()))
       queueResponses([{ data: { media: fullPage } }])
       const { result } = renderHook(() => useGallery())
       await waitFor(() => expect(result.current.media).toHaveLength(48))
@@ -376,6 +377,33 @@ describe('useGallery', () => {
       const tsList = result.current.media.filter(x => !x.__gap).map(x => x.timestamp)
       expect([...tsList]).toEqual([...tsList].sort().reverse())
     })
+    it('pages the entire gap range, not just the first batch', async () => {
+      // regression(2026-08-31): fillGap issued ONE limit=200 request for the
+      // whole range and then removed the placeholders regardless. A real gap
+      // held 896 items, so 696 were dropped and the grid looked complete with
+      // no way left to reach them. The cursor must walk the range to the end.
+      const page1 = Array.from({ length: 200 }, (_, i) =>
+        m(`g${i}.jpg`, new Date(Date.UTC(2023, 11, 1) - i * 86400000).toISOString()))
+      const page2 = [m('tail.jpg', '2022-01-01T00:00:00Z')]
+      queueResponses([
+        { data: { media: [m('a.jpg', '2024-01-02T00:00:00Z')] } },
+        { data: { media: [m('b.jpg', '2020-06-01T00:00:00Z')] } },
+        { data: { media: page1 } },
+        { data: { media: page2 } },
+      ])
+      const { result } = renderHook(() => useGallery())
+      await waitFor(() => expect(result.current.media).toHaveLength(1))
+      await act(async () => { await result.current.loadOlder(1000 * 60 * 60 * 24 * 365 * 3) })
+      const gap = result.current.media.find(x => x.__gap)
+      await act(async () => { await result.current.fillGap({ from: gap.gapFromTs, to: gap.gapToTs }) })
+
+      const paths = result.current.media.map(x => x.path)
+      expect(paths).toContain('g0.jpg')
+      expect(paths).toContain('g199.jpg')
+      // The item that only the SECOND page could have supplied.
+      expect(paths).toContain('tail.jpg')
+    })
+
     it('dedupes by path within fillGap merged output (gap items always allowed)', async () => {
       // Initial load + loadOlder w/ skip → produces gap placeholders. fillGap
       // then receives a batch whose paths include duplicates and an item with
