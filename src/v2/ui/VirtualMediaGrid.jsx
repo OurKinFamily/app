@@ -131,6 +131,8 @@ export function VirtualMediaGrid({
   params = '',             // the same query string the counts were fetched with
   onVisibleDateChange,
   scrollToRef,             // filled with a scrollToDate(bucket) function
+  // Where to remember the reading position. Null disables it.
+  storageKey = 'v2grid:scroll',
   ...gridProps
 }) {
   const ref = useRef(null)
@@ -181,6 +183,60 @@ export function VirtualMediaGrid({
       if (top != null) window.scrollTo({ top, behavior: 'auto' })
     }
   }, [scrollToRef, timeline])
+
+  // ── remembering where you were ───────────────────────────────────────────
+  //
+  // Storing a pixel offset would not survive: every height starts as an
+  // estimate and is replaced once measured, so the same pixel points at a
+  // different month next time. Remember the month and how far into it you
+  // were, and the position stays meaningful however the estimates change.
+  const restored = useRef(false)
+
+  useEffect(() => {
+    // Nothing is saved until the restore has run. The first renders happen at
+    // scrollY 0, and saving then overwrites the stored position with the top of
+    // the page — destroying the very value the restore is about to read.
+    if (!restored.current) return
+    if (!storageKey || !timeline.currentBucket) return
+    const top = timeline.offsetOf(timeline.currentBucket)
+    if (top == null) return
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify({
+        bucket: timeline.currentBucket,
+        delta: Math.round(window.scrollY - top),
+      }))
+    } catch { /* private mode, quota — not worth failing over */ }
+  }, [storageKey, timeline])
+
+  useLayoutEffect(() => {
+    // Wait until there is a layout to restore into, and only ever do it once.
+    if (restored.current || !storageKey || !width || !timeline.groups.length) return
+
+    let saved
+    try {
+      saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null')
+    } catch { return }
+    if (!saved?.bucket) { restored.current = true; return }
+
+    const target = timeline.offsetOf(saved.bucket)
+    if (target == null) return          // buckets not ready; try again next render
+    restored.current = true
+
+    const top = Math.max(0, target + (saved.delta || 0))
+    window.scrollTo(0, top)
+
+    // Assert it again over the next few frames. RootLayout's ScrollToTop runs
+    // its effect after ours (parent effects run after children's) and scrolls
+    // to its own remembered pixel, and the browser may restore scroll of its
+    // own accord after load. Whoever moves us last would otherwise win.
+    let frames = 0
+    const reassert = () => {
+      if (frames++ > 8) return
+      if (Math.abs(window.scrollY - top) > 2) window.scrollTo(0, top)
+      requestAnimationFrame(reassert)
+    }
+    requestAnimationFrame(reassert)
+  }, [storageKey, width, timeline])
 
   const first = timeline.visible[0]
   const last = timeline.visible[timeline.visible.length - 1]
