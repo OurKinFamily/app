@@ -186,9 +186,19 @@ export function PhotoMap({ points, loading, height, badge }) {
         style={{ width: '100%', height: '100%' }}
         zoomControl={true}
       >
+        {/*
+          Esri's dark canvas, not CARTO's. CARTO began requiring an API key for
+          basemap tiles and now stamps "API KEY REQUIRED" diagonally across
+          every tile — it still returns 200, so nothing errored, the map just
+          quietly turned into a watermark. This one needs no key.
+
+          maxNativeZoom caps what we actually request; maxZoom lets Leaflet
+          upscale past it rather than showing blank tiles.
+        */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+          attribution='Tiles &copy; <a href="https://www.esri.com/">Esri</a>'
+          maxNativeZoom={18}
           maxZoom={19}
         />
         {points.length > 0 && (
