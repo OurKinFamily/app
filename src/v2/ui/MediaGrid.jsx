@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { computeRows } from '../../lib/justifiedRows'
-import { MediaTile } from './MediaTile'
-import { mediaTileProps, formatDuration } from './mediaTileProps'
+import { GridTile } from './GridTile'
 import { C } from './tokens'
+import { GroupHeader } from './GroupHeader'
+import { topPlaces } from './topPlaces'
 import { GAP, rowHeightFor } from './gridLayout'
 
 /**
@@ -65,55 +66,6 @@ function groupItems(items, now = new Date()) {
   return { undated, groups }
 }
 
-/** The places a group's photos were taken, most common first. */
-function topPlaces(items, limit = 3) {
-  const counts = new Map()
-  for (const it of items) {
-    const place = it.city || it.place_name
-    if (!place) continue
-    counts.set(place, (counts.get(place) || 0) + 1)
-  }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([place]) => place)
-}
-
-
-function Header({ children, count, places }) {
-  return (
-    <div
-      style={{
-        position: 'sticky',
-        // Sits below the app header, which is 64px and also sticky.
-        top: 64,
-        zIndex: 3,
-        background: C.bg,
-        // Bleed a few pixels either side. computeRows rounds each row's height,
-        // so a row can finish a pixel wider than the container — and a sticky
-        // bar at exactly content width lets that pixel show through as a sliver
-        // of photo sliding under it.
-        margin: '0 -6px',
-        padding: '16px 6px 8px',
-        fontSize: 14,
-        fontWeight: 500,
-        display: 'flex',
-        alignItems: 'baseline',
-        gap: 8,
-      }}
-    >
-      {children}
-      {count != null && (
-        <span style={{ fontSize: 12, color: C.muted, fontWeight: 400 }}>{count}</span>
-      )}
-      {places?.length > 0 && (
-        <span style={{ fontSize: 12, color: C.muted, fontWeight: 400 }}>
-          · {places.join(', ')}
-        </span>
-      )}
-    </div>
-  )
-}
 
 export function MediaGrid({
   items = [],
@@ -133,6 +85,9 @@ export function MediaGrid({
   // Where the last plain selection happened, so shift-click knows what a range
   // means. Only the grid can answer that — it owns the order.
   const anchorRef = useRef(null)
+  // selectRange is defined below; the handlers above reach it through this so
+  // their identity never changes.
+  const selectRangeRef = useRef(() => {})
 
   useLayoutEffect(() => {
     if (!ref.current) return
@@ -170,6 +125,33 @@ export function MediaGrid({
     onSelectionChange(set)
   }, [selected, onSelectionChange])
 
+  /** Select or clear a whole group in one go. */
+  const toggleGroup = useCallback(groupItems_ => {
+    if (!onSelectionChange) return
+    const set = new Set(selected || [])
+    const all = groupItems_.every(i => set.has(i.path))
+    for (const i of groupItems_) {
+      if (all) set.delete(i.path)
+      else set.add(i.path)
+    }
+    onSelectionChange(set)
+  }, [selected, onSelectionChange])
+
+  const handleToggleSelect = useCallback((path, next, e) => {
+    if (e?.shiftKey) selectRangeRef.current(path)
+    else toggle(path, next)
+  }, [toggle])
+
+  const handleOpen = useCallback((item, e) => {
+    if (e?.shiftKey) { selectRangeRef.current(item.path); return }
+    // An ordinary click drops an anchor as well as opening, so "click one,
+    // shift-click another" behaves the way people expect.
+    anchorRef.current = item.path
+    onOpen?.(item)
+  }, [onOpen])
+
+  const handleFavourite = useCallback(item => onToggleFavourite?.(item), [onToggleFavourite])
+
   const selectRange = useCallback(path => {
     if (!onSelectionChange) return
     const anchor = anchorRef.current
@@ -196,71 +178,28 @@ export function MediaGrid({
     return (
       <div key={`${groupKey}-${i}`} style={{ display: 'flex', gap: GAP, marginBottom: GAP }}>
         {row.items.map(item => (
-          <div
+          <GridTile
             key={item.path}
-            data-media-path={item.path}
-            style={{ width: row.height * item.aspect, height: row.height, flex: '0 0 auto' }}
-          >
-            <MediaTile
-              {...mediaTileProps(item)}
-              priority={priority}
-              selected={isSelected(item.path)}
-              selectionMode={selectionMode}
-              onLongPress={onRequestSelectionMode}
-              onToggleSelect={(next, e) => (
-                e?.shiftKey ? selectRange(item.path) : toggle(item.path, next)
-              )}
-              onClick={e => {
-                // Shift-click selects a range rather than opening — the
-                // convention everywhere from Finder to Gmail.
-                if (e?.shiftKey) { selectRange(item.path); return }
-                // An ordinary click drops an anchor as well as opening, so
-                // "click one, shift-click another" behaves the way people
-                // expect. Without it the first shift-click only ever selects a
-                // single photo, because nothing had established a start point.
-                anchorRef.current = item.path
-                onOpen?.(item)
-              }}
-            >
-              <MediaTile.Top justify="space-between">
-                {isSelected(item.path)
-                  ? <MediaTile.Checkbox
-                      checked
-                      onChange={(v, e) => (
-                        e?.shiftKey ? selectRange(item.path) : toggle(item.path, false)
-                      )}
-                    />
-                  : <MediaTile.OnHover>
-                      <MediaTile.Checkbox
-                        onChange={(v, e) => (
-                          e?.shiftKey ? selectRange(item.path) : toggle(item.path, true)
-                        )}
-                      />
-                    </MediaTile.OnHover>}
-                {/* A favourited heart stays put: it's state worth seeing
-                    across a whole grid, not a control you reach for. */}
-                {favourites?.has(item.path)
-                  ? <MediaTile.Favourite favourited onChange={() => onToggleFavourite?.(item)} />
-                  : <MediaTile.OnHover>
-                      <MediaTile.Favourite onChange={() => onToggleFavourite?.(item)} />
-                    </MediaTile.OnHover>}
-              </MediaTile.Top>
-              {item.is_video && formatDuration(item.duration) && (
-                <MediaTile.Bottom justify="flex-end">
-                  <span style={{
-                    color: '#fff', fontSize: 12, fontWeight: 500,
-                    textShadow: '0 1px 2px rgba(0,0,0,.6)',
-                  }}>
-                    {formatDuration(item.duration)}
-                  </span>
-                </MediaTile.Bottom>
-              )}
-            </MediaTile>
-          </div>
+            item={item}
+            width={row.height * item.aspect}
+            height={row.height}
+            priority={priority}
+            selected={isSelected(item.path)}
+            favourited={!!favourites?.has(item.path)}
+            selectionMode={selectionMode}
+            onOpen={handleOpen}
+            onToggleSelect={handleToggleSelect}
+            onToggleFavourite={handleFavourite}
+            onLongPress={onRequestSelectionMode}
+          />
         ))}
       </div>
     )
   }
+
+  // Assigned in an effect, not during render: writing a ref while rendering is
+  // exactly the kind of side effect that misbehaves under concurrent rendering.
+  useEffect(() => { selectRangeRef.current = selectRange }, [selectRange])
 
   // `x` selects the focused tile — Gmail and GitHub both use it, and `s` is
   // left free for starring. Selection is the one action repeated across
@@ -292,7 +231,7 @@ export function MediaGrid({
           fixed. A collapsed row costs nothing and acts as a to-do. */}
       {showUndatedSection && undatedItems.length > 0 && (
         <section>
-          <Header count={undatedItems.length}>Undated</Header>
+          <GroupHeader count={undatedItems.length}>Undated</GroupHeader>
           {width > 0 && computeRows(
             showUndated ? undatedItems : undatedItems.slice(0, 12),
             width, { rowHeight, gap: GAP },
@@ -312,7 +251,14 @@ export function MediaGrid({
 
       {width > 0 && groups.map(g => (
         <section key={g.key}>
-          <Header count={g.items.length} places={topPlaces(g.items)}>{g.label}</Header>
+          <GroupHeader
+            count={g.items.length}
+            places={topPlaces(g.items)}
+            allSelected={g.items.every(i => isSelected(i.path))}
+            onToggleAll={onSelectionChange ? () => toggleGroup(g.items) : undefined}
+          >
+            {g.label}
+          </GroupHeader>
           {computeRows(g.items, width, { rowHeight, gap: GAP })
             .map((row, i) => renderRow(row, g.key, i))}
         </section>

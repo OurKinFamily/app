@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 /**
  * Timeline layout for a virtualised grid.
@@ -29,7 +29,13 @@ const ASSUMED_ASPECT = 1.45
 // is cheap, and an empty screen while scrolling is the thing to avoid.
 const OVERSCAN_PX = 2000
 
-export function useTimeline({ buckets, width, rowHeight, gap = 4, headerHeight = 44 }) {
+export function useTimeline({
+  buckets, width, rowHeight, gap = 4, headerHeight = 44,
+  // Height of anything rendered above the timeline — the undated section.
+  // Every offset shifts by it, or the scrubber jumps to the wrong place and
+  // the spacer above the first visible group double-counts.
+  startOffset = 0,
+}) {
   const [scrollY, setScrollY] = useState(0)
   const [viewportH, setViewportH] = useState(
     typeof window === 'undefined' ? 800 : window.innerHeight,
@@ -39,6 +45,8 @@ export function useTimeline({ buckets, width, rowHeight, gap = 4, headerHeight =
   // dependency React can track. Kept even when a group scrolls away, or the
   // page would resize under the reader every time one unmounted.
   const [measured, setMeasured] = useState(() => new Map())
+  // Scroll correction owed because something ABOVE the viewport changed height.
+  const pendingShift = useRef(0)
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY)
@@ -62,13 +70,27 @@ export function useTimeline({ buckets, width, rowHeight, gap = 4, headerHeight =
       const rows = Math.max(1, Math.ceil(b.count / itemsPerRow))
       const height = known ?? rows * (rowHeight + gap) + headerHeight
       const prev = acc[acc.length - 1]
-      const top = prev ? prev.top + prev.height : 0
+      const top = prev ? prev.top + prev.height : startOffset
       acc.push({ ...b, top, height, estimated: known == null })
       return acc
     }, [])
     const last = groups[groups.length - 1]
-    return { groups, totalHeight: last ? last.top + last.height : 0 }
-  }, [buckets, itemsPerRow, rowHeight, gap, headerHeight, measured])
+    return { groups, totalHeight: last ? last.top + last.height : startOffset }
+  }, [buckets, itemsPerRow, rowHeight, gap, headerHeight, measured, startOffset])
+
+  // reportHeight needs the current layout but must not depend on it, or its
+  // identity would change every render and every group would re-observe.
+  const layoutRef = useRef(layout)
+  useLayoutEffect(() => { layoutRef.current = layout }, [layout])
+
+  // Apply the correction before paint, so the content under the reader's eyes
+  // does not visibly move.
+  useLayoutEffect(() => {
+    if (!pendingShift.current) return
+    const shift = pendingShift.current
+    pendingShift.current = 0
+    window.scrollBy(0, shift)
+  }, [measured])
 
   const visible = useMemo(() => {
     const from = scrollY - OVERSCAN_PX
@@ -84,6 +106,16 @@ export function useTimeline({ buckets, width, rowHeight, gap = 4, headerHeight =
       // Ignore sub-pixel noise, or measuring re-lays out which re-measures,
       // for ever.
       if (known != null && Math.abs(known - height) < 2) return prev
+
+      // Scroll anchoring. When a group ABOVE the viewport swaps its estimated
+      // height for its real one, everything below shifts and the reader ends up
+      // looking at a different month than the one they stopped on. Remember the
+      // difference so the scroll can be corrected by the same amount.
+      const group = layoutRef.current.groups.find(g => g.bucket === bucket)
+      if (group && group.top + group.height <= window.scrollY) {
+        pendingShift.current += height - group.height
+      }
+
       const next = new Map(prev)
       next.set(bucket, height)
       return next

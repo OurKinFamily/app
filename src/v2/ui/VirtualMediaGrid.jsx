@@ -147,7 +147,21 @@ export function VirtualMediaGrid({
   useAcceleratedScroll()
 
   const rowHeight = rowHeightFor(width)
-  const timeline = useTimeline({ buckets, width, rowHeight, gap: GAP })
+
+  // The undated section sits above the timeline and is always rendered — it is
+  // small, and it acts as a to-do list. Its height offsets every date bucket.
+  const undatedRef = useRef(null)
+  const [undatedH, setUndatedH] = useState(0)
+  useLayoutEffect(() => {
+    if (!undatedRef.current) return
+    const ro = new ResizeObserver(e => setUndatedH(e[0].contentRect.height))
+    ro.observe(undatedRef.current)
+    return () => ro.disconnect()
+  }, [])
+
+  const timeline = useTimeline({
+    buckets, width, rowHeight, gap: GAP, startOffset: undatedH,
+  })
   const { itemsByBucket, ensure } = useRangeLoader({ params })
 
   // Fetch whatever is near the viewport. Each month is asked for once.
@@ -178,9 +192,17 @@ export function VirtualMediaGrid({
     <div ref={ref}>
       <ScrollDate label={currentLabel} />
 
+      {/* Undated media, above the timeline. It has no honest place among dated
+          photographs, but hidden entirely it never gets fixed. */}
+      <div ref={undatedRef}>
+        {gridProps.undatedItems?.length > 0 && (
+          <MediaGrid {...gridProps} items={[]} />
+        )}
+      </div>
+
       {/* Everything above the window, as one empty box of exactly the right
           height. */}
-      {first && <div style={{ height: first.top }} aria-hidden="true" />}
+      {first && <div style={{ height: Math.max(0, first.top - undatedH) }} aria-hidden="true" />}
 
       {timeline.visible.map(g => {
         const items = itemsByBucket[g.bucket]

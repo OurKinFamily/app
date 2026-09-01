@@ -21,9 +21,9 @@ import { useEffect, useRef } from 'react'
  */
 
 // How far you must travel before it starts helping.
-const RAMP_START_PX = 1500
+const RAMP_START_PX = 4000
 // Distance over which the multiplier climbs by one.
-const RAMP_PX_PER_X = 2500
+const RAMP_PX_PER_X = 4000
 const MAX_MULTIPLIER = 14
 // Pause longer than this, or reverse, and the ramp resets.
 const IDLE_RESET_MS = 260
