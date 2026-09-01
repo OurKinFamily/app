@@ -9,6 +9,7 @@ import { MediaCard, MediaRow } from '../components/MediaCard'
 import { PhotoLightbox } from '../components/PhotoLightbox'
 import { mediaUrl } from '../lib/media'
 import { useIsAdmin } from '../contexts/MeContext'
+import { CollectionStory } from '../components/CollectionStory'
 
 const VIEW_STORAGE_KEY = 'scrapbook-view-mode'
 
@@ -43,6 +44,19 @@ function typeIcon(type, size = 14) {
   return <Icon size={size} />
 }
 
+// A collection may hold sub-collections, loose items, or both. Label it by what
+// it actually contains — a parent holding only children would otherwise read
+// "0 items". `descendant_item_count` includes items nested further down.
+export function collectionBadge(c) {
+  const kids = c.child_count || 0
+  const items = c.item_count || 0
+  const deep = c.descendant_item_count ?? items
+  const unit = c.is_series ? 'pages' : 'items'
+  if (kids && items) return `${kids} in · ${items} ${unit}`
+  if (kids) return `${kids} inside · ${deep} ${unit}`
+  return `${items} ${unit}`
+}
+
 // Heritage items use `thumb_url`; the shared lightbox reads `thumbnail_url`.
 function adaptItem(it) {
   return { ...it, thumbnail_url: it.thumb_url }
@@ -70,13 +84,43 @@ export function PersonScrapbook() {
     } catch { /* leave state unchanged on failure */ }
   }
 
+  // Persist the collection's long-form story. Returns true so the editor knows
+  // whether to close.
+  async function saveStory(story) {
+    try {
+      const res = await fetch(`/api/collections/${collectionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ story }),
+      })
+      if (!res.ok) return false
+      setOpenDetail(d => (d ? { ...d, story } : d))
+      return true
+    } catch {
+      return false
+    }
+  }
+
   // Drill-down — driven by the URL. `:collectionId` present → drilled view;
   // absent → top-level scrapbook. openItems is fetched lazily on entry.
   const [openItems, setOpenItems] = useState(null)
   const [openLoading, setOpenLoading] = useState(false)
+  // Fetched per-collection, because a NESTED collection is deliberately absent
+  // from the top-level list and so can't be found there. Falls back to the
+  // local list for an instant first paint when drilling from the top.
+  const [openDetail, setOpenDetail] = useState(null)
+  // `Boolean(openDetail) &&` is load-bearing: at the top level BOTH openDetail
+  // and collectionId are nullish, so an id comparison alone is
+  // `undefined === undefined` — true — and every read below would hit null.
+  const detailMatches = Boolean(openDetail) && openDetail.id === collectionId
   const openColl = collectionId
-    ? collections?.find(c => c.id === collectionId) || null
+    ? (detailMatches
+        ? openDetail
+        : collections?.find(c => c.id === collectionId) || null)
     : null
+  const openChildren = detailMatches ? (openDetail.children || []) : []
+  const openAncestors = detailMatches ? (openDetail.ancestors || []) : []
+  const openStory = detailMatches ? openDetail.story : null
   const [filter, setFilter] = useState('')
   const [topFilter, setTopFilter] = useState('')
   const [viewMode, setViewMode] = useState(() => localStorage.getItem(VIEW_STORAGE_KEY) || 'grid')
@@ -112,18 +156,27 @@ export function PersonScrapbook() {
     navigate(`/manage/people/${person.id}/scrapbook/${collection.id}`)
   }
 
+  // Back goes UP one level, not all the way out — ancestors[0] is the nearest
+  // parent. Only a top-level collection returns to the scrapbook root.
   function exitCollection() {
-    navigate(`/manage/people/${person.id}/scrapbook`)
+    const parent = openAncestors[0]
+    navigate(parent
+      ? `/manage/people/${person.id}/scrapbook/${parent.id}`
+      : `/manage/people/${person.id}/scrapbook`)
     setFilter('')
   }
 
   // When :collectionId changes (incl. on first mount via direct URL), fetch
   // the inner items. Clear on exit.
   useEffect(() => {
-    if (!collectionId) { setOpenItems(null); return }
+    if (!collectionId) { setOpenItems(null); setOpenDetail(null); return }
     let alive = true
     setOpenItems(null)
     setOpenLoading(true)
+    fetch(`/api/collections/${collectionId}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (alive && d) setOpenDetail(d) })
+      .catch(() => {})
     fetch(`/api/collections/${collectionId}/items`)
       .then(r => r.json())
       .then(d => { if (alive) setOpenItems((d.items || []).map(adaptItem)) })
@@ -172,9 +225,32 @@ export function PersonScrapbook() {
   if (openColl) {
     return (
       <div className="max-w-5xl">
+        {/* Trail only appears once nested — ancestors come back nearest-first,
+            so reverse for reading order. Lets you jump up more than one level. */}
+        {openAncestors.length > 0 && (
+          <nav aria-label="Breadcrumb" className="mb-2 flex flex-wrap items-center gap-1 text-[11px] text-white/40">
+            <button
+              onClick={() => navigate(`/manage/people/${person.id}/scrapbook`)}
+              className="rounded px-1 py-0.5 transition-colors hover:bg-white/5 hover:text-white/70"
+            >
+              Scrapbook
+            </button>
+            {[...openAncestors].reverse().map(a => (
+              <span key={a.id} className="flex items-center gap-1">
+                <span aria-hidden="true">/</span>
+                <button
+                  onClick={() => navigate(`/manage/people/${person.id}/scrapbook/${a.id}`)}
+                  className="rounded px-1 py-0.5 transition-colors hover:bg-white/5 hover:text-white/70"
+                >
+                  {a.name}
+                </button>
+              </span>
+            ))}
+          </nav>
+        )}
         <button
           onClick={exitCollection}
-          aria-label="Back to scrapbook"
+          aria-label={openAncestors[0] ? `Back to ${openAncestors[0].name}` : 'Back to scrapbook'}
           className="mb-4 -ml-2 flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left transition-colors hover:bg-white/5"
         >
           <span className="flex h-8 w-8 shrink-0 items-center justify-center text-white/50 group-hover:text-white">
@@ -184,10 +260,21 @@ export function PersonScrapbook() {
             <span className="block truncate text-[14px] font-medium text-white/85">{openColl.name}</span>
             <span className="block text-[11px] text-white/40">
               {TYPE_LABELS[openColl.type] || openColl.type}
-              {openItems ? ` · ${openItems.length} ${openColl.is_series ? 'pages' : 'items'}` : ''}
+              {openChildren.length > 0
+                ? ` · ${openChildren.length} ${openChildren.length === 1 ? 'collection' : 'collections'}`
+                : ''}
+              {openItems && openItems.length > 0
+                ? ` · ${openItems.length} ${openColl.is_series ? 'pages' : 'items'}`
+                : ''}
             </span>
           </span>
         </button>
+
+        <CollectionStory
+          story={openStory}
+          canEdit={isAdmin}
+          onSave={saveStory}
+        />
 
         {openItems && openItems.length > 0 && (
           <div className="mb-4 flex items-center gap-2">
@@ -206,7 +293,45 @@ export function PersonScrapbook() {
 
         {openLoading && <p className="text-[13px] text-white/30">Loading…</p>}
 
-        {openItems && openItems.length === 0 && !openLoading && (
+        {openChildren.length > 0 && (
+          <>
+            <h2 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-white/50">
+              Collections · {openChildren.length}
+            </h2>
+            <div className={`${gridCls} mb-8`}>
+              {openChildren.map(c => (
+                <div key={c.id} className={`relative ${c.private ? 'opacity-80' : ''}`}>
+                  <ItemComp
+                    cover={c.cover_path ? mediaUrl(c.cover_path) : null}
+                    coverBadge={collectionBadge(c)}
+                    icon={typeIcon(c.type)}
+                    text={c.name}
+                    subtitle={TYPE_LABELS[c.type] || c.type}
+                    description={c.description}
+                    onClick={() => enterCollection(c)}
+                  />
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); toggleCollectionPrivate(c) }}
+                      title={c.private
+                        ? 'Private — only you can see this. Click to make it visible to family.'
+                        : 'Visible to family. Click to make private (only you).'}
+                      aria-label={c.private ? 'Make collection public' : 'Make collection private'}
+                      className="absolute right-2 top-2 z-10 rounded-full bg-black/60 p-1.5 backdrop-blur transition hover:bg-black/80"
+                    >
+                      {c.private
+                        ? <Lock size={14} className="text-amber-400" />
+                        : <Unlock size={14} className="text-white/60" />}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {openItems && openItems.length === 0 && !openLoading && openChildren.length === 0 && (
           <p className="text-[13px] text-white/25">Empty collection.</p>
         )}
 
@@ -274,7 +399,7 @@ export function PersonScrapbook() {
               <div key={c.id} className={`relative ${c.private ? 'opacity-80' : ''}`}>
                 <ItemComp
                   cover={c.cover_path ? mediaUrl(c.cover_path) : null}
-                  coverBadge={`${c.item_count} ${c.is_series ? 'pages' : 'items'}`}
+                  coverBadge={collectionBadge(c)}
                   icon={typeIcon(c.type)}
                   text={c.name}
                   subtitle={TYPE_LABELS[c.type] || c.type}
