@@ -3,6 +3,7 @@ import { computeRows } from '../../lib/justifiedRows'
 import { MediaTile } from './MediaTile'
 import { mediaTileProps, formatDuration } from './mediaTileProps'
 import { C } from './tokens'
+import { GAP, rowHeightFor } from './gridLayout'
 
 /**
  * The justified photo grid.
@@ -22,15 +23,6 @@ import { C } from './tokens'
  * estimate total height before the photos exist; until then this pages.
  */
 
-// Google Photos' rough proportions: keep three or four photos across at any
-// width rather than letting a phone become a single column of huge pictures.
-function rowHeightFor(width) {
-  if (width < 500) return 120
-  if (width < 900) return 180
-  return 220
-}
-
-const GAP = 4
 
 // mpp records video dimensions as 0x0, so the API sends none and computeRows
 // falls back to its 4:3 default — wrong for nearly all phone video. 16:9 is the
@@ -130,6 +122,7 @@ export function MediaGrid({
   onSelectionChange,
   selectionMode = false,
   onRequestSelectionMode,
+  showUndatedSection = true,
   favourites,
   onToggleFavourite,
   onOpen,
@@ -297,7 +290,7 @@ export function MediaGrid({
           a photo with no date sitting between 2019 and 2020 is a lie about
           when it happened — but hiding them entirely means they never get
           fixed. A collapsed row costs nothing and acts as a to-do. */}
-      {undatedItems.length > 0 && (
+      {showUndatedSection && undatedItems.length > 0 && (
         <section>
           <Header count={undatedItems.length}>Undated</Header>
           {width > 0 && computeRows(

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, X, CheckSquare } from 'lucide-react'
-import { MediaGrid } from '../ui/MediaGrid'
+import { VirtualMediaGrid } from '../ui/VirtualMediaGrid'
 import { C } from '../ui/tokens'
 
 /**
@@ -16,21 +16,33 @@ import { C } from '../ui/tokens'
  * bring their own source and reuse the same grid.
  */
 export function V2GridDemoPage() {
-  const [items, setItems] = useState([])
+  const [buckets, setBuckets] = useState(null)
   const [undated, setUndated] = useState([])
   const [selected, setSelected] = useState(() => new Set())
   const [selectionMode, setSelectionMode] = useState(false)
   const [favourites, setFavourites] = useState(() => new Set())
   const [opened, setOpened] = useState(null)
+  const [visibleBucket, setVisibleBucket] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // The whole timeline's shape in one request — 597 months, ~280ms — so the
+  // page can be the right height before any photograph has loaded. Items
+  // arrive per month as they come into view.
+  const PARAMS = 'min_confidence=high'
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/gallery?limit=200').then(r => (r.ok ? r.json() : { media: [] })),
-      fetch('/api/gallery?undated=true&limit=40').then(r => (r.ok ? r.json() : { media: [] })),
+      fetch(`/api/gallery/counts?bucket=month&${PARAMS}`)
+        .then(r => (r.ok ? r.json() : { buckets: [] })),
+      fetch('/api/gallery?undated=true&limit=40')
+        .then(r => (r.ok ? r.json() : { media: [] })),
     ])
-      .then(([dated, un]) => {
-        setItems(dated.media || [])
+      .then(([counts, un]) => {
+        setBuckets((counts.buckets || []).map(b => ({
+          ...b,
+          label: new Date(b.bucket + '-01T00:00:00')
+            .toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+        })))
         setUndated(un.media || [])
       })
       .catch(() => {})
@@ -73,9 +85,11 @@ export function V2GridDemoPage() {
         )}
       </div>
       <p style={{ fontSize: 13, color: C.muted, margin: '0 0 24px', maxWidth: '62ch' }}>
-        Real photographs, justified rows, current month grouped by day and everything
-        older by month. Resize the window — row height drops on narrow screens so you
-        still get three or four across rather than one enormous column.
+        The whole archive, virtualised: {buckets ? `${buckets.length} months` : '…'} laid
+        out from a single counts request, with photographs fetched a month at a time as
+        they come into view. Scroll anywhere — the scrollbar is honest even where
+        nothing has loaded yet.
+        {visibleBucket && <> Currently at <strong>{visibleBucket}</strong>.</>}
       </p>
 
       {/* Selection bar — the reason the page owns the selection rather than the
@@ -139,8 +153,9 @@ export function V2GridDemoPage() {
       {loading
         ? <div style={{ fontSize: 13, color: C.muted }}>Loading…</div>
         : (
-          <MediaGrid
-            items={items}
+          <VirtualMediaGrid
+            buckets={buckets}
+            params={PARAMS}
             undatedItems={undated}
             selected={selected}
             onSelectionChange={setSelected}
@@ -153,6 +168,7 @@ export function V2GridDemoPage() {
               return next
             })}
             onOpen={it => setOpened(it.filename)}
+            onVisibleDateChange={setVisibleBucket}
           />
         )}
 
