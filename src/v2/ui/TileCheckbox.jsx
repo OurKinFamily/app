@@ -96,7 +96,9 @@ export function TileCheckbox({ checked = false, onChange, label = 'Select' }) {
         type="checkbox"
         checked={checked}
         aria-label={label}
-        onChange={e => onChange?.(e.target.checked)}
+        // Pass the event on so a caller can spot shift for range selection —
+        // the checkbox is the most natural thing to shift-click.
+        onChange={e => onChange?.(e.target.checked, e.nativeEvent)}
         onFocus={e => setFocus(e.target.matches(':focus-visible'))}
         onBlur={() => setFocus(false)}
         style={{

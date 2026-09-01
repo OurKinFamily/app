@@ -304,7 +304,10 @@ function MediaTileBase({
             // A long press already did its job; the click the browser fires
             // afterwards must not also open the photo.
             if (consumeLongPress()) return
-            if (selectionMode) onToggleSelect?.(!selected)
+            // Hand the event on: only the grid knows what a range is, and it
+            // needs the modifier keys to decide. Without this, shift-click did
+            // nothing at all inside selection mode.
+            if (selectionMode) onToggleSelect?.(!selected, e)
             else onClick?.(e)
           }}
             // :focus-visible rather than :focus, so clicking a tile with the

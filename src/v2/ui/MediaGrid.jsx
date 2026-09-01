@@ -97,7 +97,12 @@ function Header({ children, count, places }) {
         top: 64,
         zIndex: 3,
         background: C.bg,
-        padding: '16px 0 8px',
+        // Bleed a few pixels either side. computeRows rounds each row's height,
+        // so a row can finish a pixel wider than the container — and a sticky
+        // bar at exactly content width lets that pixel show through as a sliver
+        // of photo sliding under it.
+        margin: '0 -6px',
+        padding: '16px 6px 8px',
         fontSize: 14,
         fontWeight: 500,
         display: 'flex',
@@ -209,19 +214,35 @@ export function MediaGrid({
               selected={isSelected(item.path)}
               selectionMode={selectionMode}
               onLongPress={onRequestSelectionMode}
-              onToggleSelect={next => toggle(item.path, next)}
+              onToggleSelect={(next, e) => (
+                e?.shiftKey ? selectRange(item.path) : toggle(item.path, next)
+              )}
               onClick={e => {
                 // Shift-click selects a range rather than opening — the
                 // convention everywhere from Finder to Gmail.
                 if (e?.shiftKey) { selectRange(item.path); return }
+                // An ordinary click drops an anchor as well as opening, so
+                // "click one, shift-click another" behaves the way people
+                // expect. Without it the first shift-click only ever selects a
+                // single photo, because nothing had established a start point.
+                anchorRef.current = item.path
                 onOpen?.(item)
               }}
             >
               <MediaTile.Top justify="space-between">
                 {isSelected(item.path)
-                  ? <MediaTile.Checkbox checked onChange={() => toggle(item.path, false)} />
+                  ? <MediaTile.Checkbox
+                      checked
+                      onChange={(v, e) => (
+                        e?.shiftKey ? selectRange(item.path) : toggle(item.path, false)
+                      )}
+                    />
                   : <MediaTile.OnHover>
-                      <MediaTile.Checkbox onChange={() => toggle(item.path, true)} />
+                      <MediaTile.Checkbox
+                        onChange={(v, e) => (
+                          e?.shiftKey ? selectRange(item.path) : toggle(item.path, true)
+                        )}
+                      />
                     </MediaTile.OnHover>}
                 {/* A favourited heart stays put: it's state worth seeing
                     across a whole grid, not a control you reach for. */}
@@ -264,7 +285,14 @@ export function MediaGrid({
   }, [toggle])
 
   return (
-    <div ref={ref} onKeyDown={onKeyDown}>
+    <div
+      ref={ref}
+      onKeyDown={onKeyDown}
+      // Shift-click otherwise drags a browser text selection across the grid,
+      // which highlights everything blue and gets in the way of the range.
+      onMouseDown={e => { if (e.shiftKey) e.preventDefault() }}
+      style={{ userSelect: 'none' }}
+    >
       {/* Undated first, collapsed. They have no honest place in a timeline —
           a photo with no date sitting between 2019 and 2020 is a lie about
           when it happened — but hiding them entirely means they never get

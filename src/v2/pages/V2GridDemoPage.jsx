@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, X, CheckSquare } from 'lucide-react'
 import { MediaGrid } from '../ui/MediaGrid'
 import { C } from '../ui/tokens'
 
@@ -54,7 +54,24 @@ export function V2GridDemoPage() {
         </Link>
       </div>
 
-      <h1 style={{ fontSize: 22, fontWeight: 400, margin: '0 0 8px' }}>Grid</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 400, margin: '0 0 8px' }}>Grid</h1>
+        <div style={{ flex: 1 }} />
+        {!selectionMode && selected.size === 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectionMode(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              height: 36, padding: '0 16px', borderRadius: 18,
+              border: `1px solid ${C.border}`, background: 'transparent',
+              color: C.text, fontSize: 14, cursor: 'pointer',
+            }}
+          >
+            <CheckSquare size={16} /> Select
+          </button>
+        )}
+      </div>
       <p style={{ fontSize: 13, color: C.muted, margin: '0 0 24px', maxWidth: '62ch' }}>
         Real photographs, justified rows, current month grouped by day and everything
         older by month. Resize the window — row height drops on narrow screens so you
@@ -63,27 +80,59 @@ export function V2GridDemoPage() {
 
       {/* Selection bar — the reason the page owns the selection rather than the
           grid: the count and the actions live outside it. */}
-      {selected.size > 0 && (
+      {/* Shown whenever selection mode is on, not merely when something is
+          selected: long-press enters the mode with nothing picked yet, and
+          without a bar there is no way back out on a touch device. */}
+      {(selectionMode || selected.size > 0) && (
         <div
           style={{
             position: 'sticky', top: 64, zIndex: 5,
             display: 'flex', alignItems: 'center', gap: 16,
-            padding: '10px 0', background: C.bg,
+            // Same rounding bleed as the group headers.
+            margin: '0 -6px', padding: '10px 6px', background: C.bg,
             borderBottom: `1px solid ${C.border}`,
           }}
         >
-          <strong style={{ fontWeight: 500 }}>{selected.size} selected</strong>
           <button
             type="button"
             onClick={clear}
-            style={{ border: 0, background: 'transparent', color: C.activeText,
-                     fontSize: 13, cursor: 'pointer' }}
+            aria-label="Leave selection mode"
+            style={{
+              display: 'grid', placeItems: 'center', width: 36, height: 36,
+              border: 0, borderRadius: '50%', background: 'transparent',
+              color: C.muted, cursor: 'pointer',
+            }}
           >
-            Clear
+            <X size={20} />
           </button>
-          <span style={{ fontSize: 12, color: C.muted }}>
-            Long-press a photo to enter selection mode on touch.
-          </span>
+
+          <strong style={{ fontWeight: 500 }}>
+            {selected.size > 0 ? `${selected.size} selected` : 'Select photos'}
+          </strong>
+
+          <div style={{ flex: 1 }} />
+
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              style={{ border: 0, background: 'transparent', color: C.activeText,
+                       fontSize: 13, cursor: 'pointer' }}
+            >
+              Clear
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={clear}
+            style={{
+              height: 36, padding: '0 20px', borderRadius: 18, border: 0,
+              background: C.activeBg, color: C.activeText,
+              fontSize: 14, fontWeight: 500, cursor: 'pointer',
+            }}
+          >
+            Done
+          </button>
         </div>
       )}
 
