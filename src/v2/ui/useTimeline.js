@@ -27,7 +27,7 @@ const ASSUMED_ASPECT = 1.45
 
 // How far beyond the viewport to keep rendered. Generous: re-rendering a month
 // is cheap, and an empty screen while scrolling is the thing to avoid.
-const OVERSCAN_PX = 1200
+const OVERSCAN_PX = 2000
 
 export function useTimeline({ buckets, width, rowHeight, gap = 4, headerHeight = 44 }) {
   const [scrollY, setScrollY] = useState(0)

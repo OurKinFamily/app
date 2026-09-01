@@ -3,6 +3,7 @@ import { MediaGrid } from './MediaGrid'
 import { GAP, rowHeightFor } from './gridLayout'
 import { useTimeline } from './useTimeline'
 import { useRangeLoader } from './useRangeLoader'
+import { useAcceleratedScroll } from './useAcceleratedScroll'
 import { C } from './tokens'
 
 /**
@@ -81,6 +82,50 @@ function Group({ group, items, width, rowHeight, onHeight, children }) {
   )
 }
 
+/**
+ * Floating date, shown while scrolling.
+ *
+ * Group headers are sticky within their own group, so there is nothing pinned
+ * between two groups — and at speed the rendered window lags the scroll, so you
+ * can be looking at spacers that carry no header at all. Knowing where you are
+ * is the whole point of scrolling fast, so this reads straight from the
+ * timeline's scroll maths and needs nothing rendered to be right.
+ */
+function ScrollDate({ label }) {
+  const [visible, setVisible] = useState(false)
+  const timer = useRef(null)
+
+  useEffect(() => {
+    const onScroll = () => {
+      setVisible(true)
+      clearTimeout(timer.current)
+      // Fades once you stop; it's an aid while moving, not furniture.
+      timer.current = setTimeout(() => setVisible(false), 900)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); clearTimeout(timer.current) }
+  }, [])
+
+  if (!label) return null
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'fixed', top: 84, right: 24, zIndex: 30,
+        padding: '8px 16px', borderRadius: 20,
+        background: 'rgba(32,33,36,.92)', color: '#fff',
+        fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap',
+        pointerEvents: 'none',
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 200ms ease',
+      }}
+    >
+      {label}
+    </div>
+  )
+}
+
+
 export function VirtualMediaGrid({
   buckets,                 // from /gallery/counts
   params = '',             // the same query string the counts were fetched with
@@ -97,6 +142,9 @@ export function VirtualMediaGrid({
     ro.observe(ref.current)
     return () => ro.disconnect()
   }, [])
+
+  // 8.6 million pixels of timeline; ordinary scrolling cannot cross it.
+  useAcceleratedScroll()
 
   const rowHeight = rowHeightFor(width)
   const timeline = useTimeline({ buckets, width, rowHeight, gap: GAP })
@@ -123,8 +171,13 @@ export function VirtualMediaGrid({
   const first = timeline.visible[0]
   const last = timeline.visible[timeline.visible.length - 1]
 
+  const currentLabel = timeline.groups
+    .find(g => g.bucket === timeline.currentBucket)?.label
+
   return (
     <div ref={ref}>
+      <ScrollDate label={currentLabel} />
+
       {/* Everything above the window, as one empty box of exactly the right
           height. */}
       {first && <div style={{ height: first.top }} aria-hidden="true" />}
