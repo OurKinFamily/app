@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pencil, X } from 'lucide-react'
 import { SectionLabel, Face } from './InfoPanelParts'
 import { C } from './tokens'
+import { mediaUrl } from '../../lib/media'
 import { ageAt } from './ageAt'
 import { FaceAssigner } from './FaceAssigner'
 import { ConfirmPopover } from './ConfirmPopover'
@@ -39,7 +40,10 @@ export function PeopleSection({
             >
             <Face
               key={p.id || p.name}
-              src={p.crop_url || p.avatar}
+              // The API returns crop_url ready to use but `avatar` as a bare
+              // path, which the browser resolves against the PAGE url — so
+              // falling back to it raw asked for the page and 404'd.
+              src={p.crop_url || (p.avatar ? mediaUrl(p.avatar) : null)}
               // First name only. The crop already says which face; a full
               // name under a 44px square just wraps to three lines.
               name={p.known_as || (p.name || '').split(' ')[0]}

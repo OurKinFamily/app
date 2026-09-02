@@ -27,24 +27,28 @@ import { bytes } from './formatBytes'
  * for the rest. Everything degrades: a row with nothing to say does not render.
  */
 
-function useMediaDetail(path) {
-  // Stamped with the path it belongs to, so switching photographs invalidates
-  // the old detail during render rather than via an effect that sets state and
-  // triggers a second pass.
-  const [state, setState] = useState({ path, detail: null })
-  if (state.path !== path) setState({ path, detail: null })
+function useMediaDetail(path, version) {
+  // Stamped with the path AND the version it belongs to, so switching
+  // photographs invalidates the old detail during render rather than via an
+  // effect that sets state and triggers a second pass.
+  //
+  // The version matters because editing a photograph does not change its path.
+  // Cropping moves every face box, and keyed on path alone this went on
+  // showing the boxes from before the crop until the page was reloaded.
+  const key = `${path}@${version || 0}`
+  const [state, setState] = useState({ key, detail: null })
+  if (state.key !== key) setState({ key, detail: null })
 
   useEffect(() => {
     if (!path) return
     let alive = true
     fetch(`/api/gallery/detail?path=${encodeURIComponent(path)}`)
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (alive) setState({ path, detail: d }) })
+      .then(d => { if (alive) setState({ key, detail: d }) })
       .catch(() => {})
-    return () => { alive = false }
-  }, [path])
+  }, [path, key])
 
-  return state.path === path ? state.detail : null
+  return state.key === key ? state.detail : null
 }
 
 
@@ -62,7 +66,7 @@ export function InfoPanel({
   const [editingPlace, setEditingPlace] = useState(false)
   // A supplied detail skips the fetch entirely — that's how the style guide
   // pins its examples so they can't drift when the archive does.
-  const fetched = useMediaDetail(supplied ? null : item?.path)
+  const fetched = useMediaDetail(supplied ? null : item?.path, item?.version)
   const detail = supplied || fetched
 
   // Hand the loaded detail up: the picture needs the bounding boxes, and this
