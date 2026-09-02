@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Pencil, X } from 'lucide-react'
 import { SectionLabel, Face } from './InfoPanelParts'
+import { Link } from 'react-router-dom'
 import { C } from './tokens'
 import { mediaUrl } from '../../lib/media'
 import { ageAt } from './ageAt'
@@ -14,7 +15,7 @@ import { ConfirmPopover } from './ConfirmPopover'
  * the remaining work is how it stays untagged.
  */
 export function PeopleSection({
-  detail: d, takenAt, hovered, onHover, canEdit,
+  detail: d, takenAt, hovered, onHover, canEdit, onUnassignFace,
   onAssignFace, onCreatePerson, onDismissFace, naming, onNaming,
 }) {
   const [dismissing, setDismissing] = useState(null)
@@ -26,16 +27,32 @@ export function PeopleSection({
     <>
       <SectionLabel>People</SectionLabel>
       {d.people?.length ? (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {/* Rows, so full names fit and the ages line up down the column.
+              Unnamed faces below stay a wrapped grid. */}
           {d.people.map(p => (
             <div
               key={p.id || p.name}
               onMouseEnter={() => onHover?.(p.face_index)}
               onMouseLeave={() => onHover?.(null)}
               style={{
-                borderRadius: 6,
-                outline: hovered === p.face_index ? `2px solid ${C.activeText}` : 'none',
-                outlineOffset: 2,
+                borderRadius: 6, padding: '2px 4px',
+                background: hovered === p.face_index ? C.hover : 'transparent',
+              }}
+            >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Link
+              to={p.id ? `/v2/people/${p.id}` : '#'}
+              // The face in front of you is one moment of a person; the page
+              // behind the name is the rest of them. Not wrapping the crop
+              // too: clicking a face means "who is this", which the pencil
+              // already answers.
+              onClick={e => { if (!p.id) e.preventDefault() }}
+              // flex 1 so the name takes the row and the × is pushed to the
+              // far edge, well away from what you are actually aiming at.
+              style={{
+                flex: 1, minWidth: 0,
+                textDecoration: 'none', color: 'inherit', display: 'block',
               }}
             >
             <Face
@@ -44,11 +61,35 @@ export function PeopleSection({
               // path, which the browser resolves against the PAGE url — so
               // falling back to it raw asked for the page and 404'd.
               src={p.crop_url || (p.avatar ? mediaUrl(p.avatar) : null)}
-              // First name only. The crop already says which face; a full
-              // name under a 44px square just wraps to three lines.
-              name={p.known_as || (p.name || '').split(' ')[0]}
+              // The whole name now there is room for it beside the crop.
+              // A family archive's whole point is that it is the right person,
+              // and "Amelia Rose Young" cut to "Amelia" is a different one.
+              name={p.known_as || p.name}
               sub={ageAt(p.birth_date, takenAt)}
+              row
             />
+            </Link>
+
+            {/* Taking a name off. Not a deletion — the face goes back to the
+                unassigned faces below, ready to be given the right name. */}
+            {canEdit && onUnassignFace && p.id && (
+              <button
+                type="button"
+                onClick={() => onUnassignFace(p)}
+                aria-label={`Not ${p.known_as || p.name}`}
+                title={`Not ${p.known_as || p.name} — put this face back`}
+                style={{
+                  display: 'grid', placeItems: 'center', width: 24, height: 24,
+                  flex: '0 0 auto', border: 0, borderRadius: '50%',
+                  background: 'transparent', color: C.muted, cursor: 'pointer',
+                  opacity: hovered === p.face_index ? 1 : 0,
+                  transition: 'opacity 90ms ease',
+                }}
+              >
+                <X size={14} />
+              </button>
+            )}
+            </div>
             </div>
           ))}
         </div>

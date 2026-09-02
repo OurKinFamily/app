@@ -6,6 +6,10 @@ import { Edge } from './DetailControls'
 import { FaceBoxes } from './FaceBoxes'
 import { C } from './tokens'
 import { CropOverlay } from './CropOverlay'
+import { RestorePreview } from './RestorePreview'
+import { useRestoreFlow } from '../lib/useRestoreFlow'
+import { facesFrom } from '../lib/facesFrom'
+import { useLightboxKeys } from '../lib/useLightboxKeys'
 import { DetailToolbar } from './DetailToolbar'
 import { useElementRect } from '../lib/useElementRect'
 import { useIsWide } from '../lib/useIsWide'
@@ -77,6 +81,9 @@ export function MediaDetail({
   onToggleFavourite,
   onRotate,
   onCrop,
+  onRestorePreview,
+  onRestoreDiscard,
+  onRestoreApply,
   onDownload,
   onDelete,
   onAddToAlbum,
@@ -87,6 +94,7 @@ export function MediaDetail({
   onAssignFace,
   onCreatePerson,
   onDismissFace,
+  onUnassignFace,
   onPrev,
   onNext,
   hasPrev = false,
@@ -113,29 +121,22 @@ export function MediaDetail({
   const [box, setBox] = useState(DEFAULT_BOX)
   const [cropping, setCropping] = useState(false)
   const [angle, setAngle] = useState(0)
+  // Bumped after anything that changes who is in the photograph. Naming a
+  // face does not change the file, so there is no version to key on — without
+  // this the panel showed the face as unidentified until a reload.
+  const [revision, setRevision] = useState(0)
+  const afterFaceChange = fn => fn && (async (...args) => {
+    await fn(...args)
+    setRevision(r => r + 1)
+  })
   const cropRect = useElementRect(imgRef, crop ? `${angle}` : null)
+  const restore = useRestoreFlow({
+    item, onRestorePreview, onRestoreDiscard, onRestoreApply,
+    onDone: () => setRevision(r => r + 1),
+  })
 
-  const faces = [
-    ...((detailData?.people || []).map(pp => ({
-      face_index: pp.face_index, bbox: pp.bbox, name: pp.known_as || pp.name,
-    }))),
-    ...((detailData?.unidentified || []).map(f => ({
-      face_index: f.face_index, bbox: f.bbox, name: null,
-      crop_url: f.crop_url,
-    }))),
-  ].filter(f => f.bbox)
-  useEffect(() => {
-    const onKey = e => {
-      // Never steal a keystroke from a field: the panel has a description box,
-      // a date picker and a person search in it.
-      if (e.target.matches?.('input, textarea, select, [contenteditable]')) return
-      if (e.key === 'Escape') onClose?.()
-      else if (e.key === 'ArrowLeft' && hasPrev) { e.preventDefault(); onPrev?.() }
-      else if (e.key === 'ArrowRight' && hasNext) { e.preventDefault(); onNext?.() }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose, onPrev, onNext, hasPrev, hasNext])
+  const faces = facesFrom(detailData)
+  useLightboxKeys({ onClose, onPrev, onNext, hasPrev, hasNext })
 
   // Lock the page behind the overlay. Without this the grid keeps its
   // scrollbar, which both looks wrong over a full-screen photograph and lets a
@@ -201,6 +202,7 @@ export function MediaDetail({
             onAddToAlbum={onAddToAlbum}
             onRotate={onRotate}
             onStartCrop={() => { setCrop(true); setBox(DEFAULT_BOX); setAngle(0) }}
+            onRestore={onRestorePreview && restore.start}
             onCrop={onCrop}
             onDownload={onDownload}
             onDelete={onDelete}
@@ -247,7 +249,20 @@ export function MediaDetail({
         />
       )}
 
-        {crop && cropRect && (
+        {(restore.result || restore.busy || restore.error) && (
+        <RestorePreview
+          before={bust(item.url, item.version)}
+          after={restore.result?.preview_url}
+          pending={restore.busy && !restore.result}
+          error={restore.error}
+          onDismissError={restore.dismissError}
+          busy={restore.busy}
+          onDiscard={restore.discard}
+          onKeep={restore.keep}
+        />
+      )}
+
+      {crop && cropRect && (
         <CropOverlay
           box={box}
           imageRect={cropRect}
@@ -290,9 +305,11 @@ export function MediaDetail({
           onHoverFace={setHoveredFace}
           onRedate={onRedate}
           onRelocate={onRelocate}
-          onAssignFace={onAssignFace}
-          onCreatePerson={onCreatePerson}
-          onDismissFace={onDismissFace}
+          onAssignFace={afterFaceChange(onAssignFace)}
+          onCreatePerson={afterFaceChange(onCreatePerson)}
+          onDismissFace={afterFaceChange(onDismissFace)}
+          onUnassignFace={afterFaceChange(onUnassignFace)}
+          revision={revision}
           naming={namingFace}
           onNaming={setNamingFace}
           onClose={() => setShowInfo(false)}

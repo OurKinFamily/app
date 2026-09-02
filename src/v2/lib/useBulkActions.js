@@ -48,5 +48,36 @@ export function useBulkActions({ paths, onDone }) {
     fetch(`/api/gallery/media?path=${encodeURIComponent(path)}`, { method: 'DELETE' }),
   ), [run])
 
-  return { busy, favourite, unfavourite, redate, remove }
+  const download = useCallback(async () => {
+    if (!paths.length) return
+    setBusy('download')
+    try {
+      const res = await fetch('/api/gallery/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths }),
+      })
+      if (!res.ok) throw new Error(`${res.status}`)
+      // Straight to a file. The blob is held only long enough for the browser
+      // to take it — a few hundred photographs is not something to keep in
+      // memory a moment longer than necessary.
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filenameFrom(res) || 'photos.zip'
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setBusy(null)
+    }
+  }, [paths])
+
+  return { busy, favourite, unfavourite, redate, remove, download }
+}
+
+/** The name the server chose, out of the Content-Disposition header. */
+function filenameFrom(res) {
+  const header = res.headers.get('content-disposition') || ''
+  return decodeURIComponent(header.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/)?.[1] || '')
 }

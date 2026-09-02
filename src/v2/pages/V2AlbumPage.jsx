@@ -83,6 +83,11 @@ export function V2AlbumPage() {
     openPath,
     close: useCallback(() => setOpen(null), [setOpen]),
     onVersion,
+    onRemoved: useCallback(path => setAlbum(a => (a ? {
+      ...a,
+      items: (a.items || []).filter(i => i.path !== path),
+      total: Math.max(0, (a.total ?? 0) - 1),
+    } : a)), []),
   })
 
   const index = open ? items.findIndex(m => m.path === open.path) : -1
@@ -202,8 +207,13 @@ export function V2AlbumPage() {
           onAssignFace={actions.assignFace}
           onCreatePerson={actions.createPerson}
           onDismissFace={actions.dismissFace}
+          onUnassignFace={actions.unassignFace}
           onRotate={actions.rotate}
           onCrop={actions.crop}
+          onRestorePreview={actions.restorePreview}
+          onRestoreDiscard={actions.restoreDiscard}
+          onRestoreApply={actions.restoreApply}
+          onDescribe={actions.describe}
           onDownload={actions.download}
           onDelete={actions.remove}
           hasPrev={index > 0}

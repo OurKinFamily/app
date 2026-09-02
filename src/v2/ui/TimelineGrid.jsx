@@ -55,6 +55,9 @@ export function TimelineGrid({
   buckets,              // from /gallery/counts, newest first
   params = '',
   onOrderedChange,
+  // Paths deleted since the month was fetched. Filtering here beats refetching
+  // the month, which would throw away the reader's place.
+  hidden,
   ...gridProps
 }) {
   // Months currently on the page, in order, each with its items once loaded.
@@ -315,7 +318,12 @@ export function TimelineGrid({
 
       {loaded.map(m => (
         <div key={m.bucket} data-bucket={m.bucket}>
-          <MediaGrid {...gridProps} items={m.items} width={width} showUndatedSection={false} />
+          <MediaGrid
+            {...gridProps}
+            items={hidden?.size ? m.items.filter(i => !hidden.has(i.path)) : m.items}
+            width={width}
+            showUndatedSection={false}
+          />
         </div>
       ))}
 

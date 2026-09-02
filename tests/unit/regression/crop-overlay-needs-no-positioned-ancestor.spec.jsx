@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { MediaDetail } from '../../../src/v2/ui/MediaDetail'
 
 const item = {
@@ -17,6 +17,7 @@ const item = {
  * the API. It measures against the window now and positions itself fixed.
  */
 describe('crop flow', () => {
+  let realResizeObserver
   beforeEach(() => {
     global.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({}) }))
     // jsdom lays nothing out, so every element measures zero — and a zero-size
@@ -24,10 +25,19 @@ describe('crop flow', () => {
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
       left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, x: 0, y: 0,
     })
+    realResizeObserver = global.ResizeObserver
     global.ResizeObserver = class {
       observe() {}
       disconnect() {}
     }
+  })
+
+  // Put the globals back: leaving a stub behind fails whichever file the
+  // runner happens to schedule next in this worker, which looks like an
+  // unrelated flake.
+  afterEach(() => {
+    vi.restoreAllMocks()
+    global.ResizeObserver = realResizeObserver
   })
 
   it('shows the crop overlay and sends a rectangle', async () => {

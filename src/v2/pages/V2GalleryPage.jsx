@@ -54,6 +54,9 @@ export function V2GalleryPage({
   const [selectionMode, setSelectionMode] = useState(false)
   // Paths waiting to be filed. One from the lightbox, or the whole selection.
   const [albumFor, setAlbumFor] = useState(null)
+  // Deleted this session. The timeline keeps its months in memory, so the tile
+  // is filtered out rather than the month refetched.
+  const [removed, setRemoved] = useState(() => new Set())
   const [ordered, setOrdered] = useState([])
 
   // The open photograph lives in the URL, not in state.
@@ -131,12 +134,14 @@ export function V2GalleryPage({
   }, [])
 
   const {
-    redate, relocate, assignFace, createPerson, dismissFace,
-    rotate, crop, remove, download,
+    redate, relocate, assignFace, createPerson, dismissFace, unassignFace,
+    rotate, crop, describe, remove, download,
+    restorePreview, restoreDiscard, restoreApply,
   } = useMediaActions({
     openPath,
     close: useCallback(() => setOpen(null), [setOpen]),
     onVersion,
+    onRemoved: useCallback(path => setRemoved(cur => new Set(cur).add(path)), []),
   })
 
   // Where the open photograph sits in what has loaded, so the arrows know
@@ -205,6 +210,7 @@ export function V2GalleryPage({
             favourites={favorites}
             onToggleFavourite={toggleFavorite}
             versions={versions}
+            hidden={removed}
             onOrderedChange={setOrdered}
             onOpen={setOpen}
           />
@@ -226,8 +232,13 @@ export function V2GalleryPage({
           onAssignFace={assignFace}
           onCreatePerson={createPerson}
           onDismissFace={dismissFace}
+          onUnassignFace={unassignFace}
           onRotate={rotate}
           onCrop={crop}
+          onRestorePreview={restorePreview}
+          onRestoreDiscard={restoreDiscard}
+          onRestoreApply={restoreApply}
+          onDescribe={describe}
           onDownload={download}
           onAddToAlbum={item => setAlbumFor([item.path])}
           onDelete={remove}

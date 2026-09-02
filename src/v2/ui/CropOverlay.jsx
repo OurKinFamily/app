@@ -1,29 +1,36 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Check, X } from 'lucide-react'
+import { MIN, useCropDrag } from '../lib/useCropDrag'
 import { C } from './tokens'
 
 /**
  * Drawing the rectangle to crop to.
  *
- * Drag anywhere to draw a new one; drag inside to move it; drag a corner to
- * resize. Everything outside is dimmed, because the question is not "what is
- * selected" but "what will be left".
+ * Drag the backdrop to draw a new one; drag inside to move it; drag a corner
+ * or an edge to resize; drag just outside a corner to straighten. Everything
+ * outside the rectangle is dimmed, because the question a crop asks is not
+ * "what is selected" but "what will be left".
  *
- * Coordinates are kept as FRACTIONS of the displayed image, so the rectangle
- * survives the window being resized and converts to real pixels only when it
- * is sent. The API expects pixels of the displayed image; it deals with the
- * fact that the file underneath may be stored sideways.
+ * Coordinates are fractions of the displayed image, converted to real pixels
+ * only when sent. The API takes it from there — the file underneath may be
+ * stored sideways.
  */
 
-const HANDLES = [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]]
-const MIN = 0.04
+const CORNERS = [['nw', 0, 0], ['ne', 1, 0], ['se', 1, 1], ['sw', 0, 1]]
+
+// Mid-edge handles, for moving one side without disturbing the other three.
+const EDGES = [
+  ['n', 0.5, 0, 'ns-resize'],
+  ['s', 0.5, 1, 'ns-resize'],
+  ['w', 0, 0.5, 'ew-resize'],
+  ['e', 1, 0.5, 'ew-resize'],
+]
 
 export function CropOverlay({
   box, imageRect, onChange, onApply, onCancel, busy,
   angle = 0, onAngle, imageSize,
 }) {
   const [drag, setDrag] = useState(null)
-  const ref = useRef(null)
 
   const toFraction = useCallback(e => {
     // Guard the divisor: a zero-width rect turns every coordinate into
@@ -36,58 +43,9 @@ export function CropOverlay({
     }
   }, [imageRect])
 
-  useEffect(() => {
-    if (!drag) return
-    const move = e => {
-      const p = toFraction(e)
-      if (drag.mode === 'draw') {
-        onChange(normalise(drag.origin, p))
-      } else if (drag.mode === 'move') {
-        const w = drag.box.x2 - drag.box.x1
-        const h = drag.box.y2 - drag.box.y1
-        const x1 = clamp(p.x - drag.grab.x, 0, 1 - w)
-        const y1 = clamp(p.y - drag.grab.y, 0, 1 - h)
-        onChange({ x1, y1, x2: x1 + w, y2: y1 + h })
-      } else if (drag.mode === 'turn') {
-        // The angle between where the pointer started and where it is now,
-        // measured from the middle of the picture. Dragging around the corner
-        // turns the photograph under a crop box that stays upright, which is
-        // how straightening a crooked scan actually feels.
-        const cx = imageRect.left + imageRect.width / 2
-        const cy = imageRect.top + imageRect.height / 2
-        const now = Math.atan2(e.clientY - cy, e.clientX - cx)
-        const delta = ((now - drag.from) * 180) / Math.PI
-        onAngle(clampAngle(drag.angle + delta))
-      } else {
-        const next = { ...drag.box }
-        if (drag.mode.includes('n')) next.y1 = Math.min(p.y, next.y2 - MIN)
-        if (drag.mode.includes('s')) next.y2 = Math.max(p.y, next.y1 + MIN)
-        if (drag.mode.includes('w')) next.x1 = Math.min(p.x, next.x2 - MIN)
-        if (drag.mode.includes('e')) next.x2 = Math.max(p.x, next.x1 + MIN)
-        onChange(next)
-      }
-    }
-    const up = () => {
-      // A press with no real drag collapses the box to nothing, and the Crop
-      // button then asks the server for a zero-width rectangle — which it
-      // rejects, so the click appeared to do nothing at all. Put the previous
-      // rectangle back instead.
-      if (drag.mode === 'draw' && drag.previous
-          && (box.x2 - box.x1 < MIN || box.y2 - box.y1 < MIN)) {
-        onChange(drag.previous)
-      }
-      setDrag(null)
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-    return () => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
-    }
-  }, [drag, toFraction, onChange, onAngle, imageRect, angle, box])
+  useCropDrag({ drag, setDrag, box, onChange, onAngle, angle, imageRect, toFraction })
 
   const tooSmall = box.x2 - box.x1 < MIN || box.y2 - box.y1 < MIN
-
   const style = {
     left: `${box.x1 * 100}%`, top: `${box.y1 * 100}%`,
     width: `${(box.x2 - box.x1) * 100}%`, height: `${(box.y2 - box.y1) * 100}%`,
@@ -95,11 +53,10 @@ export function CropOverlay({
 
   return (
     <div
-      ref={ref}
       onPointerDown={e => {
-        // Only a press on the backdrop starts a new rectangle; presses inside
-        // the box or on a handle are moves and resizes, and those stop
-        // propagation of their own accord.
+        // Only the backdrop starts a new rectangle; presses inside the box or
+        // on a handle stop propagation of their own accord.
+        e.preventDefault()
         const origin = toFraction(e)
         onChange({ x1: origin.x, y1: origin.y, x2: origin.x, y2: origin.y })
         setDrag({ mode: 'draw', origin, previous: box })
@@ -112,14 +69,13 @@ export function CropOverlay({
         left: imageRect.left, top: imageRect.top,
         width: imageRect.width, height: imageRect.height,
         cursor: 'crosshair', touchAction: 'none', zIndex: 30,
+        // No text selection while cropping: dragging a handle otherwise
+        // paints the browser's blue selection across the photograph.
+        userSelect: 'none', WebkitUserSelect: 'none',
       }}
     >
-      {/* Four panes rather than one box-shadow: the dimming has to be BEHIND
-          the handles, and a shadow would swallow pointer events. */}
       {/* pointerEvents none, or these swallow the press that starts a new
-          rectangle: they cover the whole surface, so the draw handler's
-          `e.target === container` was never true and the box could only be
-          nudged, never redrawn. */}
+          rectangle: they cover the whole surface. */}
       {shades(box).map((s, i) => (
         <div
           key={i}
@@ -133,6 +89,7 @@ export function CropOverlay({
       <div
         onPointerDown={e => {
           e.stopPropagation()
+          e.preventDefault()
           const p = toFraction(e)
           setDrag({ mode: 'move', box, grab: { x: p.x - box.x1, y: p.y - box.y1 } })
         }}
@@ -150,11 +107,12 @@ export function CropOverlay({
           <div key={`v${n}`} style={guide({ left: `${(n / 3) * 100}%`, height: '100%', width: 1 })} />
         ))}
 
-        {onAngle && HANDLES.map(([mode, fx, fy]) => (
+        {onAngle && CORNERS.map(([mode, fx, fy]) => (
           <span
             key={`turn-${mode}`}
             onPointerDown={e => {
               e.stopPropagation()
+              e.preventDefault()
               const cx = imageRect.left + imageRect.width / 2
               const cy = imageRect.top + imageRect.height / 2
               setDrag({
@@ -174,10 +132,41 @@ export function CropOverlay({
           />
         ))}
 
-        {HANDLES.map(([mode, fx, fy]) => (
+        {EDGES.map(([mode, fx, fy, cursor]) => {
+          const vertical = mode === 'n' || mode === 's'
+          return (
+            <span
+              key={mode}
+              onPointerDown={e => {
+                e.stopPropagation()
+                e.preventDefault()
+                setDrag({ mode, box })
+              }}
+              title="Drag this side"
+              style={{
+                position: 'absolute',
+                left: `${fx * 100}%`, top: `${fy * 100}%`,
+                // Long along the edge, thin across it: a bar says "this side
+                // moves", where another square would read as a corner.
+                width: vertical ? 30 : 12,
+                height: vertical ? 12 : 30,
+                marginLeft: vertical ? -15 : -6,
+                marginTop: vertical ? -6 : -15,
+                borderRadius: 3, background: '#fff', cursor,
+                boxShadow: '0 1px 4px rgba(0,0,0,.5)',
+              }}
+            />
+          )
+        })}
+
+        {CORNERS.map(([mode, fx, fy]) => (
           <span
             key={mode}
-            onPointerDown={e => { e.stopPropagation(); setDrag({ mode, box }) }}
+            onPointerDown={e => {
+              e.stopPropagation()
+              e.preventDefault()
+              setDrag({ mode, box })
+            }}
             style={{
               position: 'absolute',
               left: `${fx * 100}%`, top: `${fy * 100}%`,
@@ -189,17 +178,14 @@ export function CropOverlay({
         ))}
       </div>
 
-      {/* Pinned to the window, not hung below the photograph. Sitting 52px
-          under the image put the buttons off-screen whenever the picture
-          reached the bottom of the pane — which is most tall photographs, and
-          exactly when you most want to cancel. */}
+      {/* Pinned to the window, not hung below the photograph. Sitting under
+          the image put these off-screen for any picture reaching the bottom of
+          the pane — exactly when you most want Cancel. */}
       <div style={{
         position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)',
         display: 'flex', gap: 8, alignItems: 'center', zIndex: 40,
       }}>
-        {/* What will actually be cut, in real pixels. Useful on its own, and
-            it makes a mis-measured overlay obvious instead of mysterious. */}
-        {imageSize && (
+        {imageSize?.w > 0 && (
           <span style={{
             ...bar(false), cursor: 'default',
             fontVariantNumeric: 'tabular-nums', color: C.muted,
@@ -209,6 +195,7 @@ export function CropOverlay({
             {Math.round((box.y2 - box.y1) * imageSize.h)}
           </span>
         )}
+
         {onAngle && (
           <button
             type="button"
@@ -225,6 +212,7 @@ export function CropOverlay({
             {angle ? `${angle > 0 ? '+' : ''}${angle.toFixed(1)}°` : '0.0°'}
           </button>
         )}
+
         <button type="button" onClick={onCancel} style={bar(false)}>
           <X size={15} /> Cancel
         </button>
@@ -243,17 +231,6 @@ export function CropOverlay({
 }
 
 const clamp = (v, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v))
-
-// Beyond this it stops being straightening and becomes a rotation, which the
-// lossless quarter-turn button already does properly.
-const clampAngle = a => Math.max(-45, Math.min(45, Math.round(a * 10) / 10))
-
-function normalise(a, b) {
-  return {
-    x1: Math.min(a.x, b.x), y1: Math.min(a.y, b.y),
-    x2: Math.max(a.x, b.x), y2: Math.max(a.y, b.y),
-  }
-}
 
 /** The four regions outside the rectangle, as percentages. */
 function shades({ x1, y1, x2, y2 }) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckSquare } from 'lucide-react'
 import { MediaGrid } from './MediaGrid'
@@ -20,13 +20,16 @@ import { C } from './tokens'
  * land.
  */
 
-const PAGE = 120
+// The endpoint caps at 200, and a person's photographs are one flat list
+// rather than a whole archive — so take the maximum and ask fewer times.
+const PAGE = 200
 
 export function PersonPhotos({ personId }) {
   const [items, setItems] = useState(null)
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
   const [busy, setBusy] = useState(false)
+  const bottom = useRef(null)
   const [openPath, setOpenPath] = useState(null)
   const [patched, setPatched] = useState({})
   const [versions, setVersions] = useState(() => new Map())
@@ -78,6 +81,21 @@ export function PersonPhotos({ personId }) {
     }
   }, [busy, items, total, offset, personId])
 
+  // An observer fires on TRANSITIONS, not on steady state: if the sentinel is
+  // already in view when the first batch lands, it never fires again and the
+  // list simply stops. So the same check runs after every load, and stops when
+  // the page is long enough that scrolling can do the work.
+  useEffect(() => {
+    const el = bottom.current
+    if (!el || !items || items.length >= total) return
+    const io = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) more() },
+      { rootMargin: '600px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [items, total, more])
+
   const shown = useMemo(() => (items || []).map(it => ({
     ...it,
     aspect: it.width && it.height ? it.width / it.height : 1,
@@ -96,6 +114,10 @@ export function PersonPhotos({ personId }) {
     openPath,
     close: useCallback(() => setOpenPath(null), []),
     onVersion,
+    onRemoved: useCallback(path => {
+      setItems(cur => (cur || []).filter(i => i.path !== path))
+      setTotal(t => Math.max(0, t - 1))
+    }, []),
   })
 
   if (items === null) return <LoadingDots />
@@ -154,19 +176,12 @@ export function PersonPhotos({ personId }) {
         showUndatedSection={false}
       />
 
-      {items.length < total && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
-          {busy ? <LoadingDots /> : (
-            <button type="button" onClick={more} style={{
-              height: 34, padding: '0 16px', borderRadius: 17, fontSize: 13,
-              border: `1px solid ${C.border}`, background: 'transparent',
-              color: C.text, cursor: 'pointer',
-            }}>
-              Show more ({(total - items.length).toLocaleString()} left)
-            </button>
-          )}
-        </div>
-      )}
+      {/* The sentinel sits below the grid; reaching it fetches the next page.
+          Given room to work — 600px — so the next batch is usually there
+          before the reader arrives at the bottom. */}
+      <div ref={bottom} style={{ height: 1 }} />
+
+      {busy && <LoadingDots />}
 
       {albumFor && (
         <AlbumPicker paths={albumFor} onClose={() => setAlbumFor(null)} />
@@ -183,8 +198,13 @@ export function PersonPhotos({ personId }) {
           onAssignFace={actions.assignFace}
           onCreatePerson={actions.createPerson}
           onDismissFace={actions.dismissFace}
+          onUnassignFace={actions.unassignFace}
           onRotate={actions.rotate}
           onCrop={actions.crop}
+          onRestorePreview={actions.restorePreview}
+          onRestoreDiscard={actions.restoreDiscard}
+          onRestoreApply={actions.restoreApply}
+          onDescribe={actions.describe}
           onDownload={actions.download}
           onDelete={actions.remove}
           hasPrev={index > 0}

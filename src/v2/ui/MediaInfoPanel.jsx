@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useIsAdmin } from '../../contexts/MeContext'
 import { C } from './tokens'
+import { DescriptionField } from './DescriptionField'
 import { Row, SectionLabel } from './InfoPanelParts'
 import { PeopleSection } from './PeopleSection'
 import { Readiness } from './Readiness'
@@ -27,7 +28,7 @@ import { bytes } from './formatBytes'
  * for the rest. Everything degrades: a row with nothing to say does not render.
  */
 
-function useMediaDetail(path, version) {
+function useMediaDetail(path, version, revision) {
   // Stamped with the path AND the version it belongs to, so switching
   // photographs invalidates the old detail during render rather than via an
   // effect that sets state and triggers a second pass.
@@ -35,7 +36,7 @@ function useMediaDetail(path, version) {
   // The version matters because editing a photograph does not change its path.
   // Cropping moves every face box, and keyed on path alone this went on
   // showing the boxes from before the crop until the page was reloaded.
-  const key = `${path}@${version || 0}`
+  const key = `${path}@${version || 0}#${revision || 0}`
   const [state, setState] = useState({ key, detail: null })
   if (state.key !== key) setState({ key, detail: null })
 
@@ -55,8 +56,8 @@ function useMediaDetail(path, version) {
 export function InfoPanel({
   item, wide, onClose, detail: supplied,
   onDetail, hoveredFace, onHoverFace,
-  onRedate, onRelocate, onAssignFace, onCreatePerson, onDismissFace,
-  naming, onNaming,
+  onRedate, onRelocate, onAssignFace, onCreatePerson, onDismissFace, onUnassignFace, onDescribe,
+  naming, onNaming, revision,
 }) {
   // Editing is owner-only, the same gate v1 puts on tagging people. Family can
   // read the archive; correcting the record is a different thing. Hidden
@@ -66,7 +67,7 @@ export function InfoPanel({
   const [editingPlace, setEditingPlace] = useState(false)
   // A supplied detail skips the fetch entirely — that's how the style guide
   // pins its examples so they can't drift when the archive does.
-  const fetched = useMediaDetail(supplied ? null : item?.path, item?.version)
+  const fetched = useMediaDetail(supplied ? null : item?.path, item?.version, revision)
   const detail = supplied || fetched
 
   // Hand the loaded detail up: the picture needs the bounding boxes, and this
@@ -124,24 +125,26 @@ export function InfoPanel({
 
       {/* Writing about a photograph is half of what an archive is for, so this
           sits above the metadata rather than under it. */}
-      <input
-        placeholder="Add a description"
-        defaultValue={d.heritage?.description || ''}
-        style={{
-          width: '100%', boxSizing: 'border-box', border: 0,
-          borderBottom: `1px solid ${C.border}`, padding: '7px 0',
-          fontSize: 13, color: C.text, background: 'transparent', outline: 'none',
-        }}
+      <DescriptionField
+        value={d.description ?? d.heritage?.description ?? ''}
+        canEdit={canEdit}
+        onSave={text => onDescribe?.(item, text)}
       />
 
       <PeopleSection
         detail={d}
+        // The detail endpoint nests it — timestamp is an object with source
+        // and confidence alongside the value — while a gallery item carries a
+        // plain string. Without this the ages under the faces never appeared,
+        // because ageAt was being handed undefined.
+        takenAt={d.timestamp?.value || d.timestamp || item?.timestamp}
         hovered={hoveredFace}
         onHover={onHoverFace}
         canEdit={canEdit}
         onAssignFace={onAssignFace}
         onCreatePerson={onCreatePerson}
         onDismissFace={onDismissFace}
+        onUnassignFace={onUnassignFace}
         naming={naming}
         onNaming={onNaming}
       />

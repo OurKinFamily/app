@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Album, Calendar, Heart, HeartOff, Trash2, X } from 'lucide-react'
+import { Album, Calendar, Download, Heart, HeartOff, Trash2, X } from 'lucide-react'
 import { DateEditor } from './DateEditor'
 import { ConfirmPopover } from './ConfirmPopover'
 import { useBulkActions } from '../lib/useBulkActions'
@@ -19,7 +19,7 @@ import { C } from './tokens'
 export function SelectionBar({ paths, onClear, onAddToAlbum, onChanged, compact }) {
   const [dating, setDating] = useState(false)
   const [confirming, setConfirming] = useState(false)
-  const { busy, favourite, unfavourite, redate, remove } = useBulkActions({
+  const { busy, favourite, unfavourite, redate, remove, download } = useBulkActions({
     paths,
     onDone: ({ name }) => {
       setDating(false)
@@ -72,6 +72,8 @@ export function SelectionBar({ paths, onClear, onAddToAlbum, onChanged, compact 
           <Act icon={Heart} label="Favourite" onClick={favourite} disabled={!!busy} />
           <Act icon={HeartOff} label="Remove favourite" onClick={unfavourite} disabled={!!busy} />
 
+          <Act icon={Download} label="Download" onClick={download} disabled={!!busy} />
+
           {onAddToAlbum && (
             <Act icon={Album} label="Add to album" onClick={() => onAddToAlbum(paths)} disabled={!!busy} />
           )}
@@ -113,6 +115,7 @@ export function SelectionBar({ paths, onClear, onAddToAlbum, onChanged, compact 
 }
 
 const LABELS = {
+  download: 'Zipping',
   favourite: 'Favouriting',
   unfavourite: 'Removing',
   redate: 'Dating',
