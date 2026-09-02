@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Search, Star, Trash2, Share2, ArrowRight } from 'lucide-react'
 import { MediaTileDemo } from './MediaTileDemo'
+import { MediaDetailDemo } from './MediaDetailDemo'
 import { C } from '../ui/tokens'
 
 /**
@@ -177,6 +178,16 @@ export function V2ComponentsPage() {
               each is a real button, so Enter and Space both work."
       >
         <MediaTileDemo />
+      </Section>
+
+      <Section
+        title="Media details"
+        note="One photograph, full size. A placeholder for now — the picture and a way
+              out. It will be a route rendering as an overlay above the grid, so the
+              URL changes while the grid stays mounted underneath and closing costs
+              nothing."
+      >
+        <MediaDetailDemo />
       </Section>
 
       <Section

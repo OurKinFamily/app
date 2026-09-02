@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { computeRows } from '../../lib/justifiedRows'
 import { GridTile } from './GridTile'
+import { ChevronRight, ChevronDown } from 'lucide-react'
 import { C } from './tokens'
 import { GroupHeader } from './GroupHeader'
 import { topPlaces } from './topPlaces'
@@ -75,12 +76,16 @@ export function MediaGrid({
   selectionMode = false,
   onRequestSelectionMode,
   showUndatedSection = true,
+  // Supplied by a parent rendering several grids: measuring per-instance means
+  // each one renders empty on its first pass and then springs to full height,
+  // which throws the page around when months are added above the viewport.
+  width: widthProp,
   favourites,
   onToggleFavourite,
   onOpen,
 }) {
   const ref = useRef(null)
-  const [width, setWidth] = useState(0)
+  const [measured, setMeasured] = useState(0)
   const [showUndated, setShowUndated] = useState(false)
   // Where the last plain selection happened, so shift-click knows what a range
   // means. Only the grid can answer that — it owns the order.
@@ -91,11 +96,13 @@ export function MediaGrid({
 
   useLayoutEffect(() => {
     if (!ref.current) return
-    const ro = new ResizeObserver(e => setWidth(Math.floor(e[0].contentRect.width)))
+    if (widthProp) return          // the parent is measuring for us
+    const ro = new ResizeObserver(e => setMeasured(Math.floor(e[0].contentRect.width)))
     ro.observe(ref.current)
     return () => ro.disconnect()
-  }, [])
+  }, [widthProp])
 
+  const width = widthProp || measured
   const rowHeight = rowHeightFor(width)
   const withAspect = useMemo(
     () => items.map(it =>
@@ -229,23 +236,31 @@ export function MediaGrid({
           a photo with no date sitting between 2019 and 2020 is a lie about
           when it happened — but hiding them entirely means they never get
           fixed. A collapsed row costs nothing and acts as a to-do. */}
+      {/* Fully collapsed to a heading. Undated media is a to-do list, not
+          part of the timeline — worth being reminded of every visit, not worth
+          a row of photographs above everything you actually came to look at. */}
       {showUndatedSection && undatedItems.length > 0 && (
         <section>
-          <GroupHeader count={undatedItems.length}>Undated</GroupHeader>
-          {width > 0 && computeRows(
-            showUndated ? undatedItems : undatedItems.slice(0, 12),
-            width, { rowHeight, gap: GAP },
-          ).slice(0, showUndated ? Infinity : 1).map((r, i) => renderRow(r, 'undated', i))}
           <button
             type="button"
             onClick={() => setShowUndated(v => !v)}
             style={{
-              border: 0, background: 'transparent', color: C.activeText,
-              fontSize: 13, cursor: 'pointer', padding: '8px 0 16px',
+              display: 'flex', alignItems: 'center', gap: 8,
+              width: '100%', textAlign: 'left',
+              border: 0, background: 'transparent', cursor: 'pointer',
+              padding: '14px 0 8px', fontSize: 14, fontWeight: 500, color: C.text,
             }}
           >
-            {showUndated ? 'Show less' : `Show all ${undatedItems.length}`}
+            {showUndated ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            Undated
+            <span style={{ fontSize: 12, color: C.muted, fontWeight: 400 }}>
+              {undatedItems.length}
+            </span>
           </button>
+
+          {showUndated && width > 0 && computeRows(
+            undatedItems, width, { rowHeight, gap: GAP },
+          ).map((r, i) => renderRow(r, 'undated', i))}
         </section>
       )}
 

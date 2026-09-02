@@ -20,7 +20,7 @@ import { C } from '../ui/tokens'
 const NAV = [
   {
     items: [
-      { to: '/v2', label: 'Photos', icon: Images, end: true },
+      { to: '/v2', label: 'Gallery', icon: Images, end: true },
       { to: '/v2/albums', label: 'Albums', icon: Album },
       { to: '/v2/favorites', label: 'Favourites', icon: Star },
     ],

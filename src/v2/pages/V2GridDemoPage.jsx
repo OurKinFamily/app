@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, X, CheckSquare } from 'lucide-react'
-import { VirtualMediaGrid } from '../ui/VirtualMediaGrid'
+import { TimelineGrid } from '../ui/TimelineGrid'
 import { C } from '../ui/tokens'
 
 /**
@@ -17,12 +17,10 @@ import { C } from '../ui/tokens'
  */
 export function V2GridDemoPage() {
   const [buckets, setBuckets] = useState(null)
-  const [undated, setUndated] = useState([])
   const [selected, setSelected] = useState(() => new Set())
   const [selectionMode, setSelectionMode] = useState(false)
   const [favourites, setFavourites] = useState(() => new Set())
   const [opened, setOpened] = useState(null)
-  const [visibleBucket, setVisibleBucket] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // The whole timeline's shape in one request — 597 months, ~280ms — so the
@@ -34,16 +32,13 @@ export function V2GridDemoPage() {
     Promise.all([
       fetch(`/api/gallery/counts?bucket=month&${PARAMS}`)
         .then(r => (r.ok ? r.json() : { buckets: [] })),
-      fetch('/api/gallery?undated=true&limit=40')
-        .then(r => (r.ok ? r.json() : { media: [] })),
     ])
-      .then(([counts, un]) => {
+      .then(([counts]) => {
         setBuckets((counts.buckets || []).map(b => ({
           ...b,
           label: new Date(b.bucket + '-01T00:00:00')
             .toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
         })))
-        setUndated(un.media || [])
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -89,7 +84,7 @@ export function V2GridDemoPage() {
         out from a single counts request, with photographs fetched a month at a time as
         they come into view. Scroll anywhere — the scrollbar is honest even where
         nothing has loaded yet.
-        {visibleBucket && <> Currently at <strong>{visibleBucket}</strong>.</>}
+        
       </p>
 
       {/* Selection bar — the reason the page owns the selection rather than the
@@ -153,10 +148,9 @@ export function V2GridDemoPage() {
       {loading
         ? <div style={{ fontSize: 13, color: C.muted }}>Loading…</div>
         : (
-          <VirtualMediaGrid
+          <TimelineGrid
             buckets={buckets}
             params={PARAMS}
-            undatedItems={undated}
             selected={selected}
             onSelectionChange={setSelected}
             selectionMode={selectionMode}
@@ -168,7 +162,6 @@ export function V2GridDemoPage() {
               return next
             })}
             onOpen={it => setOpened(it.filename)}
-            onVisibleDateChange={setVisibleBucket}
           />
         )}
 
