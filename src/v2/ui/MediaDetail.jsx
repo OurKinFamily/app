@@ -7,6 +7,9 @@ import { C } from './tokens'
 import { CropOverlay } from './CropOverlay'
 import { RestorePreview } from './RestorePreview'
 import { OriginalToggle } from './OriginalToggle'
+import { ToneEditor } from './ToneEditor'
+import { useEditFlow } from '../lib/useEditFlow'
+import { applyCrop } from '../lib/applyCrop'
 import { useRestoreFlow } from '../lib/useRestoreFlow'
 import { facesFrom } from '../lib/facesFrom'
 import { useLightboxKeys } from '../lib/useLightboxKeys'
@@ -32,46 +35,6 @@ function fitScale(angle) {
   return 1 / (Math.cos(r) + Math.sin(r))
 }
 
-/**
- * Fractions of what is on screen become pixels of the full-size photograph.
- * The API maps those onto the stored file, which may be lying on its side.
- */
-async function applyCrop({ item, box, angle, imgRef, onCrop, setCropping, setCrop, setAngle }) {
-  let w = item.width || imgRef.current?.naturalWidth
-  let h = item.height || imgRef.current?.naturalHeight
-  if (!w || !h) return
-  // The rectangle was drawn on the STRAIGHTENED picture, which is bigger than
-  // the original — turning a rectangle and keeping its corners always is. The
-  // server rotates with expand as well, so both agree on this size.
-  if (angle) {
-    const r = (Math.abs(angle) * Math.PI) / 180
-    const [cos, sin] = [Math.cos(r), Math.sin(r)]
-    ;[w, h] = [w * cos + h * sin, w * sin + h * cos]
-  }
-  const rect = {
-    x: Math.round(box.x1 * w),
-    y: Math.round(box.y1 * h),
-    w: Math.round((box.x2 - box.x1) * w),
-    h: Math.round((box.y2 - box.y1) * h),
-    angle,
-  }
-  // The server refuses anything under 32px a side, and a refused request looks
-  // exactly like a button that does nothing.
-  if (rect.w < 32 || rect.h < 32) return
-  setCropping(true)
-  try {
-    await onCrop(item, rect)
-    setCrop(false)
-    // The file is straight now, so the preview must stop turning it. Leaving
-    // the transform on meant the photograph looked as crooked as before until
-    // the page was reloaded — the crop had worked, the browser was still
-    // rotating the result.
-    setAngle(0)
-  } finally {
-    setCropping(false)
-  }
-}
-
 export function MediaDetail({
   item,
   onClose,
@@ -82,6 +45,7 @@ export function MediaDetail({
   onToggleFavourite,
   onRotate,
   onCrop,
+  onTone,
   onRestorePreview,
   onRestoreDiscard,
   onRestoreApply,
@@ -135,6 +99,7 @@ export function MediaDetail({
   // what came off the scanner — the restoration is a machine's work, and this
   // is the only place that says so.
   const [showOriginal, setShowOriginal] = useState(false)
+  const tone = useEditFlow(onTone, item)
   const originalUrl = detailData?.original_url
 
   const restore = useRestoreFlow({
@@ -203,6 +168,7 @@ export function MediaDetail({
             onRotate={onRotate}
             onStartCrop={() => { setCrop(true); setBox(DEFAULT_BOX); setAngle(0) }}
             onRestore={onRestorePreview && restore.start}
+            onTone={onTone && tone.open}
             onCrop={onCrop}
             onDownload={onDownload}
             onDelete={onDelete}
@@ -253,6 +219,15 @@ export function MediaDetail({
           busy={restore.busy}
           onDiscard={restore.discard}
           onKeep={restore.keep}
+        />
+      )}
+
+      {tone.open_ && (
+        <ToneEditor
+          src={bust(item.url, item.version)}
+          busy={tone.busy}
+          onCancel={tone.close}
+          onApply={tone.apply}
         />
       )}
 

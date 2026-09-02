@@ -135,7 +135,7 @@ export function V2GalleryPage({
 
   const {
     redate, relocate, assignFace, createPerson, dismissFace, unassignFace,
-    rotate, crop, describe, remove, download,
+    rotate, crop, tone, describe, remove, download,
     restorePreview, restoreDiscard, restoreApply,
   } = useMediaActions({
     openPath,
@@ -235,6 +235,7 @@ export function V2GalleryPage({
           onUnassignFace={unassignFace}
           onRotate={rotate}
           onCrop={crop}
+          onTone={tone}
           onRestorePreview={restorePreview}
           onRestoreDiscard={restoreDiscard}
           onRestoreApply={restoreApply}

@@ -149,6 +149,14 @@ export function useMediaActions({ openPath, close, onVersion, onRemoved }) {
     onVersion(item.path, { version, width, height, aspect: width / height })
   }, [onVersion])
 
+  const tone = useCallback(async (item, { shadows, midtones, highlights }) => {
+    const q = new URLSearchParams({ path: item.path, shadows, midtones, highlights })
+    const res = await fetch(`/api/gallery/media/tone?${q}`, { method: 'POST' })
+    if (!res.ok) throw new Error(`${res.status}`)
+    const { version, width, height } = await res.json()
+    onVersion(item.path, { version, width, height, aspect: width / height })
+  }, [onVersion])
+
   const remove = useCallback(async item => {
     const res = await fetch(`/api/gallery/media?path=${encodeURIComponent(item.path)}`, {
       method: 'DELETE',
@@ -170,7 +178,7 @@ export function useMediaActions({ openPath, close, onVersion, onRemoved }) {
 
   return {
     redate, relocate, assignFace, createPerson, dismissFace, unassignFace,
-    rotate, crop, describe, remove, download,
+    rotate, crop, tone, describe, remove, download,
     restorePreview, restoreDiscard, restoreApply,
   }
 }

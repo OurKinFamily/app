@@ -201,6 +201,7 @@ export function PersonPhotos({ personId }) {
           onUnassignFace={actions.unassignFace}
           onRotate={actions.rotate}
           onCrop={actions.crop}
+          onTone={actions.tone}
           onRestorePreview={actions.restorePreview}
           onRestoreDiscard={actions.restoreDiscard}
           onRestoreApply={actions.restoreApply}

@@ -1,4 +1,4 @@
-import { Album, Crop as CropIcon, Download, Heart, Info, RotateCw, Sparkles, Trash2, X } from 'lucide-react'
+import { Album, Crop as CropIcon, Download, Heart, Info, RotateCw, SlidersHorizontal, Sparkles, Trash2, X } from 'lucide-react'
 import { Action } from './DetailControls'
 import { ConfirmPopover } from './ConfirmPopover'
 
@@ -14,7 +14,7 @@ import { ConfirmPopover } from './ConfirmPopover'
  */
 export function DetailToolbar({
   item, wide, favourited, showInfo, confirmDelete,
-  onClose, onToggleFavourite, onAddToAlbum, onRotate, onStartCrop, onCrop, onRestore,
+  onClose, onToggleFavourite, onAddToAlbum, onRotate, onStartCrop, onCrop, onRestore, onTone,
   onDownload, onDelete, onConfirmDelete, onToggleInfo,
 }) {
   return (
@@ -51,6 +51,11 @@ export function DetailToolbar({
               onClick={onStartCrop}
             >
               <CropIcon size={17} />
+            </Action>
+          )}
+          {onTone && !item.is_video && (
+            <Action label="Adjust light" onClick={onTone}>
+              <SlidersHorizontal size={17} />
             </Action>
           )}
           {onRestore && !item.is_video && (
