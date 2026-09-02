@@ -1,15 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { describeMedia, bust } from './mediaTileProps'
 import { InfoPanel } from './MediaInfoPanel'
-import { Edge } from './DetailControls'
+import { Edges } from './DetailControls'
 import { FaceBoxes } from './FaceBoxes'
 import { C } from './tokens'
 import { CropOverlay } from './CropOverlay'
 import { RestorePreview } from './RestorePreview'
+import { OriginalToggle } from './OriginalToggle'
 import { useRestoreFlow } from '../lib/useRestoreFlow'
 import { facesFrom } from '../lib/facesFrom'
 import { useLightboxKeys } from '../lib/useLightboxKeys'
+import { useScrollLock } from '../lib/useScrollLock'
 import { DetailToolbar } from './DetailToolbar'
 import { useElementRect } from '../lib/useElementRect'
 import { useIsWide } from '../lib/useIsWide'
@@ -130,6 +131,12 @@ export function MediaDetail({
     setRevision(r => r + 1)
   })
   const cropRect = useElementRect(imgRef, crop ? `${angle}` : null)
+  // Only a restored photograph has one. Clicking it swaps the picture back to
+  // what came off the scanner — the restoration is a machine's work, and this
+  // is the only place that says so.
+  const [showOriginal, setShowOriginal] = useState(false)
+  const originalUrl = detailData?.original_url
+
   const restore = useRestoreFlow({
     item, onRestorePreview, onRestoreDiscard, onRestoreApply,
     onDone: () => setRevision(r => r + 1),
@@ -138,14 +145,7 @@ export function MediaDetail({
   const faces = facesFrom(detailData)
   useLightboxKeys({ onClose, onPrev, onNext, hasPrev, hasNext })
 
-  // Lock the page behind the overlay. Without this the grid keeps its
-  // scrollbar, which both looks wrong over a full-screen photograph and lets a
-  // stray wheel event scroll 8 million pixels of timeline out from under you.
-  useEffect(() => {
-    const { overflow } = document.body.style
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = overflow }
-  }, [])
+  useScrollLock()
 
   if (!item) return null
 
@@ -212,16 +212,10 @@ export function MediaDetail({
         </div>
       {/* Big edge targets rather than small buttons: moving through a
           hundred photographs should not require aiming. */}
-      {hasPrev && (
-        <Edge side="left" label="Previous" onClick={onPrev}>
-          <ChevronLeft size={26} />
-        </Edge>
-      )}
-      {hasNext && (
-        <Edge side="right" label="Next" onClick={onNext}>
-          <ChevronRight size={26} />
-        </Edge>
-      )}
+      <Edges
+        hasPrev={hasPrev} hasNext={hasNext}
+        onPrev={onPrev} onNext={onNext}
+      />
 
       {item.is_video ? (
         <video
@@ -235,7 +229,7 @@ export function MediaDetail({
       ) : (
         <img
           ref={imgRef}
-          src={bust(item.url, item.version)}
+          src={(showOriginal && originalUrl) || bust(item.url, item.version)}
           alt={describeMedia(item)}
           style={{
             maxWidth: '100%', maxHeight: '100%',
@@ -278,6 +272,13 @@ export function MediaDetail({
 
         {/* Over the photograph, inside the same box, so the coordinates line
             up without any extra offset maths. */}
+        {originalUrl && !crop && (
+          <OriginalToggle
+            showing={showOriginal}
+            onToggle={() => setShowOriginal(v => !v)}
+          />
+        )}
+
         {!crop && <FaceBoxes
           imgRef={imgRef}
           faces={faces}

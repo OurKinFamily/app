@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 
 /** The two control shapes the detail view uses over a photograph. */
@@ -56,5 +57,28 @@ export function Edge({ side, children, label, onClick }) {
     >
       {children}
     </button>
+  )
+}
+
+/**
+ * The chevrons at either side of a photograph.
+ *
+ * Together rather than as two calls, because they are one idea — "there are
+ * more this way" — and writing them out twice invited them to drift apart.
+ */
+export function Edges({ hasPrev, hasNext, onPrev, onNext }) {
+  return (
+    <>
+      {hasPrev && (
+        <Edge side="left" label="Previous" onClick={onPrev}>
+          <ChevronLeft size={26} />
+        </Edge>
+      )}
+      {hasNext && (
+        <Edge side="right" label="Next" onClick={onNext}>
+          <ChevronRight size={26} />
+        </Edge>
+      )}
+    </>
   )
 }

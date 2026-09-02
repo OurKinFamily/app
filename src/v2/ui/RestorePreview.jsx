@@ -5,10 +5,11 @@ import { C } from './tokens'
 /**
  * The restored photograph, before it becomes the photograph.
  *
- * A slider rather than side-by-side: the changes are dust, scratches and
- * grain, and at half width on a phone you cannot see any of them. Dragging the
- * divider over the same patch of sky is how you actually tell whether a
- * scratch went away or a face turned to plastic.
+ * The restored one fills the frame and the original is a button-press behind
+ * it. The changes are dust, scratches and grain — too small to see side by
+ * side, and a slider only tells you where the boundary is. Flicking the whole
+ * picture between the two states in one place is how you actually tell whether
+ * a scratch went away or a face turned to plastic.
  *
  * Nothing is written until Keep is pressed. Discard leaves the original
  * exactly as it was, because it was never touched.
@@ -49,11 +50,11 @@ export function RestorePreview({
 }
 
 function Comparison({ before, after, busy, onKeep, onDiscard }) {
-  // Held down, the restored one is hidden entirely. Flicking between the two
-  // in the same spot is how the eye catches what actually changed — a slider
-  // shows both at once, which is a different question.
+  // The restored one, with the original shown only while the button is HELD.
+  // Holding and letting go is the gesture that matches the question: it puts
+  // the two states in the same place a moment apart, and returns you to the
+  // one you are deciding about rather than leaving you in the other.
   const [showOriginal, setShowOriginal] = useState(false)
-  const [split, setSplit] = useState(50)
 
   return (
     <div
@@ -64,7 +65,7 @@ function Comparison({ before, after, busy, onKeep, onDiscard }) {
       }}
     >
       <p style={{ color: 'rgba(255,255,255,.75)', fontSize: 13, margin: 0 }}>
-        Drag to compare. Nothing is saved until you keep it.
+        {showOriginal ? 'The original' : 'Restored'} — nothing is saved until you keep it.
       </p>
 
       <div style={{
@@ -77,48 +78,27 @@ function Comparison({ before, after, busy, onKeep, onDiscard }) {
             alt="Before"
             style={{ display: 'block', maxWidth: '100%', maxHeight: '72vh' }}
           />
-          {/* The restored one on top, revealed from the left. Same box, so the
-              two line up even though the pipeline changes the size slightly. */}
+          {/* Laid exactly over the original rather than swapped in, so the two
+              cannot shift by a pixel as they change — the pipeline alters the
+              dimensions slightly, and a picture that jumps hides the very
+              differences you are looking for. */}
           <img
             src={after}
             alt="After"
             style={{
               position: 'absolute', inset: 0, width: '100%', height: '100%',
-              clipPath: `inset(0 ${100 - split}% 0 0)`,
               visibility: showOriginal ? 'hidden' : 'visible',
-            }}
-          />
-          {!showOriginal && (
-            <div style={{
-              position: 'absolute', top: 0, bottom: 0, left: `${split}%`,
-              width: 2, background: '#fff', pointerEvents: 'none',
-              boxShadow: '0 0 8px rgba(0,0,0,.6)',
-            }} />
-          )}
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={split}
-            onChange={e => setSplit(Number(e.target.value))}
-            aria-label="Compare before and after"
-            style={{
-              position: 'absolute', inset: 0, width: '100%', height: '100%',
-              opacity: 0, cursor: 'ew-resize', margin: 0,
             }}
           />
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <span style={{ color: 'rgba(255,255,255,.45)', fontSize: 11.5, marginRight: 6 }}>
-          {split < 50 ? 'Mostly original' : 'Mostly restored'}
-        </span>
         <button
           type="button"
-          // Press and hold. Pointer events rather than mouse: the same code
-          // covers a finger held on the screen. Leaving the button counts as
-          // letting go, or dragging off it would leave the original stuck on.
+          // Held, not toggled. Pointer events rather than mouse ones so a
+          // finger works the same; leaving the button counts as letting go,
+          // or dragging off it would strand the original on screen.
           onPointerDown={() => setShowOriginal(true)}
           onPointerUp={() => setShowOriginal(false)}
           onPointerLeave={() => setShowOriginal(false)}
@@ -128,7 +108,7 @@ function Comparison({ before, after, busy, onKeep, onDiscard }) {
             background: showOriginal ? 'rgba(255,255,255,.18)' : 'transparent',
           }}
         >
-          <Eye size={15} /> {showOriginal ? 'Original' : 'Hold for original'}
+          <Eye size={15} /> Hold for original
         </button>
         <button type="button" onClick={onDiscard} disabled={busy} style={button(false)}>
           <X size={15} /> Discard
