@@ -6,6 +6,8 @@ import { MediaDetail } from '../ui/MediaDetail'
 import { NewAlbumDialog } from '../ui/NewAlbumDialog'
 import { LoadingDots } from '../ui/LoadingDots'
 import { AlbumHeader } from '../ui/AlbumHeader'
+import { SelectionBar } from '../ui/SelectionBar'
+import { AlbumPicker } from '../ui/AlbumPicker'
 import { useMediaActions } from '../lib/useMediaActions'
 import { useFavorites } from '../../lib/useFavorites'
 import { mediaUrl, thumbUrl } from '../../lib/media'
@@ -31,6 +33,7 @@ export function V2AlbumPage() {
   const [selected, setSelected] = useState(() => new Set())
   const [selectionMode, setSelectionMode] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [albumFor, setAlbumFor] = useState(null)
   const [versions, setVersions] = useState(() => new Map())
   const [patched, setPatched] = useState({})
   const { favs: favorites, toggle: toggleFavorite } = useFavorites()
@@ -144,6 +147,16 @@ export function V2AlbumPage() {
         onSetCover={selected.size === 1 ? () => setCover([...selected][0]) : null}
       />
 
+      {(selectionMode || selected.size > 0) && (
+        <SelectionBar
+          paths={[...selected]}
+          onClear={() => { setSelected(new Set()); setSelectionMode(false) }}
+          onAddToAlbum={setAlbumFor}
+          onChanged={load}
+          compact
+        />
+      )}
+
       {items.length === 0
         ? (
           <p style={{ color: C.muted, fontSize: 14, padding: '48px 0', textAlign: 'center' }}>
@@ -165,6 +178,10 @@ export function V2AlbumPage() {
             showUndatedSection={false}
           />
         )}
+
+      {albumFor && (
+        <AlbumPicker paths={albumFor} onClose={() => setAlbumFor(null)} />
+      )}
 
       {editing && (
         <NewAlbumDialog

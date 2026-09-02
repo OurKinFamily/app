@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMatch, useNavigate } from 'react-router-dom'
-import { CheckSquare, X } from 'lucide-react'
+import { CheckSquare } from 'lucide-react'
 import { TimelineGrid } from '../ui/TimelineGrid'
 import { UndatedSection } from '../ui/UndatedSection'
 import { LoadingDots } from '../ui/LoadingDots'
 import { MediaDetail } from '../ui/MediaDetail'
 import { AlbumPicker } from '../ui/AlbumPicker'
+import { SelectionBar } from '../ui/SelectionBar'
 import { useFavorites } from '../../lib/useFavorites'
 import { useMediaActions } from '../lib/useMediaActions'
 import { mediaUrl, thumbUrl } from '../../lib/media'
@@ -168,55 +169,12 @@ export function V2GalleryPage({
       </div>
 
       {(selectionMode || selected.size > 0) && (
-        <div
-          style={{
-            position: 'sticky', top: 64, zIndex: 5,
-            display: 'flex', alignItems: 'center', gap: 16,
-            margin: '0 -6px', padding: '8px 6px', background: C.bg,
-            borderBottom: `1px solid ${C.border}`,
-          }}
-        >
-          <button
-            type="button"
-            onClick={clearSelection}
-            aria-label="Leave selection mode"
-            style={{
-              display: 'grid', placeItems: 'center', width: 32, height: 32,
-              border: 0, borderRadius: '50%', background: 'transparent',
-              color: C.muted, cursor: 'pointer',
-            }}
-          >
-            <X size={18} />
-          </button>
-          <strong style={{ fontWeight: 500, fontSize: 14 }}>
-            {selected.size > 0 ? `${selected.size} selected` : 'Select photos'}
-          </strong>
-          <div style={{ flex: 1 }} />
-          {selected.size > 0 && (
-            <button
-              type="button"
-              onClick={() => setAlbumFor([...selected])}
-              style={{
-                border: 0, background: 'transparent', color: C.activeText,
-                fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              Add to album
-            </button>
-          )}
-          {selected.size > 0 && (
-            <button
-              type="button"
-              onClick={() => setSelected(new Set())}
-              style={{
-                border: 0, background: 'transparent', color: C.activeText,
-                fontSize: 13, cursor: 'pointer',
-              }}
-            >
-              Clear
-            </button>
-          )}
-        </div>
+        <SelectionBar
+          paths={[...selected]}
+          onClear={clearSelection}
+          onAddToAlbum={setAlbumFor}
+          onChanged={() => window.location.reload()}
+        />
       )}
 
       {loading

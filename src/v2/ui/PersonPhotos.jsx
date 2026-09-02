@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CheckSquare } from 'lucide-react'
 import { MediaGrid } from './MediaGrid'
 import { MediaDetail } from './MediaDetail'
 import { LoadingDots } from './LoadingDots'
+import { AlbumPicker } from './AlbumPicker'
+import { SelectionBar } from './SelectionBar'
 import { useMediaActions } from '../lib/useMediaActions'
 import { useFavorites } from '../../lib/useFavorites'
 import { C } from './tokens'
@@ -28,6 +31,12 @@ export function PersonPhotos({ personId }) {
   const [patched, setPatched] = useState({})
   const [versions, setVersions] = useState(() => new Map())
   const { favs: favorites, toggle: toggleFavorite } = useFavorites()
+  // Selection lives here, as it does on the gallery page. MediaGrid renders
+  // the checkboxes either way; without a handler to give them, `toggle`
+  // returns early and clicking one does nothing at all.
+  const [selected, setSelected] = useState(() => new Set())
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [albumFor, setAlbumFor] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -41,6 +50,17 @@ export function PersonPhotos({ personId }) {
       })
       .catch(() => { if (alive) setItems([]) })
     return () => { alive = false }
+  }, [personId])
+
+  const reload = useCallback(() => {
+    setSelected(new Set())
+    setSelectionMode(false)
+    // Deleting or redating changes what belongs here, so ask again rather
+    // than patching the copy on screen and hoping it still matches.
+    fetch(`/api/gallery?person_ids=${personId}&min_confidence=all&limit=${PAGE}`)
+      .then(r => (r.ok ? r.json() : { media: [], total: 0 }))
+      .then(d => { setItems(d.media || []); setTotal(d.total || 0); setOffset((d.media || []).length) })
+      .catch(() => {})
   }, [personId])
 
   const more = useCallback(async () => {
@@ -89,6 +109,19 @@ export function PersonPhotos({ personId }) {
         <h2 style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>Photographs</h2>
         <span style={{ fontSize: 12.5, color: C.muted }}>{total.toLocaleString()}</span>
         <div style={{ flex: 1 }} />
+        {!selectionMode && selected.size === 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectionMode(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              border: 0, background: 'transparent', color: C.activeText,
+              fontSize: 12.5, cursor: 'pointer',
+            }}
+          >
+            <CheckSquare size={14} /> Select
+          </button>
+        )}
         <Link
           to={`/v2/faces/similar?person_id=${personId}`}
           title="Look for more of them across the archive"
@@ -98,8 +131,22 @@ export function PersonPhotos({ personId }) {
         </Link>
       </div>
 
+      {(selectionMode || selected.size > 0) && (
+        <SelectionBar
+          paths={[...selected]}
+          onClear={() => { setSelected(new Set()); setSelectionMode(false) }}
+          onAddToAlbum={setAlbumFor}
+          onChanged={reload}
+          compact
+        />
+      )}
+
       <MediaGrid
         items={shown}
+        selected={selected}
+        onSelectionChange={setSelected}
+        selectionMode={selectionMode}
+        onRequestSelectionMode={() => setSelectionMode(true)}
         favourites={favorites}
         onToggleFavourite={toggleFavorite}
         onOpen={item => setOpenPath(item.path)}
@@ -119,6 +166,10 @@ export function PersonPhotos({ personId }) {
             </button>
           )}
         </div>
+      )}
+
+      {albumFor && (
+        <AlbumPicker paths={albumFor} onClose={() => setAlbumFor(null)} />
       )}
 
       {open && (

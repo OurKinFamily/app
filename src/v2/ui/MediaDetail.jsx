@@ -21,23 +21,47 @@ import { useIsWide } from '../lib/useIsWide'
 // nothing to grab hold of.
 const DEFAULT_BOX = { x1: 1 / 6, y1: 1 / 6, x2: 5 / 6, y2: 5 / 6 }
 
+/** How much to shrink a turned photograph so its corners stay in the pane. */
+function fitScale(angle) {
+  const r = (Math.abs(angle) * Math.PI) / 180
+  return 1 / (Math.cos(r) + Math.sin(r))
+}
+
 /**
  * Fractions of what is on screen become pixels of the full-size photograph.
  * The API maps those onto the stored file, which may be lying on its side.
  */
-async function applyCrop({ item, box, imgRef, onCrop, setCropping, setCrop }) {
-  const w = item.width || imgRef.current?.naturalWidth
-  const h = item.height || imgRef.current?.naturalHeight
+async function applyCrop({ item, box, angle, imgRef, onCrop, setCropping, setCrop, setAngle }) {
+  let w = item.width || imgRef.current?.naturalWidth
+  let h = item.height || imgRef.current?.naturalHeight
   if (!w || !h) return
+  // The rectangle was drawn on the STRAIGHTENED picture, which is bigger than
+  // the original — turning a rectangle and keeping its corners always is. The
+  // server rotates with expand as well, so both agree on this size.
+  if (angle) {
+    const r = (Math.abs(angle) * Math.PI) / 180
+    const [cos, sin] = [Math.cos(r), Math.sin(r)]
+    ;[w, h] = [w * cos + h * sin, w * sin + h * cos]
+  }
+  const rect = {
+    x: Math.round(box.x1 * w),
+    y: Math.round(box.y1 * h),
+    w: Math.round((box.x2 - box.x1) * w),
+    h: Math.round((box.y2 - box.y1) * h),
+    angle,
+  }
+  // The server refuses anything under 32px a side, and a refused request looks
+  // exactly like a button that does nothing.
+  if (rect.w < 32 || rect.h < 32) return
   setCropping(true)
   try {
-    await onCrop(item, {
-      x: Math.round(box.x1 * w),
-      y: Math.round(box.y1 * h),
-      w: Math.round((box.x2 - box.x1) * w),
-      h: Math.round((box.y2 - box.y1) * h),
-    })
+    await onCrop(item, rect)
     setCrop(false)
+    // The file is straight now, so the preview must stop turning it. Leaving
+    // the transform on meant the photograph looked as crooked as before until
+    // the page was reloaded — the crop had worked, the browser was still
+    // rotating the result.
+    setAngle(0)
   } finally {
     setCropping(false)
   }
@@ -88,7 +112,8 @@ export function MediaDetail({
   const [crop, setCrop] = useState(false)
   const [box, setBox] = useState(DEFAULT_BOX)
   const [cropping, setCropping] = useState(false)
-  const cropRect = useElementRect(imgRef, crop)
+  const [angle, setAngle] = useState(0)
+  const cropRect = useElementRect(imgRef, crop ? `${angle}` : null)
 
   const faces = [
     ...((detailData?.people || []).map(pp => ({
@@ -175,7 +200,7 @@ export function MediaDetail({
             onToggleFavourite={onToggleFavourite}
             onAddToAlbum={onAddToAlbum}
             onRotate={onRotate}
-            onStartCrop={() => { setCrop(true); setBox(DEFAULT_BOX) }}
+            onStartCrop={() => { setCrop(true); setBox(DEFAULT_BOX); setAngle(0) }}
             onCrop={onCrop}
             onDownload={onDownload}
             onDelete={onDelete}
@@ -214,6 +239,10 @@ export function MediaDetail({
             maxWidth: '100%', maxHeight: '100%',
             minHeight: 0, minWidth: 0,
             objectFit: 'contain',
+            // Straightening turns the picture and leaves the crop box upright.
+            // Shrunk to fit while turned, so the corners stay on screen.
+            transform: angle ? `rotate(${angle}deg) scale(${fitScale(angle)})` : undefined,
+            transition: 'none',
           }}
         />
       )}
@@ -225,7 +254,10 @@ export function MediaDetail({
           onChange={setBox}
           busy={cropping}
           onCancel={() => setCrop(false)}
-          onApply={() => applyCrop({ item, box, imgRef, onCrop, setCropping, setCrop })}
+          angle={angle}
+          onAngle={setAngle}
+          imageSize={{ w: item.width || 0, h: item.height || 0 }}
+          onApply={() => applyCrop({ item, box, angle, imgRef, onCrop, setCropping, setCrop, setAngle })}
         />
       )}
 

@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 
 /**
- * Where an element sits inside its positioned ancestor.
+ * Where an element sits in the window.
  *
- * For drawing something on top of a photograph. The obvious version measures
- * the image against the viewport and puts the overlay a scroll-position away
- * from where it should be; what an absolutely-positioned overlay needs is the
- * offset within the box it is positioned against — the same trap the face
- * boxes fell into, where they were measured on the image and drawn on the
- * padded pane around it.
+ * For drawing something on top of a photograph. Viewport coordinates, paired
+ * with a `position: fixed` overlay, so no positioned ancestor is required:
+ * measuring against `offsetParent` looked tidier and then returned nothing
+ * when there wasn't one, leaving the overlay unrendered and the crop button
+ * apparently dead.
  *
  * `active` gates the work: nothing is measured until something wants it.
  */
@@ -24,23 +23,26 @@ export function useElementRect(ref, active) {
     }
     const measure = () => {
       const el = ref.current
-      const host = el?.offsetParent
-      if (!el || !host) return
-      const a = el.getBoundingClientRect()
-      const b = host.getBoundingClientRect()
-      setRect({
-        left: a.left - b.left, top: a.top - b.top,
-        width: a.width, height: a.height,
-      })
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      // A zero-size box is not a measurement, it is an element that has not
+      // laid out yet. Reporting it as one is what broke the crop.
+      if (!r.width || !r.height) return
+      setRect({ left: r.left, top: r.top, width: r.width, height: r.height })
     }
     measure()
+    // A photograph that has not decoded yet measures ZERO. Everything drawn
+    // on it then divides by zero, and a perfectly real drag collapses to a
+    // point — which the server refuses as a zero-width crop. So watch the
+    // element rather than measuring once and hoping.
+    const ro = new ResizeObserver(measure)
+    if (ref.current) ro.observe(ref.current)
     // The photograph is laid out with object-fit, so its box changes with the
     // window even though the element does not move in the document.
     window.addEventListener('resize', measure)
-    const t = setTimeout(measure, 60)   // after the image has settled
     return () => {
+      ro.disconnect()
       window.removeEventListener('resize', measure)
-      clearTimeout(t)
     }
   }, [ref, active])
 

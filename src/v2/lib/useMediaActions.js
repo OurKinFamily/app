@@ -82,6 +82,7 @@ export function useMediaActions({ openPath, close, onVersion }) {
   const crop = useCallback(async (item, rect) => {
     const q = new URLSearchParams({
       path: item.path, x: rect.x, y: rect.y, w: rect.w, h: rect.h,
+      angle: rect.angle || 0,
     })
     const res = await fetch(`/api/gallery/media/crop?${q}`, { method: 'POST' })
     if (!res.ok) return
