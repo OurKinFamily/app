@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { C } from './tokens'
 
 /**
@@ -9,12 +9,27 @@ import { C } from './tokens'
  * 151,689 photographs is a lie about distance: it says a decade is two
  * centimetres and every pixel is four hundred pictures.
  *
- * This says where things are instead. Years are always visible; hovering one
- * opens its months. Clicking either fetches that point directly, which costs
- * one request whether it is last week or 2009.
+ * This says where things are instead. Years are always there; rest on one and
+ * its months open IN PLACE, pushing the years below it down. A flyout beside
+ * the rail was quicker to reach but read as a separate menu — expanding in
+ * place keeps it one list, and the months are plainly part of the year they
+ * belong to.
+ *
+ * The delay matters. Opening on contact means the rail rearranges itself under
+ * anyone crossing it on the way to something else.
  */
+
+const OPEN_DELAY_MS = 450
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
 export function DateScrubber({ buckets, current, onJump }) {
   const [openYear, setOpenYear] = useState(null)
+  const [over, setOver] = useState(false)
+  const timer = useRef(null)
+
+  useEffect(() => () => clearTimeout(timer.current), [])
 
   // Buckets arrive newest-first as "YYYY-MM"; group them under their year.
   const years = useMemo(() => {
@@ -33,17 +48,39 @@ export function DateScrubber({ buckets, current, onJump }) {
 
   const currentYear = current?.slice(0, 4)
 
+  const hoverYear = year => {
+    clearTimeout(timer.current)
+    // Already open elsewhere: switch straight away. The wait is for deciding
+    // to open at all, not for moving between years once you are reading.
+    if (openYear && openYear !== year) { setOpenYear(year); return }
+    timer.current = setTimeout(() => setOpenYear(year), OPEN_DELAY_MS)
+  }
+
   return (
     <nav
       aria-label="Jump to a date"
-      onMouseLeave={() => setOpenYear(null)}
+      onMouseEnter={() => setOver(true)}
+      onMouseLeave={() => {
+        clearTimeout(timer.current)
+        setOpenYear(null)
+        setOver(false)
+      }}
       style={{
-        position: 'fixed', top: 96, right: 8, zIndex: 15,
+        // Starts below the page title row and its Select button, which the
+        // rail used to run into.
+        position: 'fixed', top: 112, right: 8, zIndex: 15,
         display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
-        gap: 1, maxHeight: 'calc(100vh - 130px)', overflowY: 'auto',
+        gap: 1, maxHeight: 'calc(100vh - 145px)', overflowY: 'auto',
         // No scrollbar of its own: the rail is the navigation.
         scrollbarWidth: 'none',
-        padding: '4px 2px',
+        padding: '8px 6px',
+        // At rest the years float over the photographs, which is quiet but
+        // hard to read against a bright one. Reaching for the rail brings a
+        // ground with it.
+        borderRadius: 14,
+        background: over ? 'rgba(32,33,36,.9)' : 'transparent',
+        backdropFilter: over ? 'blur(3px)' : 'none',
+        transition: 'background 140ms ease',
       }}
     >
       {years.map(y => {
@@ -52,37 +89,9 @@ export function DateScrubber({ buckets, current, onJump }) {
         return (
           <div
             key={y.year}
-            onMouseEnter={() => setOpenYear(y.year)}
-            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+            onMouseEnter={() => hoverYear(y.year)}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}
           >
-            {/* Months appear to the LEFT of the year, so the rail itself never
-                moves and the year you are pointing at stays under the cursor. */}
-            {isOpen && (
-              <div style={{
-                display: 'flex', gap: 2,
-                background: C.bg, border: `1px solid ${C.border}`,
-                borderRadius: 14, padding: '3px 6px',
-                boxShadow: '0 4px 14px rgba(0,0,0,.12)',
-              }}>
-                {y.months.slice().reverse().map(m => (
-                  <button
-                    key={m.bucket}
-                    type="button"
-                    title={`${m.count} photos`}
-                    onClick={() => onJump?.(m.bucket)}
-                    style={{
-                      border: 0, background: m.bucket === current ? C.activeBg : 'transparent',
-                      color: m.bucket === current ? C.activeText : C.muted,
-                      borderRadius: 9, padding: '2px 6px',
-                      fontSize: 10.5, cursor: 'pointer', lineHeight: 1.6,
-                    }}
-                  >
-                    {MONTHS[Number(m.bucket.slice(5, 7)) - 1]}
-                  </button>
-                ))}
-              </div>
-            )}
-
             <button
               type="button"
               onClick={() => onJump?.(y.months[0].bucket)}
@@ -90,20 +99,48 @@ export function DateScrubber({ buckets, current, onJump }) {
               style={{
                 border: 0, cursor: 'pointer',
                 background: isCurrent ? C.activeText : 'transparent',
-                color: isCurrent ? '#fff' : C.muted,
-                borderRadius: 10, padding: '1px 8px',
-                fontSize: 11, fontWeight: isCurrent ? 600 : 400,
+                color: isCurrent ? '#fff' : (over ? 'rgba(255,255,255,.88)' : C.muted),
+                // Unreadable over a dark photograph without something behind
+                // it, and there is no ground until the rail is hovered.
+                textShadow: over ? 'none' : '0 1px 2px rgba(255,255,255,.75)',
+                borderRadius: 10, padding: '2px 8px',
+                fontSize: 11.5, fontWeight: isCurrent || isOpen ? 600 : 400,
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
               {y.year}
             </button>
+
+            {/* In place, between this year and the next, so the list stays one
+                list and the months are visibly part of their year. */}
+            {isOpen && (
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+                gap: 1, padding: '2px 0 4px',
+              }}>
+                {y.months.map(m => (
+                  <button
+                    key={m.bucket}
+                    type="button"
+                    title={`${m.count} photos`}
+                    onClick={() => onJump?.(m.bucket)}
+                    style={{
+                      border: 0, cursor: 'pointer',
+                      background: m.bucket === current ? C.activeBg : 'transparent',
+                      color: m.bucket === current ? C.activeText : 'rgba(255,255,255,.7)',
+                      borderRadius: 8, padding: '1px 8px',
+                      fontSize: 10.5, lineHeight: 1.5,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {MONTHS[Number(m.bucket.slice(5, 7)) - 1]}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )
       })}
     </nav>
   )
 }
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

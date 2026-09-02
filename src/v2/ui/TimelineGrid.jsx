@@ -76,6 +76,9 @@ export function TimelineGrid({
   // Set after a jump: bring the newer months in above without moving the
   // reader off the month they asked for.
   const prefillNewer = useRef(false)
+  // The month a jump asked for. Held until the newer months have been brought
+  // in above it, then used to put its heading at the top of the viewport.
+  const focusBucket = useRef(null)
 
   useLayoutEffect(() => {
     if (!boxRef.current) return
@@ -147,7 +150,40 @@ export function TimelineGrid({
   }, [buckets, loaded, indexOf, params])
 
   // Keep the reader still while content appears above them.
+  //
+  // After a jump this defers to the target instead: measuring how much the
+  // page grew is a proxy for "put them back where they were", and the jump
+  // knows the answer outright — the month they asked for goes to the top.
+  // Relying on the proxy left the newer month showing above the heading.
   useLayoutEffect(() => {
+    if (focusBucket.current) {
+      const bucket = focusBucket.current
+      const el = document.querySelector(`[data-bucket="${bucket}"]`)
+      if (el) {
+        focusBucket.current = null
+        pendingTop.current = 0
+
+        // Re-assert over the next few frames rather than measuring once.
+        // Anything still settling above — a month arriving, an image finally
+        // reporting its size — moves the target after the measurement, and it
+        // lands a row or two short. Holding it for a moment is far simpler
+        // than working out which thing moved.
+        //
+        // 64px clears the fixed app header, which would otherwise cover the
+        // month's own heading.
+        let frames = 0
+        const settle = () => {
+          const node = document.querySelector(`[data-bucket="${bucket}"]`)
+          if (!node) return
+          const off = node.getBoundingClientRect().top - 64
+          if (Math.abs(off) > 1) window.scrollBy(0, off)
+          // Stop early once it has stopped moving.
+          if (frames++ < 12) requestAnimationFrame(settle)
+        }
+        settle()
+        return
+      }
+    }
     if (!pendingTop.current) return
     const grew = document.documentElement.scrollHeight - pendingTop.current
     pendingTop.current = 0
@@ -178,6 +214,7 @@ export function TimelineGrid({
     // and push the target down — you click November and end up looking at
     // December. Prepending holds the reader's position by construction, which
     // is exactly what is wanted here.
+    focusBucket.current = bucket
     prefillNewer.current = true
   }, [buckets, params])
 
@@ -263,7 +300,14 @@ export function TimelineGrid({
   }, [loaded, onOrderedChange])
 
   return (
-    <div ref={boxRef}>
+    <div
+      ref={boxRef}
+      // Room for the rail, so photographs never sit underneath it. The
+      // ResizeObserver reports the content box, so the grid's row packing
+      // already excludes this — the tiles simply stop short of the scrubber
+      // rather than being covered by it.
+      style={{ paddingRight: 52 }}
+    >
       <DateScrubber buckets={buckets} current={current} onJump={jumpTo} />
 
       {/* Sentinel for scrolling back towards the present. */}

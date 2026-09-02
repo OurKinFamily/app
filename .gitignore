@@ -26,3 +26,6 @@ coverage/
 test-results/
 playwright-report/
 .playwright-mcp/
+
+# scratch captures
+_hero_*.png
