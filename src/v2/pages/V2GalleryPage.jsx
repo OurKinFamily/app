@@ -24,7 +24,21 @@ import { C } from '../ui/tokens'
 // reserves space that never fills.
 const PARAMS = 'min_confidence=high'
 
-export function V2GalleryPage() {
+/**
+ * @param title    what the heading says.
+ * @param params   the query string every fetch carries — the identity of the
+ *                 view. Favourites is this page with one more filter.
+ * @param showUndated  the undated section belongs to the whole archive; a
+ *                 filtered view has no use for it.
+ * @param emptyMessage  shown when the filter matches nothing, which the whole
+ *                 archive never does but a filtered view easily can.
+ */
+export function V2GalleryPage({
+  title = 'Gallery',
+  params = PARAMS,
+  showUndated = true,
+  emptyMessage,
+}) {
   const [buckets, setBuckets] = useState(null)
   const [undated, setUndated] = useState([])
   const [loading, setLoading] = useState(true)
@@ -42,10 +56,12 @@ export function V2GalleryPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/gallery/counts?bucket=month&${PARAMS}`)
+      fetch(`/api/gallery/counts?bucket=month&${params}`)
         .then(r => (r.ok ? r.json() : { buckets: [] })),
-      fetch('/api/gallery?undated=true&limit=60')
-        .then(r => (r.ok ? r.json() : { media: [] })),
+      showUndated
+        ? fetch('/api/gallery?undated=true&limit=60')
+            .then(r => (r.ok ? r.json() : { media: [] }))
+        : Promise.resolve({ media: [] }),
     ])
       .then(([counts, un]) => {
         setBuckets((counts.buckets || []).map(b => ({
@@ -57,7 +73,7 @@ export function V2GalleryPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [params, showUndated])
 
   const clearSelection = useCallback(() => {
     setSelected(new Set())
@@ -162,7 +178,7 @@ export function V2GalleryPage() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '4px 0 8px' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 400, margin: 0 }}>Gallery</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 400, margin: 0 }}>{title}</h1>
         <div style={{ flex: 1 }} />
         {!selectionMode && selected.size === 0 && (
           <button
@@ -222,9 +238,15 @@ export function V2GalleryPage() {
 
       {loading
         ? <LoadingDots />
+        : buckets?.length === 0 && undated.length === 0
+        ? (
+          <p style={{ color: C.muted, fontSize: 14, padding: '48px 0', textAlign: 'center' }}>
+            {emptyMessage || 'Nothing here yet.'}
+          </p>
+        )
         : (
           <>
-          {undated.length > 0 && (
+          {showUndated && undated.length > 0 && (
             <UndatedSection
               items={undated}
               favourites={favorites}
@@ -234,7 +256,7 @@ export function V2GalleryPage() {
           )}
           <TimelineGrid
             buckets={buckets}
-            params={PARAMS}
+            params={params}
             selected={selected}
             onSelectionChange={setSelected}
             selectionMode={selectionMode}

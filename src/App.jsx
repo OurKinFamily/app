@@ -36,6 +36,7 @@ import { SuggestionsPage } from './pages/SuggestionsPage'
 import { DesignPage } from './pages/DesignPage'
 import { V2Layout } from './v2/layouts/V2Layout'
 import { V2GalleryPage } from './v2/pages/V2GalleryPage'
+import { V2FavoritesPage } from './v2/pages/V2FavoritesPage'
 import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
 import { V2GridDemoPage } from './v2/pages/V2GridDemoPage'
 import { LightboxPage } from './pages/LightboxPage'
@@ -70,6 +71,7 @@ export default function App() {
               <Route element={<AdminOnly />}>
                 <Route element={<V2Layout />}>
                   <Route path="/v2" element={<V2GalleryPage />} />
+                  <Route path="/v2/favorites" element={<V2FavoritesPage />} />
                   <Route path="/v2/design/components" element={<V2ComponentsPage />} />
                   <Route path="/v2/design/grid" element={<V2GridDemoPage />} />
                 </Route>
