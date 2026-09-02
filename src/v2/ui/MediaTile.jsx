@@ -4,6 +4,7 @@ import {
 } from 'react'
 import { Play } from 'lucide-react'
 import { C } from './tokens'
+import { CONTROL_ATTR, demoteControls, handleControlKeys } from './tileControls'
 import { useLongPress, usePrefersReducedMotion } from './hooks'
 import { TileControl } from './TileControl'
 import { TileCheckbox } from './TileCheckbox'
@@ -34,14 +35,7 @@ import { TileFavourite } from './TileFavourite'
 
 const TileContext = createContext({ hovered: false, focusWithin: false, selectionMode: false })
 
-// Every control inside a slot is marked so the tile can find them for arrow
-// navigation without knowing what they are.
-const CONTROL_ATTR = 'data-tile-control'
-// Every focusable thing inside a slot, however deeply nested. NOT `> *`:
-// TileCheckbox focuses an <input> inside a <label>, so the direct child is the
-// label and the focused element was never found — arrow keys did nothing.
-const FOCUSABLE = ':is(button, a[href], input, select, textarea, [tabindex])'
-const CONTROL_SEL = `[${CONTROL_ATTR}] ${FOCUSABLE}`
+// Shared with CollectionCard — see tileControls.js.
 
 // ── overlay slots ───────────────────────────────────────────────────────────
 
@@ -165,13 +159,7 @@ function MediaTileBase({
   // tabIndex down, because slot children are arbitrary and often wrapped —
   // OnHover swallowed the prop, which let every control back into the tab
   // order and made Tab alternate tile, icon, tile, icon.
-  useEffect(() => {
-    const fig = figureRef.current
-    if (!fig) return
-    for (const el of fig.querySelectorAll(CONTROL_SEL)) {
-      el.tabIndex = -1
-    }
-  })
+  useEffect(() => { demoteControls(figureRef.current) })
 
   // Split children into the two slots. Anything that isn't a slot is rendered
   // as-is, so a caller can drop in a badge without ceremony.
@@ -195,31 +183,9 @@ function MediaTileBase({
         onBlur={e => {
           if (!e.currentTarget.contains(e.relatedTarget)) setFocusWithin(false)
         }}
-        onKeyDown={e => {
-          const controls = [...(figureRef.current?.querySelectorAll(CONTROL_SEL) || [])]
-          if (!controls.length) return
-          const i = controls.indexOf(document.activeElement)
-
-          // Up enters the top band, Down the bottom — the direction the
-          // controls actually sit in.
-          if (i === -1 && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-            const edge = e.key === 'ArrowUp' ? 'top' : 'bottom'
-            const first = controls.find(c => c.closest(`[${CONTROL_ATTR}]`)?.getAttribute(CONTROL_ATTR) === edge)
-            if (first) { e.preventDefault(); first.focus() }
-            return
-          }
-          if (i === -1) return
-
-          // Left/Right walk along a band; Escape hands focus back to the tile.
-          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-            e.preventDefault()
-            const next = controls[(i + (e.key === 'ArrowRight' ? 1 : -1) + controls.length) % controls.length]
-            next?.focus()
-          } else if (e.key === 'Escape') {
-            e.preventDefault()
-            figureRef.current?.querySelector(`button:not([${CONTROL_ATTR}] *)`)?.focus()
-          }
-        }}
+        // Up enters the top band, Down the bottom — the direction the
+        // controls actually sit in.
+        onKeyDown={e => handleControlKeys(e, figureRef.current)}
         style={{
           position: 'relative',
           margin: 0,

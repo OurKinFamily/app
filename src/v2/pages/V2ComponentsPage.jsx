@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Search, Star, Trash2, Share2, ArrowRight } from 'lucide-react'
 import { MediaTileDemo } from './MediaTileDemo'
 import { MediaDetailDemo } from './MediaDetailDemo'
+import { CollectionCardDemo } from './CollectionCardDemo'
 import { C } from '../ui/tokens'
 
 /**
@@ -188,6 +189,18 @@ export function V2ComponentsPage() {
               nothing."
       >
         <MediaDetailDemo />
+      </Section>
+
+      <Section
+        title="Collection card"
+        note="A container of photographs rather than one photograph — an album, a
+              journal, a yearbook, a box of scans. The stack behind the cover is
+              what separates it from a media tile at a glance. Two layouts share
+              one set of props, so a view toggle is a one-word change. Told, not
+              asking: it knows nothing about albums or routing, which is what
+              lets Albums, Scrapbook and a person's collections all use it."
+      >
+        <CollectionCardDemo />
       </Section>
 
       <Section
