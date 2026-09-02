@@ -15,8 +15,13 @@ https://github.com/OurKinFamily/app
 
 ```bash
 npm install
-npm run dev       # dev server at http://localhost:3000
+npm run dev       # dev server at http://localhost:5173
 npm run build     # production build
+
+# NOT localhost:3000 — that is the `ourkin-app` prod container, and 3001 is
+# `ourkin-app-staging`. Loading those while developing shows the last DEPLOYED
+# build and none of your local work, which reads exactly like "the app isn't
+# loading". The port lives in vite.config.js.
 ```
 
 ## Stack

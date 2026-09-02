@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMatch, useNavigate } from 'react-router-dom'
 import { CheckSquare, X } from 'lucide-react'
 import { TimelineGrid } from '../ui/TimelineGrid'
 import { UndatedSection } from '../ui/UndatedSection'
 import { LoadingDots } from '../ui/LoadingDots'
 import { MediaDetail } from '../ui/MediaDetail'
+import { AlbumPicker } from '../ui/AlbumPicker'
 import { useFavorites } from '../../lib/useFavorites'
+import { useMediaActions } from '../lib/useMediaActions'
+import { mediaUrl, thumbUrl } from '../../lib/media'
 import { C } from '../ui/tokens'
 
 /**
@@ -38,6 +42,8 @@ export function V2GalleryPage({
   params = PARAMS,
   showUndated = true,
   emptyMessage,
+  // Where this view lives, so the open photograph can have an address.
+  basePath = '/v2',
 }) {
   const [buckets, setBuckets] = useState(null)
   const [undated, setUndated] = useState([])
@@ -45,8 +51,44 @@ export function V2GalleryPage({
 
   const [selected, setSelected] = useState(() => new Set())
   const [selectionMode, setSelectionMode] = useState(false)
-  const [open, setOpen] = useState(null)
+  // Paths waiting to be filed. One from the lightbox, or the whole selection.
+  const [albumFor, setAlbumFor] = useState(null)
   const [ordered, setOrdered] = useState([])
+
+  // The open photograph lives in the URL, not in state.
+  //
+  // Without it there is nothing to send someone, nothing to bookmark, and the
+  // back button leaves the gallery entirely rather than closing the picture in
+  // front of you. The route is a child of this one, so the page stays mounted
+  // underneath and keeps its scroll position and its loaded months.
+  const navigate = useNavigate()
+  const match = useMatch(`${basePath}/photo/*`)
+  const openPath = match?.params['*'] || null
+
+  // A photograph reached by its URL will not be in the loaded set — that is
+  // the whole point of a link. Rather than paging through the archive to find
+  // it, stand up the little that is needed to display it; the info panel
+  // fetches the rest by path anyway.
+  const [patched, setPatched] = useState({})
+  const loadedItem = openPath ? ordered.find(m => m.path === openPath) : null
+  const open = useMemo(() => openPath
+    ? {
+        ...(loadedItem || {
+          path: openPath,
+          url: mediaUrl(openPath),
+          thumbnail_url: thumbUrl(openPath),
+          filename: openPath.split('/').pop(),
+        }),
+        ...patched[openPath],
+      }
+    : null,
+  [openPath, loadedItem, patched])
+
+  const setOpen = useCallback((item, { replace = false } = {}) => {
+    if (item?.path) navigate(`${basePath}/photo/${item.path}`, { replace })
+    else if (window.history.length > 1) navigate(-1)
+    else navigate(basePath)
+  }, [navigate, basePath])
   // path -> cache token, for files this session has edited on disk. A rotated
   // photograph keeps its URL, so without this the browser goes on showing the
   // pixels it already has.
@@ -80,100 +122,29 @@ export function V2GalleryPage({
     setSelectionMode(false)
   }, [])
 
-  // ── actions ───────────────────────────────────────────────────────────────
-  //
-  // Each one writes and then leaves the local copy alone. A refetch of the
-  // whole month to reflect one changed date would throw away the reader's
-  // place in an 8.6-million-pixel page.
-
-  const redate = useCallback(async (item, patch) => {
-    await fetch(`/api/gallery/media?path=${encodeURIComponent(item.path)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    })
+  // Rotation changes the file and its dimensions; both the open photograph and
+  // its tile in the grid need to hear about it.
+  const onVersion = useCallback((path, patch) => {
+    setVersions(cur => new Map(cur).set(path, patch.version))
+    setPatched(cur => ({ ...cur, [path]: patch }))
   }, [])
 
-  const relocate = useCallback(async (item, patch) => {
-    await fetch(`/api/gallery/media/location?path=${encodeURIComponent(item.path)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    })
-  }, [])
-
-  const assignFace = useCallback(async (face, person) => {
-    await fetch('/api/faces/search/assign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        person_id: person.id,
-        faces: [{ photo_path: open?.path, face_index: face.face_index }],
-      }),
-    })
-  }, [open])
-
-  const createPerson = useCallback(async (face, name) => {
-    const res = await fetch('/api/people', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    })
-    if (!res.ok) return
-    const person = await res.json()
-    if (person?.id) await assignFace(face, person)
-  }, [assignFace])
-
-  const dismissFace = useCallback(async face => {
-    await fetch('/api/faces/skip', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        faces: [{ photo_path: open?.path, face_index: face.face_index }],
-      }),
-    })
-  }, [open])
-
-  const rotate = useCallback(async item => {
-    const res = await fetch(
-      `/api/gallery/media/rotate?path=${encodeURIComponent(item.path)}&degrees=90`,
-      { method: 'POST' },
-    )
-    if (!res.ok) return
-    // The endpoint hands back the file's new modification time. Carrying it
-    // into the URL is the whole trick: the address changes, so the browser
-    // fetches rather than serving the copy it already has. Closing the
-    // lightbox — the old workaround — only hid the stale image; reopening
-    // served the same cached bytes.
-    const { version, width, height } = await res.json()
-    setVersions(cur => new Map(cur).set(item.path, version))
-    // Rotating swaps the dimensions, and the grid packs rows by aspect ratio.
-    setOpen(cur => (cur?.path === item.path
-      ? { ...cur, version, width, height, aspect: width / height }
-      : cur))
-  }, [])
-
-  const remove = useCallback(async item => {
-    await fetch(`/api/gallery/media?path=${encodeURIComponent(item.path)}`, {
-      method: 'DELETE',
-    })
-    setOpen(null)
-  }, [])
+  const {
+    redate, relocate, assignFace, createPerson, dismissFace,
+    rotate, remove, download,
+  } = useMediaActions({
+    openPath,
+    close: useCallback(() => setOpen(null), [setOpen]),
+    onVersion,
+  })
 
   // Where the open photograph sits in what has loaded, so the arrows know
   // whether there is anywhere to go.
   const index = open ? ordered.findIndex(m => m.path === open.path) : -1
   const step = useCallback(delta => {
     const next = ordered[index + delta]
-    if (next) setOpen(next)
-  }, [ordered, index])
-
-  const download = useCallback(item => {
-    const a = document.createElement('a')
-    a.href = item.url
-    a.download = item.filename || ''
-    a.click()
-  }, [])
+    if (next) setOpen(next, { replace: true })
+  }, [ordered, index, setOpen])
 
   return (
     <div>
@@ -224,6 +195,18 @@ export function V2GalleryPage({
           {selected.size > 0 && (
             <button
               type="button"
+              onClick={() => setAlbumFor([...selected])}
+              style={{
+                border: 0, background: 'transparent', color: C.activeText,
+                fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              Add to album
+            </button>
+          )}
+          {selected.size > 0 && (
+            <button
+              type="button"
               onClick={() => setSelected(new Set())}
               style={{
                 border: 0, background: 'transparent', color: C.activeText,
@@ -270,6 +253,10 @@ export function V2GalleryPage({
           </>
         )}
 
+      {albumFor && (
+        <AlbumPicker paths={albumFor} onClose={() => setAlbumFor(null)} />
+      )}
+
       {open && (
         <MediaDetail
           item={open}
@@ -283,6 +270,7 @@ export function V2GalleryPage({
           onDismissFace={dismissFace}
           onRotate={rotate}
           onDownload={download}
+          onAddToAlbum={item => setAlbumFor([item.path])}
           onDelete={remove}
           hasPrev={index > 0}
           hasNext={index >= 0 && index < ordered.length - 1}

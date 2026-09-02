@@ -37,6 +37,9 @@ import { DesignPage } from './pages/DesignPage'
 import { V2Layout } from './v2/layouts/V2Layout'
 import { V2GalleryPage } from './v2/pages/V2GalleryPage'
 import { V2FavoritesPage } from './v2/pages/V2FavoritesPage'
+import { V2AlbumsPage } from './v2/pages/V2AlbumsPage'
+import { V2AlbumPage } from './v2/pages/V2AlbumPage'
+import { V2PeoplePage } from './v2/pages/V2PeoplePage'
 import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
 import { V2GridDemoPage } from './v2/pages/V2GridDemoPage'
 import { LightboxPage } from './pages/LightboxPage'
@@ -70,10 +73,43 @@ export default function App() {
                   Admin-only so family don't wander into half-built pages. */}
               <Route element={<AdminOnly />}>
                 <Route element={<V2Layout />}>
-                  <Route path="/v2" element={<V2GalleryPage />} />
-                  <Route path="/v2/favorites" element={<V2FavoritesPage />} />
+                  <Route path="/v2" element={<V2GalleryPage />}>
+                    <Route path="photo/*" element={null} />
+                  </Route>
+                  <Route path="/v2/favorites" element={<V2FavoritesPage />}>
+                    <Route path="photo/*" element={null} />
+                  </Route>
                   <Route path="/v2/design/components" element={<V2ComponentsPage />} />
                   <Route path="/v2/design/grid" element={<V2GridDemoPage />} />
+
+                  {/* Not reskinned yet. Rather than a rail full of dead links,
+                      each of these serves its v1 page inside the v2 shell —
+                      the old page in the new frame. They look like what they
+                      are: v1 styling on a light background, replaced one at a
+                      time as each gets its own v2 pass. */}
+                  <Route path="/v2/albums" element={<V2AlbumsPage />} />
+                  <Route path="/v2/albums/:id" element={<V2AlbumPage />}>
+                    <Route path="photo/*" element={null} />
+                  </Route>
+                  <Route path="/v2/people" element={<V2PeoplePage />} />
+                  <Route path="/v2/places" element={<PlacesPage />} />
+                  <Route path="/v2/family" element={<FamilyPage />} />
+                  <Route path="/v2/biographies" element={<BiographiesPage />} />
+                  <Route path="/v2/scrapbook" element={<ScrapbookPage />} />
+                  <Route path="/v2/search" element={<SearchPage />} />
+                  <Route path="/v2/upload" element={<UploadPage />} />
+                  <Route path="/v2/faces/suggestions" element={<FaceSuggestionsPage />} />
+                  <Route path="/v2/faces/unassigned" element={<UnassignedFacesPage />} />
+                  <Route path="/v2/faces/assigned" element={<AssignedFacesPage />} />
+                  <Route path="/v2/faces/similar" element={<SimilarFacesPage />} />
+                  <Route path="/v2/groups" element={<GroupsPage />} />
+                  <Route path="/v2/groups/:id" element={<GroupPage />} />
+                  <Route path="/v2/suggestions" element={<SuggestionsPage />} />
+                  <Route path="/v2/admin/overview" element={<AdminOverviewPage />} />
+                  <Route path="/v2/admin/analytics" element={<FilesystemPage />} />
+                  <Route path="/v2/admin/health" element={<HealthPage />} />
+                  <Route path="/v2/admin/mosaic" element={<MosaicPage />} />
+                  <Route path="/v2/admin/jobs" element={<JobsPage />} />
                 </Route>
               </Route>
 

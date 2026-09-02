@@ -20,6 +20,7 @@ export function V2FavoritesPage() {
     <V2GalleryPage
       title="Favourites"
       params="favorites=true&min_confidence=all"
+      basePath="/v2/favorites"
       showUndated={false}
       emptyMessage="No favourites yet. Tap the heart on a photograph to keep it here."
     />

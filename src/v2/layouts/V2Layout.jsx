@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import {
-  Menu, Search, Images, Users, MapPin, BookOpen, Star,
-  Album, Trees, Upload, Settings, Palette,
-} from 'lucide-react'
+import { Activity, Album, BookOpen, Images, LayoutDashboard, MapPin, Menu, Notebook, Palette, Search, Settings, Sparkles, Star, Trees, Upload, UserCheck, UserPlus, Users, Users2, Wand2 } from 'lucide-react'
 import { C } from '../ui/tokens'
 
 /**
@@ -21,6 +18,7 @@ const NAV = [
   {
     items: [
       { to: '/v2', label: 'Gallery', icon: Images, end: true },
+      { to: '/v2/search', label: 'Search', icon: Search },
       { to: '/v2/albums', label: 'Albums', icon: Album },
       { to: '/v2/favorites', label: 'Favourites', icon: Star },
     ],
@@ -37,7 +35,29 @@ const NAV = [
     heading: 'Library',
     items: [
       { to: '/v2/biographies', label: 'Biographies', icon: BookOpen },
+      { to: '/v2/scrapbook', label: 'Scrapbook', icon: Notebook },
       { to: '/v2/upload', label: 'Upload', icon: Upload },
+    ],
+  },
+  {
+    // Back-of-house. Family never sees these; they are the work of turning a
+    // pile of files into an archive.
+    heading: 'Manage',
+    items: [
+      { to: '/v2/faces/suggestions', label: 'Face suggestions', icon: Wand2 },
+      { to: '/v2/faces/unassigned', label: 'Unassigned faces', icon: UserPlus },
+      { to: '/v2/faces/assigned', label: 'Assigned faces', icon: UserCheck },
+      { to: '/v2/groups', label: 'Groups', icon: Users2 },
+      { to: '/v2/suggestions', label: 'Suggestions', icon: Sparkles },
+    ],
+  },
+  {
+    heading: 'Admin',
+    items: [
+      { to: '/v2/admin/analytics', label: 'Analytics', icon: LayoutDashboard },
+      { to: '/v2/admin/health', label: 'Health', icon: Activity },
+      { to: '/v2/admin/jobs', label: 'Jobs', icon: Activity },
+      { to: '/v2/admin/mosaic', label: 'Mosaic', icon: Palette },
     ],
   },
   {
