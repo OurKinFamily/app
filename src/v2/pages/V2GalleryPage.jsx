@@ -131,7 +131,7 @@ export function V2GalleryPage({
 
   const {
     redate, relocate, assignFace, createPerson, dismissFace,
-    rotate, remove, download,
+    rotate, crop, remove, download,
   } = useMediaActions({
     openPath,
     close: useCallback(() => setOpen(null), [setOpen]),
@@ -269,6 +269,7 @@ export function V2GalleryPage({
           onCreatePerson={createPerson}
           onDismissFace={dismissFace}
           onRotate={rotate}
+          onCrop={crop}
           onDownload={download}
           onAddToAlbum={item => setAlbumFor([item.path])}
           onDelete={remove}

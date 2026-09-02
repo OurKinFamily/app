@@ -186,6 +186,7 @@ export function V2AlbumPage() {
           onCreatePerson={actions.createPerson}
           onDismissFace={actions.dismissFace}
           onRotate={actions.rotate}
+          onCrop={actions.crop}
           onDownload={actions.download}
           onDelete={actions.remove}
           hasPrev={index > 0}

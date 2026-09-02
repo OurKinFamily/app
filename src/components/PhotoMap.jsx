@@ -9,7 +9,10 @@ import { useEscToClose } from '../lib/hooks'
 
 // ── Cluster layer ──────────────────────────────────────────────────────────────
 
-function ClusterLayer({ points, onSelectPhoto, onSelectCluster }) {
+// Exported for the v2 map, which reuses this wholesale. It is Leaflet and
+// Supercluster and no styling to speak of, so the theme it is dropped into
+// makes no difference to it.
+export function ClusterLayer({ points, onSelectPhoto, onSelectCluster }) {
   const map        = useMap()
   const layerRef   = useRef(L.layerGroup())
   const indexRef   = useRef(new Supercluster({ radius: 60, maxZoom: 17, minPoints: 2 }))

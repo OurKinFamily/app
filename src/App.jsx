@@ -40,6 +40,12 @@ import { V2FavoritesPage } from './v2/pages/V2FavoritesPage'
 import { V2AlbumsPage } from './v2/pages/V2AlbumsPage'
 import { V2AlbumPage } from './v2/pages/V2AlbumPage'
 import { V2PeoplePage } from './v2/pages/V2PeoplePage'
+import { V2PlacesPage } from './v2/pages/V2PlacesPage'
+import { V2FamilyPage } from './v2/pages/V2FamilyPage'
+import { V2BiographiesPage } from './v2/pages/V2BiographiesPage'
+import { V2PersonPage } from './v2/pages/V2PersonPage'
+import { V2PersonOverview } from './v2/pages/V2PersonOverview'
+import { LegacyPanel } from './v2/ui/LegacyPanel'
 import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
 import { V2GridDemoPage } from './v2/pages/V2GridDemoPage'
 import { LightboxPage } from './pages/LightboxPage'
@@ -92,9 +98,23 @@ export default function App() {
                     <Route path="photo/*" element={null} />
                   </Route>
                   <Route path="/v2/people" element={<V2PeoplePage />} />
-                  <Route path="/v2/places" element={<PlacesPage />} />
-                  <Route path="/v2/family" element={<FamilyPage />} />
-                  <Route path="/v2/biographies" element={<BiographiesPage />} />
+
+                  {/* One person. The shell is v2; the tabs are still v1, each
+                      inside a panel that keeps the dark ground they were drawn
+                      for. They come out of it one at a time. */}
+                  <Route path="/v2/people/:id" element={<V2PersonPage />}>
+                    <Route index element={<Navigate to="overview" replace />} />
+                    <Route path="overview" element={<V2PersonOverview />} />
+                    <Route path="biography" element={<LegacyPanel><PersonBiography /></LegacyPanel>} />
+                    <Route path="circles" element={<LegacyPanel><PersonCircles /></LegacyPanel>} />
+                    <Route path="timeline" element={<LegacyPanel><PersonTimeline /></LegacyPanel>} />
+                    <Route path="ancestry" element={<LegacyPanel><PersonAncestry /></LegacyPanel>} />
+                    <Route path="scrapbook" element={<LegacyPanel><PersonScrapbook /></LegacyPanel>} />
+                    <Route path="travel" element={<LegacyPanel><PersonTravel /></LegacyPanel>} />
+                  </Route>
+                  <Route path="/v2/places" element={<V2PlacesPage />} />
+                  <Route path="/v2/family" element={<V2FamilyPage />} />
+                  <Route path="/v2/biographies" element={<V2BiographiesPage />} />
                   <Route path="/v2/scrapbook" element={<ScrapbookPage />} />
                   <Route path="/v2/search" element={<SearchPage />} />
                   <Route path="/v2/upload" element={<UploadPage />} />

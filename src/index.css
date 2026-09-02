@@ -23,3 +23,18 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Always reserve room for the scrollbar.
+
+   Without this, content that lands near the height of the viewport can lock
+   the browser: the justified grid measures its container, packs rows to fit,
+   and that changes the page height. Cross the viewport boundary and the
+   scrollbar appears, which narrows the container by ~15px, which re-packs the
+   rows, which changes the height back, which removes the scrollbar. The
+   ResizeObserver drives that round and round and the tab stops responding.
+
+   The gallery never hit it — it is always far taller than the window. A person
+   with forty photographs sits exactly on the line. */
+html {
+  scrollbar-gutter: stable;
+}

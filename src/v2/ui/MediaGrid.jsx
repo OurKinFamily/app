@@ -100,7 +100,13 @@ export function MediaGrid({
   useLayoutEffect(() => {
     if (!ref.current) return
     if (widthProp) return          // the parent is measuring for us
-    const ro = new ResizeObserver(e => setMeasured(Math.floor(e[0].contentRect.width)))
+    // Belt as well as braces: ignore hairline changes, so a stray sub-pixel
+    // reflow cannot start the measure/re-pack/measure cycle that
+    // `scrollbar-gutter: stable` is there to prevent.
+    const ro = new ResizeObserver(e => {
+      const next = Math.floor(e[0].contentRect.width)
+      setMeasured(cur => (Math.abs(next - cur) > 1 ? next : cur))
+    })
     ro.observe(ref.current)
     return () => ro.disconnect()
   }, [widthProp])

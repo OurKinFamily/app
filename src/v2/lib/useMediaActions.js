@@ -79,6 +79,18 @@ export function useMediaActions({ openPath, close, onVersion }) {
     onVersion(item.path, { version, width, height, aspect: width / height })
   }, [onVersion])
 
+  const crop = useCallback(async (item, rect) => {
+    const q = new URLSearchParams({
+      path: item.path, x: rect.x, y: rect.y, w: rect.w, h: rect.h,
+    })
+    const res = await fetch(`/api/gallery/media/crop?${q}`, { method: 'POST' })
+    if (!res.ok) return
+    // Same trick as rotate: the file keeps its URL, so without a new token the
+    // browser goes on showing the uncropped picture it already has.
+    const { version, width, height } = await res.json()
+    onVersion(item.path, { version, width, height, aspect: width / height })
+  }, [onVersion])
+
   const remove = useCallback(async item => {
     await fetch(`/api/gallery/media?path=${encodeURIComponent(item.path)}`, {
       method: 'DELETE',
@@ -93,5 +105,8 @@ export function useMediaActions({ openPath, close, onVersion }) {
     a.click()
   }, [])
 
-  return { redate, relocate, assignFace, createPerson, dismissFace, rotate, remove, download }
+  return {
+    redate, relocate, assignFace, createPerson, dismissFace,
+    rotate, crop, remove, download,
+  }
 }

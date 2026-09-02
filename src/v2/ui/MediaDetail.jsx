@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  X, Heart, RotateCw, Download, Trash2, Album, Info,
-  ChevronLeft, ChevronRight,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { describeMedia, bust } from './mediaTileProps'
 import { InfoPanel } from './MediaInfoPanel'
-import { ConfirmPopover } from './ConfirmPopover'
-import { Action, Edge } from './DetailControls'
+import { Edge } from './DetailControls'
 import { FaceBoxes } from './FaceBoxes'
 import { C } from './tokens'
+import { CropOverlay } from './CropOverlay'
+import { DetailToolbar } from './DetailToolbar'
+import { useElementRect } from '../lib/useElementRect'
+import { useIsWide } from '../lib/useIsWide'
 
 /**
  * One photograph, full size. Placeholder — the photo, a way out, nothing else.
@@ -17,6 +17,32 @@ import { C } from './tokens'
  * intent. The overlay is a plain fixed div rather than anything clever, so a
  * route can render this same component later without changing it.
  */
+// Start on the middle two thirds: a rectangle identical to the picture gives
+// nothing to grab hold of.
+const DEFAULT_BOX = { x1: 1 / 6, y1: 1 / 6, x2: 5 / 6, y2: 5 / 6 }
+
+/**
+ * Fractions of what is on screen become pixels of the full-size photograph.
+ * The API maps those onto the stored file, which may be lying on its side.
+ */
+async function applyCrop({ item, box, imgRef, onCrop, setCropping, setCrop }) {
+  const w = item.width || imgRef.current?.naturalWidth
+  const h = item.height || imgRef.current?.naturalHeight
+  if (!w || !h) return
+  setCropping(true)
+  try {
+    await onCrop(item, {
+      x: Math.round(box.x1 * w),
+      y: Math.round(box.y1 * h),
+      w: Math.round((box.x2 - box.x1) * w),
+      h: Math.round((box.y2 - box.y1) * h),
+    })
+    setCrop(false)
+  } finally {
+    setCropping(false)
+  }
+}
+
 export function MediaDetail({
   item,
   onClose,
@@ -26,6 +52,7 @@ export function MediaDetail({
   favourited = false,
   onToggleFavourite,
   onRotate,
+  onCrop,
   onDownload,
   onDelete,
   onAddToAlbum,
@@ -55,6 +82,13 @@ export function MediaDetail({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [detailData, setDetailData] = useState(null)
   const imgRef = useRef(null)
+  // Crop lives in the detail view because it needs the photograph at a size
+  // worth drawing on. Fractions of the displayed image, converted to pixels
+  // only when sent.
+  const [crop, setCrop] = useState(false)
+  const [box, setBox] = useState(DEFAULT_BOX)
+  const [cropping, setCropping] = useState(false)
+  const cropRect = useElementRect(imgRef, crop)
 
   const faces = [
     ...((detailData?.people || []).map(pp => ({
@@ -131,67 +165,23 @@ export function MediaDetail({
             background: 'linear-gradient(to bottom, rgba(0,0,0,.55), transparent)',
           }}
         >
-          <Action label="Close" onClick={onClose}><X size={17} /></Action>
-
-          <div style={{ flex: 1 }} />
-
-          {onToggleFavourite && (
-            <Action
-              label={favourited ? 'Remove from favourites' : 'Add to favourites'}
-              onClick={() => onToggleFavourite(item)}
-            >
-              <Heart
-                size={20}
-                fill={favourited ? '#e8384f' : 'none'}
-                color={favourited ? '#e8384f' : 'currentColor'}
-              />
-            </Action>
-          )}
-          {onAddToAlbum && (
-            <Action label="Add to album" onClick={() => onAddToAlbum(item)}>
-              <Album size={17} />
-            </Action>
-          )}
-          {onRotate && (
-            <Action label="Rotate" onClick={() => onRotate(item)}>
-              <RotateCw size={17} />
-            </Action>
-          )}
-          {onDownload && (
-            <Action label="Download" onClick={() => onDownload(item)}>
-              <Download size={17} />
-            </Action>
-          )}
-          {onDelete && (
-            <span style={{ position: 'relative' }}>
-              <Action label="Delete" onClick={() => setConfirmDelete(true)} danger>
-                <Trash2 size={17} />
-              </Action>
-              {confirmDelete && (
-                <ConfirmPopover
-                  align="right"
-                  message="Move this to the trash?"
-                  detail="The file and its sidecars move to /photos/trash and can be put back. Face assignments on it are lost."
-                  confirmLabel="Yes, delete"
-                  onCancel={() => setConfirmDelete(false)}
-                  onConfirm={async () => {
-                    await onDelete(item)
-                    setConfirmDelete(false)
-                  }}
-                />
-              )}
-            </span>
-          )}
-          {/* Only useful where the panel is a panel. On a narrow screen it is
-              simply below the photograph, and you scroll to it. */}
-          {wide && (
-            <Action
-              label={showInfo ? 'Hide details' : 'Show details'}
-              onClick={() => { setShowInfo(v => !v); onShowInfo?.(item) }}
-            >
-              <Info size={17} />
-            </Action>
-          )}
+          <DetailToolbar
+            item={item}
+            wide={wide}
+            favourited={favourited}
+            showInfo={showInfo}
+            confirmDelete={confirmDelete}
+            onClose={onClose}
+            onToggleFavourite={onToggleFavourite}
+            onAddToAlbum={onAddToAlbum}
+            onRotate={onRotate}
+            onStartCrop={() => { setCrop(true); setBox(DEFAULT_BOX) }}
+            onCrop={onCrop}
+            onDownload={onDownload}
+            onDelete={onDelete}
+            onConfirmDelete={setConfirmDelete}
+            onToggleInfo={() => { setShowInfo(v => !v); onShowInfo?.(item) }}
+          />
         </div>
       {/* Big edge targets rather than small buttons: moving through a
           hundred photographs should not require aiming. */}
@@ -228,9 +218,20 @@ export function MediaDetail({
         />
       )}
 
+        {crop && cropRect && (
+        <CropOverlay
+          box={box}
+          imageRect={cropRect}
+          onChange={setBox}
+          busy={cropping}
+          onCancel={() => setCrop(false)}
+          onApply={() => applyCrop({ item, box, imgRef, onCrop, setCropping, setCrop })}
+        />
+      )}
+
         {/* Over the photograph, inside the same box, so the coordinates line
             up without any extra offset maths. */}
-        <FaceBoxes
+        {!crop && <FaceBoxes
           imgRef={imgRef}
           faces={faces}
           hovered={hoveredFace}
@@ -244,7 +245,7 @@ export function MediaDetail({
             setShowInfo(true)
             setNamingFace(f)
           }}
-        />
+        />}
       </div>
 
       {(showInfo || !wide) && (
@@ -271,15 +272,3 @@ export function MediaDetail({
 
 
 /** True on a screen wide enough for a side panel. */
-function useIsWide() {
-  const [wide, setWide] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth >= 900,
-  )
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 900px)')
-    const on = e => setWide(e.matches)
-    mq.addEventListener('change', on)
-    return () => mq.removeEventListener('change', on)
-  }, [setWide])
-  return wide
-}
