@@ -13,13 +13,29 @@
  * Adapter for gallery API items. Callers with a different shape write their
  * own three lines rather than bending the tile.
  */
-export function mediaTileProps(item) {
+export function mediaTileProps(item, version) {
   return {
-    src: item.thumbnail_url,
+    src: bust(item.thumbnail_url, version),
     alt: describeMedia(item),
     color: item.dominant_color || undefined,
     isVideo: !!item.is_video,
   }
+}
+
+/**
+ * Add a per-file cache token to a media URL.
+ *
+ * A photograph keeps its URL when it is rotated, so the browser goes on
+ * serving the pixels it already has — the file changed, the address did not.
+ * The rotate endpoint hands back the file's new modification time, and adding
+ * it here is what makes the reload actually fetch.
+ *
+ * Undefined version means untouched, and the URL is returned as it came: only
+ * the handful of files edited this session carry a token.
+ */
+export function bust(url, version) {
+  if (!url || !version) return url
+  return `${url}${url.includes('?') ? '&' : '?'}r=${version}`
 }
 
 /** Date and place — the two things always known about a photo. */

@@ -15,7 +15,7 @@ import { mediaTileProps, formatDuration } from './mediaTileProps'
  * window moves, and a busy month is a thousand tiles.
  */
 function GridTileBase({
-  item, width, height, priority,
+  item, width, height, priority, version,
   selected, favourited, selectionMode,
   onOpen, onToggleSelect, onToggleFavourite, onLongPress,
 }) {
@@ -25,7 +25,7 @@ function GridTileBase({
       style={{ width, height, flex: '0 0 auto' }}
     >
       <MediaTile
-        {...mediaTileProps(item)}
+        {...mediaTileProps(item, version)}
         priority={priority}
         selected={selected}
         selectionMode={selectionMode}

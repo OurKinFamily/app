@@ -83,6 +83,9 @@ export function MediaGrid({
   favourites,
   onToggleFavourite,
   onOpen,
+  // path -> cache token, for files edited since the page loaded. Nearly always
+  // empty; a lookup miss is the normal case.
+  versions,
 }) {
   const ref = useRef(null)
   const [measured, setMeasured] = useState(0)
@@ -191,6 +194,9 @@ export function MediaGrid({
             width={row.height * item.aspect}
             height={row.height}
             priority={priority}
+            // This session's edits win; the API supplies the token for
+            // anything edited before the page loaded.
+            version={versions?.get(item.path) ?? item.version}
             selected={isSelected(item.path)}
             favourited={!!favourites?.has(item.path)}
             selectionMode={selectionMode}

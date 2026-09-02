@@ -3,7 +3,7 @@ import {
   X, Heart, RotateCw, Download, Trash2, Album, Info,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
-import { describeMedia } from './mediaTileProps'
+import { describeMedia, bust } from './mediaTileProps'
 import { InfoPanel } from './MediaInfoPanel'
 import { ConfirmPopover } from './ConfirmPopover'
 import { Action, Edge } from './DetailControls'
@@ -208,8 +208,8 @@ export function MediaDetail({
 
       {item.is_video ? (
         <video
-          src={item.url}
-          poster={item.thumbnail_url}
+          src={bust(item.url, item.version)}
+          poster={bust(item.thumbnail_url, item.version)}
           controls
           // min-height 0 so the grid item is allowed to shrink; without it a
           // tall video overflows instead of fitting.
@@ -218,7 +218,7 @@ export function MediaDetail({
       ) : (
         <img
           ref={imgRef}
-          src={item.url}
+          src={bust(item.url, item.version)}
           alt={describeMedia(item)}
           style={{
             maxWidth: '100%', maxHeight: '100%',

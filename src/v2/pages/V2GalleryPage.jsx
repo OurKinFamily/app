@@ -33,6 +33,10 @@ export function V2GalleryPage() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [open, setOpen] = useState(null)
   const [ordered, setOrdered] = useState([])
+  // path -> cache token, for files this session has edited on disk. A rotated
+  // photograph keeps its URL, so without this the browser goes on showing the
+  // pixels it already has.
+  const [versions, setVersions] = useState(() => new Map())
 
   const { favs: favorites, toggle: toggleFavorite } = useFavorites()
 
@@ -115,13 +119,22 @@ export function V2GalleryPage() {
   }, [open])
 
   const rotate = useCallback(async item => {
-    await fetch(
+    const res = await fetch(
       `/api/gallery/media/rotate?path=${encodeURIComponent(item.path)}&degrees=90`,
       { method: 'POST' },
     )
-    // The file changed underneath its own URL, so the browser would keep
-    // showing the old pixels. Close and reopen with a fresh cache key.
-    setOpen(null)
+    if (!res.ok) return
+    // The endpoint hands back the file's new modification time. Carrying it
+    // into the URL is the whole trick: the address changes, so the browser
+    // fetches rather than serving the copy it already has. Closing the
+    // lightbox — the old workaround — only hid the stale image; reopening
+    // served the same cached bytes.
+    const { version, width, height } = await res.json()
+    setVersions(cur => new Map(cur).set(item.path, version))
+    // Rotating swaps the dimensions, and the grid packs rows by aspect ratio.
+    setOpen(cur => (cur?.path === item.path
+      ? { ...cur, version, width, height, aspect: width / height }
+      : cur))
   }, [])
 
   const remove = useCallback(async item => {
@@ -228,6 +241,7 @@ export function V2GalleryPage() {
             onRequestSelectionMode={() => setSelectionMode(true)}
             favourites={favorites}
             onToggleFavourite={toggleFavorite}
+            versions={versions}
             onOrderedChange={setOrdered}
             onOpen={setOpen}
           />
