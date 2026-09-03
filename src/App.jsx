@@ -55,6 +55,10 @@ import { V2AssignedFaces } from './v2/pages/V2AssignedFaces'
 import { V2GroupsPage } from './v2/pages/V2GroupsPage'
 import { V2FaceSuggestions } from './v2/pages/V2FaceSuggestions'
 import { V2SimilarFaces } from './v2/pages/V2SimilarFaces'
+import { V2JobsPage } from './v2/pages/V2JobsPage'
+import { V2HealthPage } from './v2/pages/V2HealthPage'
+import { V2MosaicPage } from './v2/pages/V2MosaicPage'
+import { V2AnalyticsPage } from './v2/pages/V2AnalyticsPage'
 import { LegacyPanel } from './v2/ui/LegacyPanel'
 import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
 import { V2GridDemoPage } from './v2/pages/V2GridDemoPage'
@@ -137,10 +141,10 @@ export default function App() {
                   <Route path="/v2/groups/:id" element={<LegacyPanel><GroupPage /></LegacyPanel>} />
                   <Route path="/v2/suggestions" element={<SuggestionsPage />} />
                   <Route path="/v2/admin/overview" element={<AdminOverviewPage />} />
-                  <Route path="/v2/admin/analytics" element={<FilesystemPage />} />
-                  <Route path="/v2/admin/health" element={<HealthPage />} />
-                  <Route path="/v2/admin/mosaic" element={<MosaicPage />} />
-                  <Route path="/v2/admin/jobs" element={<JobsPage />} />
+                  <Route path="/v2/admin/analytics" element={<V2AnalyticsPage />} />
+                  <Route path="/v2/admin/health" element={<V2HealthPage />} />
+                  <Route path="/v2/admin/mosaic" element={<V2MosaicPage />} />
+                  <Route path="/v2/admin/jobs" element={<V2JobsPage />} />
                 </Route>
               </Route>
 
