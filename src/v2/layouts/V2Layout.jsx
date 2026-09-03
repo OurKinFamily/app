@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Activity, Album, BookOpen, Images, LayoutDashboard, MapPin, Menu, Notebook, Palette, Search, Sparkles, Star, Trees, Upload, UserCheck, UserPlus, Users, Users2, Wand2 } from 'lucide-react'
+import { Activity, Album, BookOpen, ClipboardList, Images, LayoutDashboard, MapPin, Menu, Notebook, Palette, Play, Search, Sparkles, Star, Trees, Upload, UserCheck, UserPlus, Users, Users2, Wand2 } from 'lucide-react'
 import { C } from '../ui/tokens'
 import { useMe } from '../../contexts/MeContext'
 
@@ -50,7 +50,11 @@ const NAV = [
     items: [
       { to: '/v2/admin/analytics', label: 'Analytics', icon: LayoutDashboard },
       { to: '/v2/admin/health', label: 'Health', icon: Activity },
-      { to: '/v2/admin/jobs', label: 'Jobs', icon: Activity },
+      // The deep one: what every processor has and has not touched, per
+      // directory. Only as current as the last Archive Report run, which is
+      // why it sits next to Jobs.
+      { to: '/v2/admin/overview', label: 'Archive report', icon: ClipboardList },
+      { to: '/v2/admin/jobs', label: 'Jobs', icon: Play },
       { to: '/v2/admin/mosaic', label: 'Mosaic', icon: Palette },
     ],
   },
