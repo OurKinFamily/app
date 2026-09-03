@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { PersonFacts, PersonFactsForm } from '../ui/PersonFacts'
 import { PersonPhotos } from '../ui/PersonPhotos'
+import { PersonSummary } from '../ui/PersonSummary'
 import { LifeStages } from '../ui/LifeStages'
 import { useIsAdmin, useMe } from '../../contexts/MeContext'
 
@@ -16,6 +17,8 @@ export function V2PersonOverview() {
 
   return (
     <div>
+      <PersonSummary personId={person.id} />
+
       {editing ? (
         <PersonFactsForm
           person={person}

@@ -37,7 +37,10 @@ const gpParentX = (i) => {
 // Fallback parent gap for when no grandparents are rendered.
 const PARENT_GAP = gpParentX(1) - (gpParentX(0) + NODE_W)  // 68 - (-228+160) = 136
 
-function buildGraph(person, relatives, childRelatives) {
+// Exported for the v2 tree, which reuses this wholesale: it is arithmetic —
+// where each grandparent, parent, spouse and child sits, and which edges join
+// them — with no styling in it at all.
+export function buildGraph(person, relatives, childRelatives) {
   const { parents, spouses, children, siblings } = relatives
   const nodes = []
   const edges = []

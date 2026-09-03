@@ -2,11 +2,15 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react'
 import { cn } from '../lib/cn'
 
+// Solid, not tinted glass. A toast says what just happened and then leaves;
+// a translucent one over a wall of photographs is a smear that has to be
+// deciphered before it disappears — the one piece of the interface that
+// cannot afford to be pretty at the cost of legible.
 const TONE_STYLES = {
-  success: 'border-green-500/35 bg-green-500/15 text-green-300',
-  error:   'border-red-500/35   bg-red-500/15   text-red-300',
-  info:    'border-blue-500/35  bg-blue-500/15  text-blue-300',
-  warning: 'border-amber-500/35 bg-amber-500/15 text-amber-300',
+  success: 'border-green-800  bg-green-700  text-white',
+  error:   'border-red-800    bg-red-700    text-white',
+  info:    'border-zinc-800   bg-zinc-900   text-white',
+  warning: 'border-amber-700  bg-amber-600  text-white',
 }
 
 const TONE_ICON = {
@@ -66,7 +70,7 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={api}>
       {children}
       <div
-        className="pointer-events-none fixed bottom-4 right-4 z-[2000] flex w-[min(90vw,360px)] flex-col gap-2"
+        className="pointer-events-none fixed bottom-4 left-4 z-[2000] flex w-[min(90vw,360px)] flex-col gap-2"
         role="region"
         aria-label="Notifications"
       >
@@ -89,7 +93,7 @@ function ToastItem({ toast, onClose }) {
     <div
       role="status"
       className={cn(
-        'pointer-events-auto flex items-start gap-2 rounded-lg border px-3 py-2.5 text-[13px] shadow-lg backdrop-blur-md transition-all duration-150',
+        'pointer-events-auto flex items-start gap-2 rounded-lg border px-3.5 py-2.5 text-[13px] font-medium shadow-xl transition-all duration-150',
         TONE_STYLES[toast.tone] || TONE_STYLES.info,
         visible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
       )}
@@ -99,7 +103,7 @@ function ToastItem({ toast, onClose }) {
       <button
         onClick={onClose}
         aria-label="Dismiss"
-        className="shrink-0 rounded p-0.5 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+        className="shrink-0 rounded p-0.5 text-white/60 transition-colors hover:bg-white/20 hover:text-white"
       >
         <X size={14} />
       </button>

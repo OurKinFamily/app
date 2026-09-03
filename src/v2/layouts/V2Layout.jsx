@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
-import { Activity, Album, BookOpen, Images, LayoutDashboard, MapPin, Menu, Notebook, Palette, Search, Settings, Sparkles, Star, Trees, Upload, UserCheck, UserPlus, Users, Users2, Wand2 } from 'lucide-react'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Activity, Album, BookOpen, Images, LayoutDashboard, MapPin, Menu, Notebook, Palette, Search, Sparkles, Star, Trees, Upload, UserCheck, UserPlus, Users, Users2, Wand2 } from 'lucide-react'
 import { C } from '../ui/tokens'
+import { useMe } from '../../contexts/MeContext'
 
 /**
  * v2 app shell — light, Google Photos in feel.
@@ -18,7 +19,6 @@ const NAV = [
   {
     items: [
       { to: '/v2', label: 'Gallery', icon: Images, end: true },
-      { to: '/v2/search', label: 'Search', icon: Search },
       { to: '/v2/albums', label: 'Albums', icon: Album },
       { to: '/v2/favorites', label: 'Favourites', icon: Star },
     ],
@@ -29,14 +29,8 @@ const NAV = [
       { to: '/v2/people', label: 'People', icon: Users },
       { to: '/v2/places', label: 'Places', icon: MapPin },
       { to: '/v2/family', label: 'Family tree', icon: Trees },
-    ],
-  },
-  {
-    heading: 'Library',
-    items: [
       { to: '/v2/biographies', label: 'Biographies', icon: BookOpen },
       { to: '/v2/scrapbook', label: 'Scrapbook', icon: Notebook },
-      { to: '/v2/upload', label: 'Upload', icon: Upload },
     ],
   },
   {
@@ -103,6 +97,12 @@ function NavItem({ to, label, icon: Icon, end }) {
 }
 
 export function V2Layout() {
+  const navigate = useNavigate()
+  const [query, setQuery] = useState('')
+  const { viewerPersonId, me } = useMe()
+  // Their own initial, not a hard-coded S — this shell is for whoever is
+  // signed in, and there is more than one person in this family.
+  const initial = (me?.name || me?.email || '?').trim()[0].toUpperCase()
   const [navOpen, setNavOpen] = useState(true)
 
   return (
@@ -123,7 +123,7 @@ export function V2Layout() {
           style={{
             display: 'grid', placeItems: 'center',
             width: 48, height: 48, borderRadius: '50%',
-            border: 0, background: 'transparent', color: C.muted, cursor: 'pointer',
+            border: 0, background: 'transparent', color: C.text, cursor: 'pointer',
           }}
         >
           <Menu size={22} />
@@ -146,6 +146,16 @@ export function V2Layout() {
         >
           <Search size={20} color={C.muted} />
           <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            // Enter goes to the results. Searching as you type would fire a
+            // query against 151,000 photographs on every keystroke, and the
+            // question here is usually a whole phrase — a name, a place, a
+            // year — not a prefix.
+            onKeyDown={e => {
+              if (e.key !== 'Enter' || !query.trim()) return
+              navigate(`/v2/search?q=${encodeURIComponent(query.trim())}`)
+            }}
             placeholder="Search your archive"
             style={{
               flex: 1, border: 0, outline: 0, background: 'transparent',
@@ -156,26 +166,36 @@ export function V2Layout() {
 
         <div style={{ flex: 1 }} />
 
-        <button
-          aria-label="Settings"
+        {/* Adding photographs is something you do from wherever you are, not
+            a place you navigate to — so it sits in the header rather than the
+            rail, beside the account it belongs to. */}
+        <Link
+          to="/v2/upload"
+          aria-label="Add photographs"
+          title="Add photographs"
           style={{
-            display: 'grid', placeItems: 'center', width: 48, height: 48,
-            borderRadius: '50%', border: 0, background: 'transparent',
-            color: C.muted, cursor: 'pointer',
+            display: 'grid', placeItems: 'center', width: 40, height: 40,
+            borderRadius: '50%', color: C.text, textDecoration: 'none',
           }}
         >
-          <Settings size={20} />
-        </button>
-        <div
-          aria-label="Account"
+          <Upload size={19} />
+        </Link>
+
+        {/* The signed-in person's own page. In a family archive the account
+            IS somebody in the archive, so the avatar goes where their photos,
+            their family and their story are — not to a preferences panel. */}
+        <Link
+          to={viewerPersonId ? `/v2/people/${viewerPersonId}` : '/v2/people'}
+          aria-label="Your page"
+          title="Your page"
           style={{
-            width: 32, height: 32, marginLeft: 8, borderRadius: '50%',
-            background: '#0b57d0', color: '#fff',
+            width: 32, height: 32, marginLeft: 4, borderRadius: '50%',
+            background: '#0b57d0', color: '#fff', textDecoration: 'none',
             display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 500,
           }}
         >
-          S
-        </div>
+          {initial}
+        </Link>
       </header>
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>

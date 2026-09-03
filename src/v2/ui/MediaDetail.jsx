@@ -25,9 +25,10 @@ import { useIsWide } from '../lib/useIsWide'
  * intent. The overlay is a plain fixed div rather than anything clever, so a
  * route can render this same component later without changing it.
  */
-// Start on the middle two thirds: a rectangle identical to the picture gives
-// nothing to grab hold of.
-const DEFAULT_BOX = { x1: 1 / 6, y1: 1 / 6, x2: 5 / 6, y2: 5 / 6 }
+// The whole picture. Starting inset looked easier to grab and was wrong: it
+// throws away the edges before you have decided anything, and most crops are a
+// trim from one side. Pulling in from full frame is the actual gesture.
+const DEFAULT_BOX = { x1: 0, y1: 0, x2: 1, y2: 1 }
 
 /** How much to shrink a turned photograph so its corners stay in the pane. */
 function fitScale(angle) {

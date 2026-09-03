@@ -91,10 +91,13 @@ export function V2PersonPage() {
         onPickCover={() => setCoverPicker(true)}
       />
 
-      <nav style={{
-        display: 'flex', gap: 2, marginBottom: 18,
-        borderBottom: `1px solid ${C.border}`, overflowX: 'auto',
-      }}>
+      <nav
+        className="hide-scrollbar"
+        style={{
+          display: 'flex', gap: 2, marginBottom: 18,
+          borderBottom: `1px solid ${C.border}`, overflowX: 'auto',
+        }}
+      >
         {TABS.map(t => (
           <NavLink
             key={t.to}

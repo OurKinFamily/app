@@ -45,6 +45,16 @@ import { V2FamilyPage } from './v2/pages/V2FamilyPage'
 import { V2BiographiesPage } from './v2/pages/V2BiographiesPage'
 import { V2PersonPage } from './v2/pages/V2PersonPage'
 import { V2PersonOverview } from './v2/pages/V2PersonOverview'
+import { V2PersonBiography } from './v2/pages/V2PersonBiography'
+import { V2PersonCircles } from './v2/pages/V2PersonCircles'
+import { V2PersonTimeline } from './v2/pages/V2PersonTimeline'
+import { V2PersonAncestry } from './v2/pages/V2PersonAncestry'
+import { V2PersonScrapbook } from './v2/pages/V2PersonScrapbook'
+import { V2PersonTravel } from './v2/pages/V2PersonTravel'
+import { V2AssignedFaces } from './v2/pages/V2AssignedFaces'
+import { V2GroupsPage } from './v2/pages/V2GroupsPage'
+import { V2FaceSuggestions } from './v2/pages/V2FaceSuggestions'
+import { V2SimilarFaces } from './v2/pages/V2SimilarFaces'
 import { LegacyPanel } from './v2/ui/LegacyPanel'
 import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
 import { V2GridDemoPage } from './v2/pages/V2GridDemoPage'
@@ -105,12 +115,13 @@ export default function App() {
                   <Route path="/v2/people/:id" element={<V2PersonPage />}>
                     <Route index element={<Navigate to="overview" replace />} />
                     <Route path="overview" element={<V2PersonOverview />} />
-                    <Route path="biography" element={<LegacyPanel><PersonBiography /></LegacyPanel>} />
-                    <Route path="circles" element={<LegacyPanel><PersonCircles /></LegacyPanel>} />
-                    <Route path="timeline" element={<LegacyPanel><PersonTimeline /></LegacyPanel>} />
-                    <Route path="ancestry" element={<LegacyPanel><PersonAncestry /></LegacyPanel>} />
-                    <Route path="scrapbook" element={<LegacyPanel><PersonScrapbook /></LegacyPanel>} />
-                    <Route path="travel" element={<LegacyPanel><PersonTravel /></LegacyPanel>} />
+                    <Route path="biography" element={<V2PersonBiography />} />
+                    <Route path="circles" element={<V2PersonCircles />} />
+                    <Route path="timeline" element={<V2PersonTimeline />} />
+                    <Route path="ancestry" element={<V2PersonAncestry />} />
+                    <Route path="scrapbook" element={<V2PersonScrapbook />} />
+                    <Route path="scrapbook/:collectionId" element={<V2PersonScrapbook />} />
+                    <Route path="travel" element={<V2PersonTravel />} />
                   </Route>
                   <Route path="/v2/places" element={<V2PlacesPage />} />
                   <Route path="/v2/family" element={<V2FamilyPage />} />
@@ -118,12 +129,12 @@ export default function App() {
                   <Route path="/v2/scrapbook" element={<ScrapbookPage />} />
                   <Route path="/v2/search" element={<SearchPage />} />
                   <Route path="/v2/upload" element={<UploadPage />} />
-                  <Route path="/v2/faces/suggestions" element={<FaceSuggestionsPage />} />
+                  <Route path="/v2/faces/suggestions" element={<V2FaceSuggestions />} />
                   <Route path="/v2/faces/unassigned" element={<UnassignedFacesPage />} />
-                  <Route path="/v2/faces/assigned" element={<AssignedFacesPage />} />
-                  <Route path="/v2/faces/similar" element={<SimilarFacesPage />} />
-                  <Route path="/v2/groups" element={<GroupsPage />} />
-                  <Route path="/v2/groups/:id" element={<GroupPage />} />
+                  <Route path="/v2/faces/assigned" element={<V2AssignedFaces />} />
+                  <Route path="/v2/faces/similar" element={<V2SimilarFaces />} />
+                  <Route path="/v2/groups" element={<V2GroupsPage />} />
+                  <Route path="/v2/groups/:id" element={<LegacyPanel><GroupPage /></LegacyPanel>} />
                   <Route path="/v2/suggestions" element={<SuggestionsPage />} />
                   <Route path="/v2/admin/overview" element={<AdminOverviewPage />} />
                   <Route path="/v2/admin/analytics" element={<FilesystemPage />} />
