@@ -15,10 +15,10 @@ describe('AddRelativeModal', () => {
 
   describe('rendering by action type', () => {
     it.each([
-      ['spouse',  'Add Spouse'],
-      ['child',   'Add Child'],
-      ['sibling', 'Add Sibling'],
-      ['parent',  'Add Parent'],
+      ['spouse',  'Add a spouse'],
+      ['child',   'Add a child'],
+      ['sibling', 'Add a sibling'],
+      ['parent',  'Add a parent'],
     ])('renders the right heading for type=%s', (type, heading) => {
       renderModal({ type, personId: 'p1', parentIds: ['par1'] })
       expect(screen.getByText(heading)).toBeInTheDocument()
@@ -28,8 +28,8 @@ describe('AddRelativeModal', () => {
   describe('sibling guard', () => {
     it('shows a warning + disables submit when adding a sibling with no parents', () => {
       renderModal({ type: 'sibling', personId: 'p1', parentIds: [] })
-      expect(screen.getByText(/no parents in the graph/)).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
+      expect(screen.getByText(/linked through their parents/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add them' })).toBeDisabled()
     })
   })
 
@@ -47,35 +47,34 @@ describe('AddRelativeModal', () => {
     })
     it('survives a search failure', async () => {
       global.fetch = vi.fn().mockRejectedValue(new Error('net'))
-      // Component logs the search error to console.error; swallow it here.
-      // (Will be replaced by the structured logger per the TODO in TODO.md.)
-      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       renderModal({ type: 'spouse', personId: 'p1' })
       fireEvent.change(screen.getByPlaceholderText('Search by name…'), { target: { value: 'X' } })
-      // Debounce + rejection; just give the timer a chance to fire.
-      await new Promise(r => setTimeout(r, 250))
-      expect(errSpy).toHaveBeenCalled()  // confirms the failure path executed
-      errSpy.mockRestore()
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+      // A search that will not answer leaves the box empty and the dialog
+      // usable. Nothing is shouted about: the reader is mid-sentence, and a
+      // failed keystroke is not an event.
+      await waitFor(() => expect(screen.getByText(/Nobody by that name/)).toBeInTheDocument())
+      expect(screen.getByRole('button', { name: 'Add them' })).toBeDisabled()
     })
   })
 
   describe('create-new mode', () => {
     it('switches to the Create form when "Create new" is clicked', () => {
       renderModal({ type: 'parent', personId: 'p1' })
-      fireEvent.click(screen.getByRole('button', { name: 'Create new' }))
-      expect(screen.getByPlaceholderText('Full name *')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Somebody new' }))
+      expect(screen.getByPlaceholderText('Margaret Young')).toBeInTheDocument()
     })
     it('toggles back to Search-existing mode', () => {
       renderModal({ type: 'parent', personId: 'p1' })
-      fireEvent.click(screen.getByRole('button', { name: 'Create new' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Search existing' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Somebody new' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Already here' }))
       expect(screen.getByPlaceholderText('Search by name…')).toBeInTheDocument()
     })
     it('accepts input in known_as and birth_date fields', () => {
       renderModal({ type: 'parent', personId: 'p1' })
-      fireEvent.click(screen.getByRole('button', { name: 'Create new' }))
-      const knownAs   = screen.getByPlaceholderText('Known as (nickname)')
-      const birthDate = screen.getByPlaceholderText(/Birth date/)
+      fireEvent.click(screen.getByRole('button', { name: 'Somebody new' }))
+      const knownAs   = screen.getByPlaceholderText('Grandma Young')
+      const birthDate = screen.getByPlaceholderText(/1942/)
       fireEvent.change(knownAs,   { target: { value: 'Nickname' } })
       fireEvent.change(birthDate, { target: { value: '1980' } })
       expect(knownAs).toHaveValue('Nickname')
@@ -87,9 +86,9 @@ describe('AddRelativeModal', () => {
         .mockResolvedValueOnce({ ok: true })  // addRelationship
       global.fetch = fetchMock
       const { onSuccess } = renderModal({ type: 'parent', personId: 'p1', parentIds: [] })
-      fireEvent.click(screen.getByRole('button', { name: 'Create new' }))
-      fireEvent.change(screen.getByPlaceholderText('Full name *'), { target: { value: 'New Person' } })
-      fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Somebody new' }))
+      fireEvent.change(screen.getByPlaceholderText('Margaret Young'), { target: { value: 'New Person' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Add them' }))
       await waitFor(() => expect(onSuccess).toHaveBeenCalled())
     })
   })
@@ -109,7 +108,7 @@ describe('AddRelativeModal', () => {
       expect(screen.getByText('1986')).toBeInTheDocument()
       // Click to select → highlight branch (line 138) fires.
       fireEvent.click(screen.getByText('Stephen E. Young'))
-      expect(screen.getByRole('button', { name: 'Add' })).not.toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Add them' })).not.toBeDisabled()
     })
   })
 
@@ -124,7 +123,7 @@ describe('AddRelativeModal', () => {
       fireEvent.change(screen.getByPlaceholderText('Search by name…'), { target: { value: 'X' } })
       await waitFor(() => expect(screen.getByText('X')).toBeInTheDocument())
       fireEvent.click(screen.getByText('X'))
-      fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Add them' }))
       await waitFor(() => expect(screen.getByText('Saving…')).toBeInTheDocument())
       expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled()
       resolveFirst({ ok: true })
@@ -132,7 +131,7 @@ describe('AddRelativeModal', () => {
     it('sibling type with action.parentIds=undefined disables Add (truthy guard sub-branch)', () => {
       // No parentIds key in action → `!action.parentIds` true → disabled.
       renderModal({ type: 'sibling', personId: 'p1' })
-      expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Add them' })).toBeDisabled()
     })
     it('sibling type with non-empty parentIds + selected enables Add', async () => {
       global.fetch = vi.fn().mockResolvedValue({
@@ -143,7 +142,7 @@ describe('AddRelativeModal', () => {
       fireEvent.change(screen.getByPlaceholderText('Search by name…'), { target: { value: 'S' } })
       await waitFor(() => expect(screen.getByText('Sibling')).toBeInTheDocument())
       fireEvent.click(screen.getByText('Sibling'))
-      expect(screen.getByRole('button', { name: 'Add' })).not.toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Add them' })).not.toBeDisabled()
     })
   })
 
@@ -157,7 +156,7 @@ describe('AddRelativeModal', () => {
       fireEvent.change(screen.getByPlaceholderText('Search by name…'), { target: { value: 'X' } })
       await waitFor(() => expect(screen.getByText('X')).toBeInTheDocument())
       fireEvent.click(screen.getByText('X'))
-      fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Add them' }))
       await waitFor(() => expect(onSuccess).toHaveBeenCalled())
       const rel = fetchMock.mock.calls.find(([u]) => u.includes('/relationships'))
       expect(JSON.parse(rel[1].body).parent_ids).toEqual([])
@@ -179,7 +178,7 @@ describe('AddRelativeModal', () => {
       fireEvent.change(screen.getByPlaceholderText('Search by name…'), { target: { value: 'Kid' } })
       await waitFor(() => expect(screen.getByText('Kid')).toBeInTheDocument())
       fireEvent.click(screen.getByText('Kid'))
-      fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Add them' }))
       await waitFor(() => expect(onSuccess).toHaveBeenCalled())
       // Both the focal person's relationship and Cayce's child relationship
       // were POSTed (line 71 — the child-branch coParentIds Promise.all).
@@ -211,7 +210,7 @@ describe('AddRelativeModal', () => {
     })
     it('omits the co-parent picker when there are no spouses', () => {
       renderModal({ type: 'child', personId: 'p1', parentIds: [] })
-      expect(screen.queryByText('Also child of')).not.toBeInTheDocument()
+      expect(screen.queryByText('Also their child')).not.toBeInTheDocument()
     })
   })
 
@@ -219,17 +218,19 @@ describe('AddRelativeModal', () => {
     it('shows an error message when submit fails', async () => {
       global.fetch = vi.fn().mockRejectedValue(new Error('net'))
       renderModal({ type: 'parent', personId: 'p1', parentIds: [] })
-      fireEvent.click(screen.getByRole('button', { name: 'Create new' }))
-      fireEvent.change(screen.getByPlaceholderText('Full name *'), { target: { value: 'X' } })
-      fireEvent.click(screen.getByRole('button', { name: 'Add' }))
-      await waitFor(() => expect(screen.getByText(/Something went wrong/)).toBeInTheDocument())
+      fireEvent.click(screen.getByRole('button', { name: 'Somebody new' }))
+      fireEvent.change(screen.getByPlaceholderText('Margaret Young'), { target: { value: 'X' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Add them' }))
+      await waitFor(() => expect(screen.getByText('That did not save. Try again?')).toBeInTheDocument())
     })
   })
 
   describe('close behavior', () => {
     it('invokes onClose on backdrop click', () => {
       const { container, onClose } = renderModal({ type: 'spouse', personId: 'p1' })
-      fireEvent.click(container.firstChild)
+      // mouseDown, not click: the shared shell closes on press so a drag that
+      // starts inside the dialog and ends on the backdrop does not dismiss it.
+      fireEvent.mouseDown(container.firstChild)
       expect(onClose).toHaveBeenCalled()
     })
     it('invokes onClose on Cancel', () => {

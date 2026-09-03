@@ -18,9 +18,9 @@ describe('CoverPicker', () => {
   describe('initial render', () => {
     it('starts with the person\'s saved cover_position selected', () => {
       renderPicker({ id: 'p1', cover_position: 'top', cover_image: 'archive/x.jpg' })
-      // The active button uses bg-white/15 — but per the no-class-name rule we
-      // can't assert on that. Instead, click "Save" and verify the saved value.
-      expect(screen.getByRole('button', { name: 'Align Top' })).toBeInTheDocument()
+      // The active state is styling, which the no-class-name rule puts out of
+      // reach; the behaviour that matters is what Save sends, covered below.
+      expect(screen.getByRole('button', { name: 'Top' })).toBeInTheDocument()
     })
     it('defaults to fit when person.cover_position is missing', async () => {
       const { onSaved } = renderPicker({ id: 'p1' })
@@ -28,23 +28,23 @@ describe('CoverPicker', () => {
       await waitFor(() => expect(onSaved).toHaveBeenCalled())
       expect(onSaved).toHaveBeenCalledWith({ cover_image: null, cover_position: 'fit' })
     })
-    it('offers the Fit option', () => {
+    it('offers the whole-photo option', () => {
       renderPicker({ id: 'p1' })
-      expect(screen.getByRole('button', { name: 'Align Fit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Whole photo/ })).toBeInTheDocument()
     })
   })
 
   describe('changing the alignment', () => {
     it('saves the newly-picked position', async () => {
       const { onSaved } = renderPicker({ id: 'p1', cover_image: 'archive/x.jpg', cover_position: 'center' })
-      fireEvent.click(screen.getByRole('button', { name: 'Align Bottom' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Bottom' }))
       fireEvent.click(screen.getByRole('button', { name: 'Save' }))
       await waitFor(() => expect(onSaved).toHaveBeenCalled())
       expect(onSaved).toHaveBeenCalledWith({ cover_image: 'archive/x.jpg', cover_position: 'bottom' })
     })
-    it('saves fit when the Fit option is picked', async () => {
+    it('saves fit when the whole-photo option is picked', async () => {
       const { onSaved } = renderPicker({ id: 'p1', cover_image: 'archive/x.jpg', cover_position: 'top' })
-      fireEvent.click(screen.getByRole('button', { name: 'Align Fit' }))
+      fireEvent.click(screen.getByRole('button', { name: /Whole photo/ }))
       fireEvent.click(screen.getByRole('button', { name: 'Save' }))
       await waitFor(() => expect(onSaved).toHaveBeenCalled())
       expect(onSaved).toHaveBeenCalledWith({ cover_image: 'archive/x.jpg', cover_position: 'fit' })
@@ -52,17 +52,17 @@ describe('CoverPicker', () => {
   })
 
   describe('clear-cover action', () => {
-    it('shows the Clear button only when the person has a cover_image', () => {
+    it('offers to clear the cover only when there is one', () => {
       const { rerender } = render(
         <CoverPicker person={{ id: 'p1', cover_image: 'archive/x.jpg' }} onClose={() => {}} onSaved={() => {}} />
       )
-      expect(screen.getByRole('button', { name: /Clear/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Use any photo' })).toBeInTheDocument()
       rerender(<CoverPicker person={{ id: 'p1' }} onClose={() => {}} onSaved={() => {}} />)
-      expect(screen.queryByRole('button', { name: /Clear/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Use any photo' })).not.toBeInTheDocument()
     })
     it('clearing wipes both cover_image and cover_position via onSaved', async () => {
       const { onSaved } = renderPicker({ id: 'p1', cover_image: 'archive/x.jpg', cover_position: 'top' })
-      fireEvent.click(screen.getByRole('button', { name: /Clear/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Use any photo' }))
       await waitFor(() => expect(onSaved).toHaveBeenCalled())
       expect(onSaved).toHaveBeenCalledWith({ cover_image: null, cover_position: null })
     })
@@ -83,7 +83,7 @@ describe('CoverPicker', () => {
   describe('close behavior', () => {
     it('invokes onClose on backdrop click', () => {
       const { container, onClose } = renderPicker({ id: 'p1' })
-      fireEvent.click(container.firstChild)
+      fireEvent.mouseDown(container.firstChild)
       expect(onClose).toHaveBeenCalled()
     })
     it('invokes onClose when the Close button is clicked', () => {

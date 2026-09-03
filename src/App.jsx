@@ -60,6 +60,7 @@ import { V2HealthPage } from './v2/pages/V2HealthPage'
 import { V2MosaicPage } from './v2/pages/V2MosaicPage'
 import { V2AnalyticsPage } from './v2/pages/V2AnalyticsPage'
 import { V2OverviewPage } from './v2/pages/V2OverviewPage'
+import { V2UnassignedFaces } from './v2/pages/V2UnassignedFaces'
 import { LegacyPanel } from './v2/ui/LegacyPanel'
 import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
 import { V2GridDemoPage } from './v2/pages/V2GridDemoPage'
@@ -135,7 +136,7 @@ export default function App() {
                   <Route path="/v2/search" element={<SearchPage />} />
                   <Route path="/v2/upload" element={<UploadPage />} />
                   <Route path="/v2/faces/suggestions" element={<V2FaceSuggestions />} />
-                  <Route path="/v2/faces/unassigned" element={<UnassignedFacesPage />} />
+                  <Route path="/v2/faces/unassigned" element={<V2UnassignedFaces />} />
                   <Route path="/v2/faces/assigned" element={<V2AssignedFaces />} />
                   <Route path="/v2/faces/similar" element={<V2SimilarFaces />} />
                   <Route path="/v2/groups" element={<V2GroupsPage />} />

@@ -1,32 +1,44 @@
 import { useEffect, useRef, useState } from 'react'
 import { getFaces, setAvatar } from '../lib/api'
-import { useEscToClose } from '../lib/hooks'
 import { mediaUrl } from '../lib/media'
+import { Modal } from '../v2/ui/Modal'
+import { C } from '../v2/ui/tokens'
 
-const PAGE_SIZE = 60
+/**
+ * Which face of theirs stands for them.
+ *
+ * Every confirmed face, newest first, sixty at a time. There is no preview and
+ * no confirm step: clicking one sets it, because the grid IS the preview and
+ * the cost of a wrong pick is clicking the right one after.
+ */
+const PAGE = 60
 
 export function AvatarPicker({ person, onClose, onSaved }) {
-  useEscToClose(onClose)
   const [faces, setFaces] = useState(null)
-  const [shown, setShown] = useState(PAGE_SIZE)
+  const [shown, setShown] = useState(PAGE)
   const [saving, setSaving] = useState(false)
-  const sentinelRef = useRef(null)
+  const sentinel = useRef(null)
 
   useEffect(() => {
-    getFaces(person.id).then(setFaces)
+    let alive = true
+    getFaces(person.id)
+      .then(f => { if (alive) setFaces(f) })
+      .catch(() => { if (alive) setFaces([]) })
+    return () => { alive = false }
   }, [person.id])
 
   useEffect(() => {
-    if (!sentinelRef.current) return
+    const el = sentinel.current
+    if (!el) return
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setShown(n => n + PAGE_SIZE) },
-      { rootMargin: '100px' }
+      ([entry]) => { if (entry.isIntersecting) setShown(n => n + PAGE) },
+      { rootMargin: '100px' },
     )
-    observer.observe(sentinelRef.current)
+    observer.observe(el)
     return () => observer.disconnect()
   }, [faces])
 
-  const handlePick = async (cropPath) => {
+  async function pick(cropPath) {
     setSaving(true)
     await setAvatar(person.id, cropPath)
     onSaved(cropPath)
@@ -34,47 +46,44 @@ export function AvatarPicker({ person, onClose, onSaved }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
-      <div
-        className="bg-zinc-900 rounded-xl w-[560px] max-h-[80vh] flex flex-col overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h2 className="text-white font-medium">Choose a face</h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white text-xl leading-none">×</button>
-        </div>
+    <Modal title="Choose a face" onClose={onClose} width={560}>
+      {faces === null && <p style={hint}>Looking…</p>}
+      {faces?.length === 0 && (
+        <p style={hint}>No faces confirmed for them yet.</p>
+      )}
 
-        <div className="overflow-y-auto flex-1 p-4">
-          {faces === null && (
-            <div className="text-white/40 text-sm text-center py-8">Loading…</div>
-          )}
-          {faces?.length === 0 && (
-            <div className="text-white/40 text-sm text-center py-8">No confirmed faces yet.</div>
-          )}
-          {faces && faces.length > 0 && (
-            <>
-              <div className="grid grid-cols-6 gap-1">
-                {faces.slice(0, shown).map((face, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handlePick(face.crop_path)}
-                    disabled={saving}
-                    className="aspect-square overflow-hidden rounded hover:ring-2 hover:ring-rose-400 transition focus:outline-none"
-                  >
-                    <img
-                      src={mediaUrl(face.crop_path)}
-                      alt=""
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </button>
-                ))}
-              </div>
-              {shown < faces.length && <div ref={sentinelRef} className="h-4" />}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+      {faces?.length > 0 && (
+        <>
+          <div style={{
+            display: 'grid', gap: 5,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))',
+          }}>
+            {faces.slice(0, shown).map((face, i) => (
+              <button
+                key={`${face.crop_path}-${i}`}
+                type="button"
+                onClick={() => pick(face.crop_path)}
+                disabled={saving}
+                style={{
+                  padding: 0, border: 0, borderRadius: 9, overflow: 'hidden',
+                  background: C.hover, cursor: saving ? 'default' : 'pointer',
+                  opacity: saving ? 0.5 : 1,
+                }}
+              >
+                <img
+                  src={mediaUrl(face.crop_path)}
+                  alt=""
+                  loading="lazy"
+                  style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }}
+                />
+              </button>
+            ))}
+          </div>
+          {shown < faces.length && <div ref={sentinel} style={{ height: 16 }} />}
+        </>
+      )}
+    </Modal>
   )
 }
+
+const hint = { fontSize: 13, color: C.muted, textAlign: 'center', padding: '24px 0', margin: 0 }

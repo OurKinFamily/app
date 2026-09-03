@@ -1,24 +1,29 @@
 import { useState } from 'react'
-import { X, AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal, Frame } from 'lucide-react'
+import { AlignCenterHorizontal, AlignEndHorizontal, AlignStartHorizontal, Frame } from 'lucide-react'
 import { setCover } from '../lib/api'
-import { Button } from './Button'
-import { cn } from '../lib/cn'
+import { Modal } from '../v2/ui/Modal'
+import { Choices } from '../v2/ui/Field'
+import { modalButton } from '../v2/lib/modalButton'
+import { C } from '../v2/ui/tokens'
 
+/**
+ * How somebody's cover photograph sits in the banner.
+ *
+ * Which photograph it is gets chosen from the photograph itself — "Set as
+ * cover" in the lightbox. This only decides how it fills the space, which
+ * matters more than it sounds: a banner crop set to centre will take the head
+ * off a tall portrait, and "Whole photo" is the default for that reason.
+ */
 const POSITIONS = [
-  { value: 'fit',    label: 'Fit',    Icon: Frame },
-  { value: 'top',    label: 'Top',    Icon: AlignStartHorizontal },
-  { value: 'center', label: 'Center', Icon: AlignCenterHorizontal },
-  { value: 'bottom', label: 'Bottom', Icon: AlignEndHorizontal },
+  { value: 'fit', label: 'Whole photo', icon: <Frame size={14} />, title: 'Show all of it, over a blurred copy' },
+  { value: 'top', label: 'Top', icon: <AlignStartHorizontal size={14} /> },
+  { value: 'center', label: 'Middle', icon: <AlignCenterHorizontal size={14} /> },
+  { value: 'bottom', label: 'Bottom', icon: <AlignEndHorizontal size={14} /> },
 ]
 
-// Cover-image alignment picker for a Person. The actual image-picking
-// happens in the lightbox via the "Set as cover" action; this dialog adjusts
-// how the cover fills the banner — 'fit' (whole photo centered over a blurred
-// enlarged copy, the default) or a top/center/bottom crop — and lets the user
-// clear the cover entirely (fall back to a random photo).
 export function CoverPicker({ person, onClose, onSaved }) {
-  const [saving, setSaving] = useState(false)
   const [position, setPosition] = useState(person.cover_position || 'fit')
+  const [saving, setSaving] = useState(false)
 
   async function save() {
     setSaving(true)
@@ -43,55 +48,29 @@ export function CoverPicker({ person, onClose, onSaved }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/75 p-4" onClick={onClose}>
-      <div
-        onClick={e => e.stopPropagation()}
-        className="w-full max-w-sm overflow-hidden rounded-xl border border-white/10 bg-zinc-950"
-      >
-        <div className="flex items-center gap-3 border-b border-white/10 p-3">
-          <h2 className="flex-1 text-sm font-medium text-white/85">Cover alignment</h2>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            <X size={18} />
+    <Modal
+      title="Cover photo"
+      onClose={onClose}
+      width={420}
+      footer={
+        <>
+          {person.cover_image && (
+            <button type="button" onClick={clear} disabled={saving} style={modalButton(false, saving)}>
+              Use any photo
+            </button>
+          )}
+          <button type="button" onClick={save} disabled={saving} style={modalButton(true, saving)}>
+            {saving ? 'Saving…' : 'Save'}
           </button>
-        </div>
+        </>
+      }
+    >
+      <p style={{ fontSize: 12.5, color: C.muted, margin: '0 0 12px', lineHeight: 1.5 }}>
+        Choose which photograph from any picture of them — “Set as cover” when it is open.
+        This is how it sits in the banner.
+      </p>
 
-        <div className="space-y-4 p-4">
-          <p className="text-[12px] text-white/40">
-            Pick a cover photo from any image in the lightbox via the &ldquo;Set as cover&rdquo; action. This dialog adjusts how it fills the banner.
-          </p>
-          <div className="flex items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
-            {POSITIONS.map(({ value, label, Icon }) => (
-              <button
-                key={value}
-                onClick={() => setPosition(value)}
-                aria-label={`Align ${label}`}
-                title={`Align ${label}`}
-                className={cn(
-                  'flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-[12px] transition-colors',
-                  position === value ? 'bg-white/15 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white/80',
-                )}
-              >
-                <Icon size={14} />
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            {person.cover_image && (
-              <Button size="sm" variant="secondary" onClick={clear} disabled={saving}>
-                Clear (use random)
-              </Button>
-            )}
-            <Button size="sm" onClick={save} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+      <Choices options={POSITIONS} value={position} onChange={setPosition} />
+    </Modal>
   )
 }

@@ -24,7 +24,7 @@ describe('AvatarPicker', () => {
     it('shows a Loading message while faces are pending', () => {
       global.fetch = vi.fn().mockImplementation(() => new Promise(() => {}))
       renderPicker()
-      expect(screen.getByText('Loading…')).toBeInTheDocument()
+      expect(screen.getByText('Looking…')).toBeInTheDocument()
     })
     it('renders the dialog heading', () => {
       mockFetch([])
@@ -34,10 +34,10 @@ describe('AvatarPicker', () => {
   })
 
   describe('empty state', () => {
-    it('shows a "No confirmed faces" message when the API returns an empty list', async () => {
+    it('shows a plain message when the API returns an empty list', async () => {
       mockFetch([])
       renderPicker()
-      await waitFor(() => expect(screen.getByText('No confirmed faces yet.')).toBeInTheDocument())
+      await waitFor(() => expect(screen.getByText('No faces confirmed for them yet.')).toBeInTheDocument())
     })
   })
 
@@ -97,20 +97,21 @@ describe('AvatarPicker', () => {
     it('invokes onClose on backdrop click', () => {
       mockFetch([])
       const { container, onClose } = renderPicker()
-      fireEvent.click(container.firstChild)
+      // mouseDown, not click: the shared shell closes on press so a drag that
+      // starts inside the dialog and ends on the backdrop does not dismiss it.
+      fireEvent.mouseDown(container.firstChild)
       expect(onClose).toHaveBeenCalled()
     })
     it('does NOT invoke onClose when clicking inside the dialog', () => {
       mockFetch([])
       const { onClose } = renderPicker()
-      fireEvent.click(screen.getByText('Choose a face'))
+      fireEvent.mouseDown(screen.getByText('Choose a face'))
       expect(onClose).not.toHaveBeenCalled()
     })
-    it('invokes onClose when the × button is clicked', () => {
+    it('invokes onClose when the Close button is clicked', () => {
       mockFetch([])
       const { onClose } = renderPicker()
-      // The × button uses the literal character; query by text.
-      fireEvent.click(screen.getByText('×'))
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
       expect(onClose).toHaveBeenCalled()
     })
     it('invokes onClose on Escape key', () => {

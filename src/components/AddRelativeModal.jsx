@@ -1,223 +1,200 @@
-import { useState, useEffect, useRef } from 'react'
-import { X, Search } from 'lucide-react'
-import { searchPeople, createPerson, addRelationship } from '../lib/api'
-import { useEscToClose } from '../lib/hooks'
+import { useEffect, useRef, useState } from 'react'
+import { addRelationship, createPerson, searchPeople } from '../lib/api'
+import { Modal } from '../v2/ui/Modal'
+import { Choices, Field, Note } from '../v2/ui/Field'
+import { modalButton } from '../v2/lib/modalButton'
+import { displayName, otherName } from '../lib/people'
+import { C } from '../v2/ui/tokens'
 
-const LABELS = {
-  spouse: 'Spouse',
-  child: 'Child',
-  sibling: 'Sibling',
-  parent: 'Parent',
-}
+/**
+ * Joining somebody to the family — either a person already here, or one who is
+ * about to be.
+ *
+ * Siblings are the awkward case: the graph links them through shared parents
+ * rather than to each other, so somebody with no parents recorded cannot have
+ * a sibling added. That is said plainly up front instead of failing on save.
+ */
+const LABELS = { spouse: 'a spouse', child: 'a child', sibling: 'a sibling', parent: 'a parent' }
+
+const MODES = [
+  { value: 'search', label: 'Already here' },
+  { value: 'create', label: 'Somebody new' },
+]
 
 export function AddRelativeModal({ action, onClose, onSuccess }) {
-  useEscToClose(onClose)
   const [mode, setMode] = useState('search')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
-  const [selected, setSelected] = useState(null)
+  const [picked, setPicked] = useState(null)
   const [name, setName] = useState('')
   const [knownAs, setKnownAs] = useState('')
-  const [birthDate, setBirthDate] = useState('')
+  const [born, setBorn] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
-  // co-parent selection for child type — default all spouses checked
-  const [coParentIds, setCoParentIds] = useState(
-    () => new Set((action.spouses || []).map(s => s.id))
+  // Both parents by default. A child added from one parent's page is almost
+  // always the other's too, and unticking is easier than remembering.
+  const [alsoParents, setAlsoParents] = useState(
+    () => new Set((action.spouses || []).map(s => s.id)),
   )
-  const inputRef = useRef(null)
+  const search = useRef(null)
 
-  useEffect(() => { inputRef.current?.focus() }, [mode])
+  useEffect(() => { search.current?.focus() }, [mode])
 
   useEffect(() => {
-    if (query.length < 1) { setResults([]); return }
     const t = setTimeout(() => {
-      searchPeople(query).then(setResults).catch(e => {
-        console.error('Search error:', e)
-        setResults([])
-      })
-    }, 200)
+      if (!query.trim()) { setResults([]); return }
+      searchPeople(query).then(setResults).catch(() => setResults([]))
+    }, query.trim() ? 200 : 0)
     return () => clearTimeout(t)
   }, [query])
 
-  const canSubmit = mode === 'search' ? !!selected : !!name.trim()
+  const orphanSibling = action.type === 'sibling' && !action.parentIds?.length
+  const ready = mode === 'search' ? !!picked : !!name.trim()
 
-  const submit = async () => {
+  async function submit() {
     setSaving(true)
     setError(null)
     try {
-      let targetId
-      if (mode === 'search') {
-        targetId = selected.id
-      } else {
-        const p = await createPerson({
+      const targetId = mode === 'search'
+        ? picked.id
+        : (await createPerson({
           name: name.trim(),
           known_as: knownAs.trim() || null,
-          birth_date: birthDate.trim() || null,
-        })
-        targetId = p.id
-      }
-      // Always add focal person as parent
+          birth_date: born.trim() || null,
+        })).id
+
       await addRelationship(action.personId, {
         rel_type: action.type,
         target_id: targetId,
         parent_ids: action.parentIds || [],
       })
-      // Add co-parents if this is a child and co-parents are selected
+
       if (action.type === 'child') {
-        await Promise.all([...coParentIds].map(pid =>
-          addRelationship(pid, { rel_type: 'child', target_id: targetId, parent_ids: [] })
+        await Promise.all([...alsoParents].map(id =>
+          addRelationship(id, { rel_type: 'child', target_id: targetId, parent_ids: [] }),
         ))
       }
       onSuccess()
-    } catch (e) {
-      setError('Something went wrong. Please try again.')
+    } catch {
+      setError('That did not save. Try again?')
       setSaving(false)
     }
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-      onClick={e => e.target === e.currentTarget && onClose()}
+    <Modal
+      title={`Add ${LABELS[action.type]}`}
+      onClose={onClose}
+      width={460}
+      footer={
+        <>
+          <button type="button" onClick={onClose} style={modalButton(false)}>Cancel</button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={saving || !ready || orphanSibling}
+            style={modalButton(true, saving || !ready || orphanSibling)}
+          >
+            {saving ? 'Saving…' : 'Add them'}
+          </button>
+        </>
+      }
     >
-      <div className="bg-zinc-900 border border-white/15 rounded-2xl p-6 w-[440px] shadow-2xl">
+      {orphanSibling && (
+        <Note>
+          Brothers and sisters are linked through their parents, and this person has none
+          recorded yet. Add a parent first and the siblings follow.
+        </Note>
+      )}
+      {error && <Note tone="bad">{error}</Note>}
 
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-white font-semibold text-base">Add {LABELS[action.type]}</h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white/80 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
+      <Choices options={MODES} value={mode} onChange={setMode} />
 
-        {action.type === 'sibling' && (!action.parentIds || action.parentIds.length === 0) && (
-          <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/25 rounded-lg">
-            <p className="text-amber-400 text-xs">This person has no parents in the graph. Siblings are linked by sharing parents — add a parent first, then come back to add siblings.</p>
-          </div>
-        )}
-
-        {/* Mode toggle */}
-        <div className="flex gap-1 bg-white/5 rounded-lg p-1 mb-4">
-          <button
-            onClick={() => setMode('search')}
-            className={`flex-1 py-1.5 rounded-md text-sm transition-colors ${
-              mode === 'search' ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80'
-            }`}
-          >
-            Search existing
-          </button>
-          <button
-            onClick={() => setMode('create')}
-            className={`flex-1 py-1.5 rounded-md text-sm transition-colors ${
-              mode === 'create' ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80'
-            }`}
-          >
-            Create new
-          </button>
-        </div>
-
-        {mode === 'search' ? (
-          <div>
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 mb-2">
-              <Search size={13} className="text-white/30 shrink-0" />
-              <input
-                ref={inputRef}
-                value={query}
-                onChange={e => { setQuery(e.target.value); setSelected(null) }}
-                placeholder="Search by name…"
-                className="flex-1 bg-transparent py-2.5 text-sm text-white placeholder-white/30 outline-none"
-              />
-            </div>
-            <div className="space-y-0.5 max-h-52 overflow-y-auto">
-              {results.map(p => (
+      {mode === 'search' ? (
+        <>
+          <input
+            ref={search}
+            value={query}
+            onChange={e => { setQuery(e.target.value); setPicked(null) }}
+            placeholder="Search by name…"
+            style={{
+              width: '100%', boxSizing: 'border-box', height: 34, padding: '0 11px',
+              border: `1px solid ${C.border}`, borderRadius: 9,
+              font: 'inherit', fontSize: 13, color: C.text, background: C.bg,
+            }}
+          />
+          <div style={{ maxHeight: 210, overflowY: 'auto', marginTop: 6 }}>
+            {results.map(p => {
+              const on = picked?.id === p.id
+              return (
                 <button
                   key={p.id}
-                  onClick={() => setSelected(p)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                    selected?.id === p.id
-                      ? 'bg-white/15 text-white'
-                      : 'text-white/70 hover:bg-white/10'
-                  }`}
+                  type="button"
+                  onClick={() => setPicked(p)}
+                  style={{
+                    display: 'flex', alignItems: 'baseline', gap: 8, width: '100%',
+                    padding: '7px 10px', borderRadius: 9, border: 0, font: 'inherit',
+                    fontSize: 13, textAlign: 'left', cursor: 'pointer',
+                    background: on ? C.activeBg : 'transparent',
+                    color: on ? C.activeText : C.text,
+                  }}
                 >
-                  <span className="font-medium">{p.known_as || p.name}</span>
-                  {p.known_as && p.known_as !== p.name && (
-                    <span className="text-white/35 ml-2 text-xs">{p.name}</span>
-                  )}
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    {displayName(p)}
+                    {/* Two people in a family share a first name more often
+                        than not, and the nickname is what everybody uses.
+                        Both, so the right one can be picked. */}
+                    {otherName(p) && (
+                      <span style={{ marginLeft: 6, fontSize: 11.5, color: C.muted }}>
+                        {otherName(p)}
+                      </span>
+                    )}
+                  </span>
                   {p.birth_date && (
-                    <span className="text-white/30 ml-2 text-xs">{p.birth_date.slice(0, 4)}</span>
+                    <span style={{ fontSize: 11.5, color: C.muted }}>{p.birth_date.slice(0, 4)}</span>
                   )}
                 </button>
-              ))}
-              {query.length >= 1 && results.length === 0 && (
-                <p className="text-white/30 text-sm text-center py-4">No results for "{query}"</p>
-              )}
-            </div>
+              )
+            })}
+            {query.trim() && results.length === 0 && (
+              <p style={{ fontSize: 12.5, color: C.muted, textAlign: 'center', padding: '14px 0' }}>
+                Nobody by that name yet.
+              </p>
+            )}
           </div>
-        ) : (
-          <div className="space-y-2.5">
-            <input
-              ref={inputRef}
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Full name *"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
-            />
-            <input
-              value={knownAs}
-              onChange={e => setKnownAs(e.target.value)}
-              placeholder="Known as (nickname)"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
-            />
-            <input
-              value={birthDate}
-              onChange={e => setBirthDate(e.target.value)}
-              placeholder="Birth date (YYYY or YYYY-MM-DD)"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
-            />
-          </div>
-        )}
+        </>
+      ) : (
+        <>
+          <Field label="Their name" value={name} onChange={setName} placeholder="Margaret Young" />
+          <Field label="Known as" optional value={knownAs} onChange={setKnownAs} placeholder="Grandma Young" />
+          <Field label="Born" optional value={born} onChange={setBorn} placeholder="1942, or 1942-06-11" />
+        </>
+      )}
 
-        {/* Co-parent picker — only for child type when spouses exist */}
-        {action.type === 'child' && action.spouses?.length > 0 && (
-          <div className="mt-4 p-3 bg-white/3 border border-white/8 rounded-lg">
-            <p className="text-[11px] text-white/40 mb-2">Also child of</p>
-            <div className="space-y-1.5">
-              {action.spouses.map(s => (
-                <label key={s.id} className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox"
-                    checked={coParentIds.has(s.id)}
-                    onChange={e => setCoParentIds(prev => {
-                      const next = new Set(prev)
-                      e.target.checked ? next.add(s.id) : next.delete(s.id)
-                      return next
-                    })}
-                    className="accent-blue-500" />
-                  <span className="text-[12px] text-white/70">{s.known_as || s.name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {error && <p className="text-red-400/80 text-xs mt-3">{error}</p>}
-
-        <div className="flex gap-2.5 mt-5">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 rounded-lg text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={saving || !canSubmit || (action.type === 'sibling' && (!action.parentIds || action.parentIds.length === 0))}
-            className="flex-1 py-2 rounded-lg text-sm bg-white/10 text-white hover:bg-white/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {saving ? 'Saving…' : 'Add'}
-          </button>
+      {action.type === 'child' && action.spouses?.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 6 }}>Also their child</div>
+          {action.spouses.map(spouse => (
+            <label
+              key={spouse.id}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 13, cursor: 'pointer' }}
+            >
+              <input
+                type="checkbox"
+                checked={alsoParents.has(spouse.id)}
+                onChange={e => setAlsoParents(prev => {
+                  const next = new Set(prev)
+                  if (e.target.checked) next.add(spouse.id)
+                  else next.delete(spouse.id)
+                  return next
+                })}
+                style={{ width: 15, height: 15, accentColor: C.activeText, cursor: 'pointer' }}
+              />
+              {displayName(spouse)}
+            </label>
+          ))}
         </div>
-
-      </div>
-    </div>
+      )}
+    </Modal>
   )
 }

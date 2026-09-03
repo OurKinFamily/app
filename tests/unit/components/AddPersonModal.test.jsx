@@ -13,14 +13,14 @@ describe('AddPersonModal', () => {
   beforeEach(() => { vi.resetAllMocks() })
 
   describe('initial render', () => {
-    it('shows the heading and a required Full name field', () => {
+    it('shows the heading and a field for their name', () => {
       renderModal()
-      expect(screen.getByText('Add Person')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('e.g. Margaret Young')).toBeInTheDocument()
+      expect(screen.getByText('Add somebody')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Margaret Young')).toBeInTheDocument()
     })
     it('disables the submit button while name is empty', () => {
       renderModal()
-      expect(screen.getByRole('button', { name: 'Add person' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Add them' })).toBeDisabled()
     })
   })
 
@@ -32,10 +32,10 @@ describe('AddPersonModal', () => {
       })
       global.fetch = fetchMock
       const { onCreated } = renderModal()
-      fireEvent.change(screen.getByPlaceholderText('e.g. Margaret Young'), { target: { value: 'Margaret Young' } })
-      fireEvent.change(screen.getByPlaceholderText('e.g. Grandma Young'), { target: { value: 'Grandma' } })
-      fireEvent.change(screen.getByPlaceholderText('e.g. 1942'),          { target: { value: '1942' } })
-      fireEvent.click(screen.getByRole('button', { name: 'Add person' }))
+      fireEvent.change(screen.getByPlaceholderText('Margaret Young'), { target: { value: 'Margaret Young' } })
+      fireEvent.change(screen.getByPlaceholderText('Grandma Young'), { target: { value: 'Grandma' } })
+      fireEvent.change(screen.getByPlaceholderText('1942'),          { target: { value: '1942' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Add them' }))
       await waitFor(() => expect(onCreated).toHaveBeenCalled())
       const [, init] = fetchMock.mock.calls[0]
       expect(JSON.parse(init.body)).toEqual({
@@ -49,8 +49,8 @@ describe('AddPersonModal', () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'x' }) })
       global.fetch = fetchMock
       const { onCreated } = renderModal()
-      fireEvent.change(screen.getByPlaceholderText('e.g. Margaret Young'), { target: { value: 'X' } })
-      fireEvent.click(screen.getByRole('button', { name: 'Add person' }))
+      fireEvent.change(screen.getByPlaceholderText('Margaret Young'), { target: { value: 'X' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Add them' }))
       await waitFor(() => expect(onCreated).toHaveBeenCalled())
       const [, init] = fetchMock.mock.calls[0]
       expect(JSON.parse(init.body)).toEqual({
@@ -63,19 +63,20 @@ describe('AddPersonModal', () => {
     it('shows an error message and stays open when create fails', async () => {
       global.fetch = vi.fn().mockResolvedValue({ ok: false })
       const { onCreated } = renderModal()
-      fireEvent.change(screen.getByPlaceholderText('e.g. Margaret Young'), { target: { value: 'X' } })
-      fireEvent.click(screen.getByRole('button', { name: 'Add person' }))
-      await waitFor(() => expect(screen.getByText('Failed to create person')).toBeInTheDocument())
+      fireEvent.change(screen.getByPlaceholderText('Margaret Young'), { target: { value: 'X' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Add them' }))
+      await waitFor(() => expect(screen.getByText('That did not save. Try again?')).toBeInTheDocument())
       expect(onCreated).not.toHaveBeenCalled()
     })
     it('does not submit when the name is only whitespace', () => {
       const fetchMock = vi.fn()
       global.fetch = fetchMock
-      const { container } = renderModal()
-      fireEvent.change(screen.getByPlaceholderText('e.g. Margaret Young'), { target: { value: '   ' } })
-      // Submit button is disabled when name is empty; submit the form
-      // directly to exercise the handler's early-return guard.
-      fireEvent.submit(container.querySelector('form'))
+      renderModal()
+      fireEvent.change(screen.getByPlaceholderText('Margaret Young'), { target: { value: '   ' } })
+      // Both routes in: the button stays disabled, and Enter in the name
+      // field hits the same guard rather than posting a person called "   ".
+      expect(screen.getByRole('button', { name: 'Add them' })).toBeDisabled()
+      fireEvent.keyDown(screen.getByPlaceholderText('Margaret Young'), { key: 'Enter' })
       expect(fetchMock).not.toHaveBeenCalled()
     })
   })
@@ -83,17 +84,19 @@ describe('AddPersonModal', () => {
   describe('close behavior', () => {
     it('invokes onClose on backdrop click', () => {
       const { container, onClose } = renderModal()
-      fireEvent.click(container.firstChild)
+      // mouseDown, not click: the shared shell closes on press so a drag that
+      // starts inside the dialog and ends on the backdrop does not dismiss it.
+      fireEvent.mouseDown(container.firstChild)
       expect(onClose).toHaveBeenCalled()
     })
     it('does NOT invoke onClose when clicking inside the modal body', () => {
       const { onClose } = renderModal()
-      fireEvent.click(screen.getByText('Add Person'))
+      fireEvent.mouseDown(screen.getByText('Add somebody'))
       expect(onClose).not.toHaveBeenCalled()
     })
-    it('invokes onClose when the ✕ button is clicked', () => {
+    it('invokes onClose when the Close button is clicked', () => {
       const { onClose } = renderModal()
-      fireEvent.click(screen.getByText('✕'))
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
       expect(onClose).toHaveBeenCalled()
     })
     it('invokes onClose on Cancel', () => {
