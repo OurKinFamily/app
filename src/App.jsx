@@ -61,6 +61,9 @@ import { V2MosaicPage } from './v2/pages/V2MosaicPage'
 import { V2AnalyticsPage } from './v2/pages/V2AnalyticsPage'
 import { V2OverviewPage } from './v2/pages/V2OverviewPage'
 import { V2UnassignedFaces } from './v2/pages/V2UnassignedFaces'
+import { V2SuggestionsPage } from './v2/pages/V2SuggestionsPage'
+import { V2SearchPage } from './v2/pages/V2SearchPage'
+import { V2UploadPage } from './v2/pages/V2UploadPage'
 import { LegacyPanel } from './v2/ui/LegacyPanel'
 import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
 import { V2GridDemoPage } from './v2/pages/V2GridDemoPage'
@@ -133,15 +136,15 @@ export default function App() {
                   <Route path="/v2/family" element={<V2FamilyPage />} />
                   <Route path="/v2/biographies" element={<V2BiographiesPage />} />
                   <Route path="/v2/scrapbook" element={<ScrapbookPage />} />
-                  <Route path="/v2/search" element={<SearchPage />} />
-                  <Route path="/v2/upload" element={<UploadPage />} />
+                  <Route path="/v2/search" element={<V2SearchPage />} />
+                  <Route path="/v2/upload" element={<V2UploadPage />} />
                   <Route path="/v2/faces/suggestions" element={<V2FaceSuggestions />} />
                   <Route path="/v2/faces/unassigned" element={<V2UnassignedFaces />} />
                   <Route path="/v2/faces/assigned" element={<V2AssignedFaces />} />
                   <Route path="/v2/faces/similar" element={<V2SimilarFaces />} />
                   <Route path="/v2/groups" element={<V2GroupsPage />} />
                   <Route path="/v2/groups/:id" element={<LegacyPanel><GroupPage /></LegacyPanel>} />
-                  <Route path="/v2/suggestions" element={<SuggestionsPage />} />
+                  <Route path="/v2/suggestions" element={<V2SuggestionsPage />} />
                   <Route path="/v2/admin/overview" element={<V2OverviewPage />} />
                   <Route path="/v2/admin/analytics" element={<V2AnalyticsPage />} />
                   <Route path="/v2/admin/health" element={<V2HealthPage />} />
