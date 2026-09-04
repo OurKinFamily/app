@@ -7,18 +7,28 @@ import { useMe } from '../../contexts/MeContext'
 /**
  * v2 app shell — light, Google Photos in feel.
  *
- * Deliberately shares nothing with MainLayout: its own nav data, its own
- * spacing and colour, so the two can diverge freely while pages migrate.
+ * The only shell now. It was written to share nothing with the one it
+ * replaced, so the two could diverge freely while pages moved across one at a
+ * time; that one is gone and this is what the app looks like.
  *
  * The look leans on a few Google Photos habits: a tall search field as the
  * centre of gravity in the header, a pill-shaped active state in the sidebar,
  * hairline dividers instead of boxes, and a lot of white.
  */
 
+/**
+ * The rail.
+ *
+ * `needs` says who a group is for, matching the route guards: 'gallery' is the
+ * owner and Cayce, 'admin' is the back of house. A family member signing in
+ * sees the people and what has been written about them — not a rail of links
+ * that bounce them somewhere else, which reads as a broken app rather than as
+ * one that was never theirs to use.
+ */
 const NAV = [
   {
     items: [
-      { to: '/', label: 'Gallery', icon: Images, end: true },
+      { to: '/', label: 'Gallery', icon: Images, end: true, needs: 'gallery' },
       { to: '/albums', label: 'Albums', icon: Album },
       { to: '/favorites', label: 'Favourites', icon: Star },
     ],
@@ -27,7 +37,7 @@ const NAV = [
     heading: 'People & places',
     items: [
       { to: '/people', label: 'People', icon: Users },
-      { to: '/places', label: 'Places', icon: MapPin },
+      { to: '/places', label: 'Places', icon: MapPin, needs: 'gallery' },
       { to: '/family', label: 'Family tree', icon: Trees },
       { to: '/biographies', label: 'Biographies', icon: BookOpen },
       { to: '/scrapbook', label: 'Scrapbook', icon: Notebook },
@@ -36,6 +46,7 @@ const NAV = [
   {
     // Back-of-house. Family never sees these; they are the work of turning a
     // pile of files into an archive.
+    needs: 'admin',
     heading: 'Manage',
     items: [
       { to: '/faces/suggestions', label: 'Face suggestions', icon: Wand2 },
@@ -46,6 +57,7 @@ const NAV = [
     ],
   },
   {
+    needs: 'admin',
     heading: 'Admin',
     items: [
       { to: '/admin/analytics', label: 'Analytics', icon: LayoutDashboard },
@@ -60,6 +72,7 @@ const NAV = [
   },
   {
     // Bottom of the rail: the style guide is for us, not for family.
+    needs: 'admin',
     heading: 'Design',
     items: [
       { to: '/design/components', label: 'Components', icon: Palette },
@@ -103,7 +116,16 @@ function NavItem({ to, label, icon: Icon, end }) {
 export function V2Layout() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
-  const { viewerPersonId, me } = useMe()
+  const { viewerPersonId, me, isAdmin } = useMe()
+  // What this person is allowed to reach, so the rail shows only that. It
+  // mirrors the route guards rather than reimplementing them: anything hidden
+  // here would have bounced them anyway.
+  const canSeeGallery = !!me?.can_see_gallery
+  const allowed = need => (need === 'admin' ? isAdmin : need === 'gallery' ? canSeeGallery : true)
+  const visibleNav = NAV
+    .filter(group => allowed(group.needs))
+    .map(group => ({ ...group, items: group.items.filter(item => allowed(item.needs)) }))
+    .filter(group => group.items.length > 0)
   // Their own initial, not a hard-coded S — this shell is for whoever is
   // signed in, and there is more than one person in this family.
   const initial = (me?.name || me?.email || '?').trim()[0].toUpperCase()
@@ -173,33 +195,44 @@ export function V2Layout() {
         {/* Adding photographs is something you do from wherever you are, not
             a place you navigate to — so it sits in the header rather than the
             rail, beside the account it belongs to. */}
-        <Link
-          to="/upload"
-          aria-label="Add photographs"
-          title="Add photographs"
-          style={{
-            display: 'grid', placeItems: 'center', width: 40, height: 40,
-            borderRadius: '50%', color: C.text, textDecoration: 'none',
-          }}
-        >
-          <Upload size={19} />
-        </Link>
+        {/* Only for whoever can add to the archive. An upload button that
+            bounces a family member somewhere else reads as a broken app
+            rather than as one that was never theirs to add to. */}
+        {canSeeGallery && (
+          <Link
+            to="/upload"
+            aria-label="Add photographs"
+            title="Add photographs"
+            style={{
+              display: 'grid', placeItems: 'center', width: 40, height: 40,
+              borderRadius: '50%', color: C.text, textDecoration: 'none',
+            }}
+          >
+            <Upload size={19} />
+          </Link>
+        )}
 
         {/* The signed-in person's own page. In a family archive the account
             IS somebody in the archive, so the avatar goes where their photos,
-            their family and their story are — not to a preferences panel. */}
-        <Link
-          to={viewerPersonId ? `/people/${viewerPersonId}` : '/people'}
-          aria-label="Your page"
-          title="Your page"
-          style={{
-            width: 32, height: 32, marginLeft: 4, borderRadius: '50%',
-            background: '#0b57d0', color: '#fff', textDecoration: 'none',
-            display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 500,
-          }}
-        >
-          {initial}
-        </Link>
+            their family and their story are — not to a preferences panel.
+
+            Held back until we know who they are. It used to fall back to the
+            People list in the meantime, which meant a click landing in the
+            first half-second went somewhere that was not "your page" at all. */}
+        {viewerPersonId && (
+          <Link
+            to={`/people/${viewerPersonId}`}
+            aria-label="Your page"
+            title="Your page"
+            style={{
+              width: 32, height: 32, marginLeft: 4, borderRadius: '50%',
+              background: '#0b57d0', color: '#fff', textDecoration: 'none',
+              display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 500,
+            }}
+          >
+            {initial}
+          </Link>
+        )}
       </header>
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
@@ -213,7 +246,7 @@ export function V2Layout() {
               paddingTop: 8, background: C.bg,
             }}
           >
-            {NAV.map((group, gi) => (
+            {visibleNav.map((group, gi) => (
               <div key={gi} style={{ marginBottom: 8 }}>
                 {group.heading && (
                   <>

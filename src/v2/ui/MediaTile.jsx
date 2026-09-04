@@ -173,6 +173,7 @@ function MediaTileBase({
       <figure
         ref={figureRef}
         className={className}
+        data-testid="gallery-item"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         // React's onFocus/onBlur bubble, so these fire for the controls too.

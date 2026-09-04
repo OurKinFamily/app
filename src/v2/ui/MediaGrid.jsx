@@ -238,6 +238,11 @@ export function MediaGrid({
   return (
     <div
       ref={ref}
+      // A hook for the end-to-end tests. They are the only check that the
+      // grid actually renders photographs against a live archive, and
+      // anchoring them to styling would break the test every time the design
+      // moves — which is the whole business of this app.
+      data-testid="gallery"
       onKeyDown={onKeyDown}
       // Shift-click otherwise drags a browser text selection across the grid,
       // which highlights everything blue and gets in the way of the range.

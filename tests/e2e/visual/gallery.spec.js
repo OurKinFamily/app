@@ -14,7 +14,6 @@ import { test, expect } from '@playwright/test'
 //   suite from being noisy.
 test('gallery on first load matches the baseline', async ({ page }) => {
   await page.goto('/')
-  await expect(page).toHaveURL(/\/gallery/)
 
   // Wait for the first batch of images to load — both the testid hook
   // appearing AND networkidle settle the initial fetch + decode.

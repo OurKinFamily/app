@@ -53,7 +53,6 @@ import './index.css'
  */
 const MOVED = [
   ['/gallery', '/'],
-  ['/gallery/:year', '/'],
   ['/manage', '/faces/suggestions'],
   ['/manage/people', '/people'],
   ['/manage/faces', '/faces/suggestions'],
@@ -70,7 +69,12 @@ const MOVED = [
  */
 function Moved({ strip }) {
   const { pathname, search } = useLocation()
-  const rest = pathname.slice(strip.length) || '/'
+  let rest = pathname.slice(strip.length) || '/'
+  // /gallery/2019 was the gallery filtered to a year. The year is not part of
+  // the path any more, so it lands on the gallery rather than on a /2019 that
+  // has never existed. Spelling this as a route instead — /gallery/:year —
+  // silently ate /gallery/people, because a dynamic segment outranks a splat.
+  if (/^\/\d{4}(\/|$)/.test(rest)) rest = '/'
   return <Navigate to={`${rest}${search}`} replace />
 }
 

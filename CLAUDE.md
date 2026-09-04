@@ -34,27 +34,42 @@ npm run build     # production build
 
 ```
 src/
-  lib/api.js          # all API calls — talks to /api proxy → FastAPI
-  components/         # shared UI components
-  pages/              # one file per page/route
-  App.jsx             # root, routing lives here when added
+  App.jsx             # every route, and the redirects from the old ones
   index.css           # Tailwind import + base styles
+  lib/                # api.js and the shared helpers — all calls go through here
+  contexts/           # MeContext (who is signed in, and what they may see)
+  components/         # the few shared pieces the shell does not own: the
+                      # toast, the route guards, the dialogs, the photo map
+  v2/                 # the app itself
+    layouts/V2Layout  # the only shell: header, rail, main
+    pages/            # one file per route
+    ui/               # everything the pages are built from
+    lib/              # hooks and pure helpers, one concern each
 ```
+
+The `v2/` name is a leftover from the reskin, when it lived beside the old
+app at `/v2`. That app is gone and this is simply the app; the folder keeps
+the name only until somebody renames it.
+
+## Routes
+
+Everything is at the root. The reskin used to live under `/v2`, and before it
+the app was split across `/gallery` and `/manage` — all three shapes redirect,
+so old bookmarks still land (`src/App.jsx`, `MOVED` and `Moved`).
+
+Who sees what mirrors the route guards, and the rail hides what a person
+cannot reach:
+
+| | Who |
+|---|---|
+| People, biographies, albums, favourites, scrapbook, search | anybody signed in |
+| The gallery, places, upload | `can_see_gallery` — owner + Cayce |
+| Faces, groups, suggestions, admin, design | admins |
 
 ## API
 
 All requests go through the Vite dev proxy at `/api` → `http://localhost:8000`.
 No hardcoded URLs in components — everything through `src/lib/api.js`.
-
-## Current Pages
-
-- `PeoplePage` — lists all people, click to see relatives panel
-
-## Coming Next
-
-- Routing (React Router)
-- Person detail page with family tree tab
-- Create / edit person
 
 ## Testing — non-negotiable
 

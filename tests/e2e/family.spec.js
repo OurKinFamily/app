@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test'
 
-// Read-only flow: Family page (/gallery/family) — renders heading,
+// Read-only flow: Family page (/family) — renders heading,
 // ridgeline rows, and the two controls (min-photos + row-limit selects).
 // Depends on real data: at least one person with ≥ 30 photos in the DB.
 
 test.describe('Family page', () => {
   test('renders heading + ridgeline rows + controls', async ({ page }) => {
-    await page.goto('/gallery/family')
+    await page.goto('/family')
     await expect(page.getByRole('heading', { name: 'Family', level: 1 })).toBeVisible({ timeout: 15_000 })
     await page.waitForLoadState('networkidle')
 
@@ -20,7 +20,7 @@ test.describe('Family page', () => {
   })
 
   test('clicking a ridge row navigates to the person page', async ({ page }) => {
-    await page.goto('/gallery/family')
+    await page.goto('/family')
     await expect(page.getByRole('heading', { name: 'Family', level: 1 })).toBeVisible({ timeout: 15_000 })
     await page.waitForLoadState('networkidle')
 
@@ -28,6 +28,6 @@ test.describe('Family page', () => {
     await expect(rows.first()).toBeVisible()
     await rows.first().click()
 
-    await expect(page).toHaveURL(/\/manage\/people\/[a-z0-9-]+/)
+    await expect(page).toHaveURL(/\/people\/[a-z0-9-]+/)
   })
 })

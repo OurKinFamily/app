@@ -1,27 +1,28 @@
 import { test, expect } from '@playwright/test'
 
-// Read-only flow: header user-link → person overview → scroll the gallery
-// → click each tab. Depends on the local API at :8000 and on Stephen
-// existing as the DEV_USER_EMAIL (default).
+// Read-only flow: the header avatar → their own person page → scroll the
+// gallery → click each tab. Depends on the local API at :8000 and on the
+// DEV_USER_EMAIL account being mapped to somebody in the archive.
 
 test.describe('Person page flow', () => {
   test('header user link navigates to the person overview page', async ({ page }) => {
     await page.goto('/')
-    await expect(page).toHaveURL(/\/gallery/)
 
-    // AppHeader fetches /api/admin/me and renders the user's known_as.
-    const userLink = page.getByRole('link', { name: 'Stephen' })
+    // The header shows the signed-in person as their own initial, so the
+    // label is what says whose page it goes to.
+    const userLink = page.getByRole('link', { name: 'Your page' })
     await expect(userLink).toBeVisible({ timeout: 15_000 })
     await userLink.click()
 
-    await expect(page).toHaveURL(/\/manage\/people\/[a-z0-9-]+\/overview/)
-    // Hero heading shows the person's display name.
-    await expect(page.getByRole('heading', { name: /Stephen/, level: 1 })).toBeVisible()
+    await expect(page).toHaveURL(/\/people\/[a-z0-9-]+\/overview/)
+    // The hero names whoever it is — not necessarily Stephen, since the
+    // account this runs as is configurable.
+    await expect(page.locator('main h1').first()).toBeVisible()
   })
 
   test('overview tab loads more gallery items as the user scrolls', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('link', { name: 'Stephen' }).click()
+    await page.getByRole('link', { name: 'Your page' }).click()
     await expect(page).toHaveURL(/\/overview$/)
 
     const items = page.getByTestId('gallery-item')
@@ -41,18 +42,18 @@ test.describe('Person page flow', () => {
 
   test.describe('tab navigation', () => {
     const tabs = [
+      ['Biography', /\/biography$/],
       ['Circles',   /\/circles$/],
       ['Timeline',  /\/timeline$/],
       ['Ancestry',  /\/ancestry$/],
       ['Scrapbook', /\/scrapbook$/],
       ['Travel',    /\/travel$/],
-      ['AI',        /\/ai$/],
     ]
 
     for (const [label, pattern] of tabs) {
       test(`navigates to ${label} tab and renders content`, async ({ page }) => {
         await page.goto('/')
-        await page.getByRole('link', { name: 'Stephen' }).click()
+        await page.getByRole('link', { name: 'Your page' }).click()
         await expect(page).toHaveURL(/\/overview$/)
 
         // Click the tab nav link, scoped to <main> so the sidebar's

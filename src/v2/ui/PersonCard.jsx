@@ -17,6 +17,10 @@ function PersonCardBase({ name, secondary, avatar, size = 54, onClick }) {
   return (
     <button
       type="button"
+      // A hook for the end-to-end tests: the toolbar's view toggles are
+      // buttons inside <main> too, and "the first button" found one of those
+      // rather than a person.
+      data-testid="person-card"
       onClick={onClick}
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',

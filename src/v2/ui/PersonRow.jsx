@@ -48,6 +48,7 @@ function PersonRowBase({ person, name, secondary, avatar, onClick }) {
   return (
     <button
       type="button"
+      data-testid="person-card"
       onClick={onClick}
       onMouseEnter={() => setLit(true)}
       onMouseLeave={() => setLit(false)}
