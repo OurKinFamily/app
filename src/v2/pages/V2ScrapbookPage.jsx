@@ -34,7 +34,7 @@ export function V2ScrapbookPage() {
       </p>
 
       <Link
-        to="/v2/people"
+        to="/people"
         style={{
           display: 'inline-flex', alignItems: 'center', height: 34, padding: '0 18px',
           borderRadius: 17, fontSize: 13, textDecoration: 'none',

@@ -58,7 +58,7 @@ export function V2GroupPage() {
   return (
     <div>
       <Link
-        to="/v2/groups"
+        to="/groups"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 3,
           fontSize: 12.5, color: C.muted, textDecoration: 'none',
@@ -94,7 +94,7 @@ export function V2GroupPage() {
               detail="The people stay; only the circle and who was in it go."
               align="right"
               onCancel={() => setConfirming(false)}
-              onConfirm={async () => { await group.remove(); navigate('/v2/groups') }}
+              onConfirm={async () => { await group.remove(); navigate('/groups') }}
             />
           )}
         </span>
@@ -164,7 +164,7 @@ export function V2GroupPage() {
           <Member
             key={member.id}
             member={member}
-            onOpen={() => navigate(`/v2/people/${member.id}`)}
+            onOpen={() => navigate(`/people/${member.id}`)}
             onRemove={() => group.removeMember(member.id)}
           />
         ))}

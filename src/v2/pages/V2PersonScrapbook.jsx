@@ -26,7 +26,7 @@ export function V2PersonScrapbook() {
   const [viewing, setViewing] = useState(null)
 
   const book = useScrapbook(person.id, collectionId)
-  const base = `/v2/people/${person.id}/scrapbook`
+  const base = `/people/${person.id}/scrapbook`
 
   if (book.loading) return <LoadingDots />
 

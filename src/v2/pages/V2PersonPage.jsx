@@ -47,7 +47,7 @@ export function V2PersonPage() {
     let alive = true
     getPerson(id)
       .then(p => { if (alive) setPerson(p) })
-      .catch(() => navigate('/v2/people'))
+      .catch(() => navigate('/people'))
     getRelatives(id)
       .then(r => { if (alive) setRelatives(r) })
       .catch(() => {})
@@ -79,7 +79,7 @@ export function V2PersonPage() {
 
   return (
     <div>
-      <button type="button" onClick={() => navigate('/v2/people')} style={backButton}>
+      <button type="button" onClick={() => navigate('/people')} style={backButton}>
         <ArrowLeft size={15} /> People
       </button>
 

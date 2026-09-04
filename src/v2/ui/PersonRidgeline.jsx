@@ -130,7 +130,7 @@ export function PersonRidgeline({ endpoint }) {
                 x={x}
                 minYear={minYear}
                 maxYear={maxYear}
-                onOpen={() => navigate(`/v2/people/${r.id}`)}
+                onOpen={() => navigate(`/people/${r.id}`)}
               />
             ))}
           </div>

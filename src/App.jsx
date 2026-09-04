@@ -1,39 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { RootLayout } from './components/RootLayout'
-import { MainLayout } from './components/MainLayout'
 import { ToastProvider } from './components/Toast'
-import { MeProvider, useMe, homePath } from './contexts/MeContext'
+import { MeProvider } from './contexts/MeContext'
 import { AdminOnly } from './components/AdminOnly'
 import { GalleryOnly } from './components/GalleryOnly'
 import { ViewerPreviewBadge } from './components/ViewerPreviewBadge'
-import { PeoplePage } from './pages/PeoplePage'
-import { BiographiesPage } from './pages/BiographiesPage'
-import { PersonPage } from './pages/PersonPage'
-import { PersonOverview } from './pages/PersonOverview'
-import { PersonBiography } from './pages/PersonBiography'
-import { PersonCircles } from './pages/PersonCircles'
-import { PersonTimeline } from './pages/PersonTimeline'
-import { PersonAncestry } from './pages/PersonAncestry'
-import { PersonScrapbook } from './pages/PersonScrapbook'
-import { PersonTravel } from './pages/PersonTravel'
-import { PersonAI } from './pages/PersonAI'
-import { UnassignedFacesPage } from './pages/UnassignedFacesPage'
-import { FaceSuggestionsPage } from './pages/FaceSuggestionsPage'
-import { AssignedFacesPage } from './pages/AssignedFacesPage'
-import { GroupsPage } from './pages/GroupsPage'
-import { GroupPage } from './pages/GroupPage'
-import { SimilarFacesPage } from './pages/SimilarFacesPage'
-import { JobsPage } from './pages/JobsPage'
-import { AdminOverviewPage } from './pages/AdminOverviewPage'
-import { FilesystemPage } from './pages/FilesystemPage'
-import { HealthPage } from './pages/HealthPage'
-import { MosaicPage } from './pages/MosaicPage'
-import { GalleryPage } from './pages/GalleryPage'
-import { UploadPage } from './pages/UploadPage'
-import { PlacesPage } from './pages/PlacesPage'
-import { ScrapbookPage } from './pages/ScrapbookPage'
-import { SuggestionsPage } from './pages/SuggestionsPage'
-import { DesignPage } from './pages/DesignPage'
 import { V2Layout } from './v2/layouts/V2Layout'
 import { V2GalleryPage } from './v2/pages/V2GalleryPage'
 import { V2FavoritesPage } from './v2/pages/V2FavoritesPage'
@@ -68,23 +39,39 @@ import { V2GroupPage } from './v2/pages/V2GroupPage'
 import { V2ScrapbookPage } from './v2/pages/V2ScrapbookPage'
 import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
 import { V2GridDemoPage } from './v2/pages/V2GridDemoPage'
-import { LightboxPage } from './pages/LightboxPage'
-import { AlbumsPage } from './pages/AlbumsPage'
-import { AlbumPage } from './pages/AlbumPage'
-import { FavoritesPage } from './pages/FavoritesPage'
-import { FamilyPage } from './pages/FamilyPage'
-import { SearchPage } from './pages/SearchPage'
 import { HomePage } from './pages/HomePage'
 import { MomChildhoodHomePage } from './pages/MomChildhoodHomePage'
 import { GrandmaBeforeMomPage } from './pages/GrandmaBeforeMomPage'
 import './index.css'
 
-// "/" and the header "OK" logo both land here, then bounce to the right home for
-// the user: the gallery for owner+Cayce, their own person page for family.
-function LandingRedirect() {
-  const { me, loading } = useMe()
-  if (loading) return null
-  return <Navigate to={homePath(me)} replace />
+/**
+ * Paths that used to mean something else.
+ *
+ * The reskin took the root, so /gallery is now / and /manage/people is now
+ * /people. None of these are allowed to 404: they are in bookmarks, in the
+ * browser history of everybody who has used this, and in two years of notes.
+ */
+const MOVED = [
+  ['/gallery', '/'],
+  ['/gallery/:year', '/'],
+  ['/manage', '/faces/suggestions'],
+  ['/manage/people', '/people'],
+  ['/manage/faces', '/faces/suggestions'],
+  ['/admin/filesystem', '/admin/analytics'],
+]
+
+/**
+ * Whatever is left of an old path, carried over to the new one.
+ *
+ * Catches the shapes a list cannot spell out — anything at all under /v2, and
+ * the ids under /gallery and /manage. A person bookmarked as
+ * /manage/people/abc/timeline lands on /people/abc/timeline rather than on a
+ * shrug.
+ */
+function Moved({ strip }) {
+  const { pathname, search } = useLocation()
+  const rest = pathname.slice(strip.length) || '/'
+  return <Navigate to={`${rest}${search}`} replace />
 }
 
 export default function App() {
@@ -94,129 +81,79 @@ export default function App() {
         <ToastProvider>
           <Routes>
             <Route element={<RootLayout />}>
-              {/* v2 reskin — deliberately OUTSIDE MainLayout, so it inherits no
-                  header, sidebar, or bottom bar. A clean surface to design on.
-                  Admin-only so family don't wander into half-built pages. */}
-              <Route element={<AdminOnly />}>
-                <Route element={<V2Layout />}>
-                  <Route path="/v2" element={<V2GalleryPage />}>
-                    <Route path="photo/*" element={null} />
-                  </Route>
-                  <Route path="/v2/favorites" element={<V2FavoritesPage />}>
-                    <Route path="photo/*" element={null} />
-                  </Route>
-                  <Route path="/v2/design/components" element={<V2ComponentsPage />} />
-                  <Route path="/v2/design/grid" element={<V2GridDemoPage />} />
+              {/* The napkin POCs for the home-page vision. Full-bleed pages that bring
+                  their own colour and chrome, so they hang off the root rather than
+                  sitting inside the shell. */}
+              <Route path="/home" element={<HomePage />} />
+              <Route path="/home/mom-childhood" element={<MomChildhoodHomePage />} />
+              <Route path="/home/grandma-before-mom" element={<GrandmaBeforeMomPage />} />
 
-                  {/* Not reskinned yet. Rather than a rail full of dead links,
-                      each of these serves its v1 page inside the v2 shell —
-                      the old page in the new frame. They look like what they
-                      are: v1 styling on a light background, replaced one at a
-                      time as each gets its own v2 pass. */}
-                  <Route path="/v2/albums" element={<V2AlbumsPage />} />
-                  <Route path="/v2/albums/:id" element={<V2AlbumPage />}>
-                    <Route path="photo/*" element={null} />
-                  </Route>
-                  <Route path="/v2/people" element={<V2PeoplePage />} />
-
-                  {/* One person. The shell is v2; the tabs are still v1, each
-                      inside a panel that keeps the dark ground they were drawn
-                      for. They come out of it one at a time. */}
-                  <Route path="/v2/people/:id" element={<V2PersonPage />}>
-                    <Route index element={<Navigate to="overview" replace />} />
-                    <Route path="overview" element={<V2PersonOverview />} />
-                    <Route path="biography" element={<V2PersonBiography />} />
-                    <Route path="circles" element={<V2PersonCircles />} />
-                    <Route path="timeline" element={<V2PersonTimeline />} />
-                    <Route path="ancestry" element={<V2PersonAncestry />} />
-                    <Route path="scrapbook" element={<V2PersonScrapbook />} />
-                    <Route path="scrapbook/:collectionId" element={<V2PersonScrapbook />} />
-                    <Route path="travel" element={<V2PersonTravel />} />
-                  </Route>
-                  <Route path="/v2/places" element={<V2PlacesPage />} />
-                  <Route path="/v2/family" element={<V2FamilyPage />} />
-                  <Route path="/v2/biographies" element={<V2BiographiesPage />} />
-                  <Route path="/v2/scrapbook" element={<V2ScrapbookPage />} />
-                  <Route path="/v2/search" element={<V2SearchPage />} />
-                  <Route path="/v2/upload" element={<V2UploadPage />} />
-                  <Route path="/v2/faces/suggestions" element={<V2FaceSuggestions />} />
-                  <Route path="/v2/faces/unassigned" element={<V2UnassignedFaces />} />
-                  <Route path="/v2/faces/assigned" element={<V2AssignedFaces />} />
-                  <Route path="/v2/faces/similar" element={<V2SimilarFaces />} />
-                  <Route path="/v2/groups" element={<V2GroupsPage />} />
-                  <Route path="/v2/groups/:id" element={<V2GroupPage />} />
-                  <Route path="/v2/suggestions" element={<V2SuggestionsPage />} />
-                  <Route path="/v2/admin/overview" element={<V2OverviewPage />} />
-                  <Route path="/v2/admin/analytics" element={<V2AnalyticsPage />} />
-                  <Route path="/v2/admin/health" element={<V2HealthPage />} />
-                  <Route path="/v2/admin/mosaic" element={<V2MosaicPage />} />
-                  <Route path="/v2/admin/jobs" element={<V2JobsPage />} />
+              <Route element={<V2Layout />}>
+                {/* Open to everybody signed in: the people, what has been written about
+                    them, and the collections somebody made on purpose. */}
+                <Route path="/people" element={<V2PeoplePage />} />
+                <Route path="/people/:id" element={<V2PersonPage />}>
+                  <Route index element={<Navigate to="overview" replace />} />
+                  <Route path="overview" element={<V2PersonOverview />} />
+                  <Route path="biography" element={<V2PersonBiography />} />
+                  <Route path="circles" element={<V2PersonCircles />} />
+                  <Route path="timeline" element={<V2PersonTimeline />} />
+                  <Route path="ancestry" element={<V2PersonAncestry />} />
+                  <Route path="scrapbook" element={<V2PersonScrapbook />} />
+                  <Route path="scrapbook/:collectionId" element={<V2PersonScrapbook />} />
+                  <Route path="travel" element={<V2PersonTravel />} />
                 </Route>
-              </Route>
+                <Route path="/biographies" element={<V2BiographiesPage />} />
+                <Route path="/scrapbook" element={<V2ScrapbookPage />} />
+                <Route path="/family" element={<V2FamilyPage />} />
+                <Route path="/albums" element={<V2AlbumsPage />} />
+                <Route path="/albums/:id" element={<V2AlbumPage />}>
+                  <Route path="photo/*" element={null} />
+                </Route>
+                <Route path="/favorites" element={<V2FavoritesPage />}>
+                  <Route path="photo/*" element={null} />
+                </Route>
+                <Route path="/search" element={<V2SearchPage />} />
 
-              <Route element={<MainLayout />}>
-                {/* "/" goes back to /gallery as the default landing. The home-page
-                    napkin POC + its demo rooms still live at /home/* for when we
-                    pick the vision work back up. */}
-                <Route path="/" element={<LandingRedirect />} />
-                <Route path="/home" element={<HomePage />} />
-                <Route path="/home/mom-childhood" element={<MomChildhoodHomePage />} />
-                <Route path="/home/grandma-before-mom" element={<GrandmaBeforeMomPage />} />
-
-                <Route path="/search" element={<SearchPage />} />
-
-                {/* The full photo gallery + places are owner+Cayce only. */}
+                {/* The whole archive at once, and the ways into it. Owner and Cayce
+                    only — everybody else is shown the people they know rather than
+                    150,000 unsorted files. */}
                 <Route element={<GalleryOnly />}>
-                  <Route path="/gallery" element={<GalleryPage />}>
-                    <Route path="photo/*" element={<LightboxPage />} />
+                  <Route path="/" element={<V2GalleryPage />}>
+                    <Route path="photo/*" element={null} />
                   </Route>
-                  <Route path="/gallery/:year" element={<GalleryPage />}>
-                    <Route path="photo/*" element={<LightboxPage />} />
-                  </Route>
-                  <Route path="/gallery/places" element={<PlacesPage />} />
-                  <Route path="/upload" element={<UploadPage />} />
+                  <Route path="/places" element={<V2PlacesPage />} />
+                  <Route path="/upload" element={<V2UploadPage />} />
                 </Route>
-                <Route path="/gallery/people" element={<PeoplePage />} />
-                <Route path="/gallery/biographies" element={<BiographiesPage />} />
-                <Route path="/gallery/scrapbook" element={<ScrapbookPage />} />
-                <Route path="/gallery/albums" element={<AlbumsPage />} />
-                <Route path="/gallery/albums/:id" element={<AlbumPage />} />
-                <Route path="/gallery/favorites" element={<FavoritesPage />} />
-                <Route path="/gallery/family" element={<FamilyPage />} />
 
-                {/* Admin-only routes — redirect to /gallery when not admin */}
+                {/* Back of house: the work of turning a pile of files into an archive.
+                    Nothing here is for a family member. */}
                 <Route element={<AdminOnly />}>
-                  <Route path="/design" element={<DesignPage />} />
-                  <Route path="/manage" element={<Navigate to="/manage/faces/unassigned" replace />} />
-                  <Route path="/manage/people" element={<Navigate to="/gallery/people" replace />} />
-                  <Route path="/manage/faces" element={<Navigate to="/manage/faces/suggestions" replace />} />
-                  <Route path="/manage/faces/suggestions" element={<FaceSuggestionsPage />} />
-                  <Route path="/manage/faces/unassigned" element={<UnassignedFacesPage />} />
-                  <Route path="/manage/faces/assigned" element={<AssignedFacesPage />} />
-                  <Route path="/manage/faces/similar" element={<SimilarFacesPage />} />
-                  <Route path="/manage/groups" element={<GroupsPage />} />
-                  <Route path="/manage/groups/:id" element={<GroupPage />} />
-                  <Route path="/manage/suggestions" element={<SuggestionsPage />} />
+                  <Route path="/faces/suggestions" element={<V2FaceSuggestions />} />
+                  <Route path="/faces/unassigned" element={<V2UnassignedFaces />} />
+                  <Route path="/faces/assigned" element={<V2AssignedFaces />} />
+                  <Route path="/faces/similar" element={<V2SimilarFaces />} />
+                  <Route path="/groups" element={<V2GroupsPage />} />
+                  <Route path="/groups/:id" element={<V2GroupPage />} />
+                  <Route path="/suggestions" element={<V2SuggestionsPage />} />
                   <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
-                  <Route path="/admin/overview" element={<AdminOverviewPage />} />
-                  <Route path="/admin/filesystem" element={<FilesystemPage />} />
-                  <Route path="/admin/health" element={<HealthPage />} />
-                  <Route path="/admin/mosaic" element={<MosaicPage />} />
-                  <Route path="/admin/jobs" element={<JobsPage />} />
+                  <Route path="/admin/overview" element={<V2OverviewPage />} />
+                  <Route path="/admin/analytics" element={<V2AnalyticsPage />} />
+                  <Route path="/admin/health" element={<V2HealthPage />} />
+                  <Route path="/admin/mosaic" element={<V2MosaicPage />} />
+                  <Route path="/admin/jobs" element={<V2JobsPage />} />
+                  <Route path="/design" element={<Navigate to="/design/components" replace />} />
+                  <Route path="/design/components" element={<V2ComponentsPage />} />
+                  <Route path="/design/grid" element={<V2GridDemoPage />} />
                 </Route>
 
-                <Route path="/manage/people/:id" element={<PersonPage />}>
-                  <Route index            element={<Navigate to="overview" replace />} />
-                  <Route path="overview"  element={<PersonOverview />} />
-                  <Route path="biography" element={<PersonBiography />} />
-                  <Route path="circles"   element={<PersonCircles />} />
-                  <Route path="timeline"  element={<PersonTimeline />} />
-                  <Route path="ancestry"  element={<PersonAncestry />} />
-                  <Route path="scrapbook" element={<PersonScrapbook />} />
-                  <Route path="scrapbook/:collectionId" element={<PersonScrapbook />} />
-                  <Route path="travel"    element={<PersonTravel />} />
-                  <Route path="ai"        element={<PersonAI />} />
-                </Route>
+                {/* Where the app used to live. */}
+                {MOVED.map(([from, to]) => (
+                  <Route key={from} path={from} element={<Navigate to={to} replace />} />
+                ))}
+                <Route path="/v2/*" element={<Moved strip="/v2" />} />
+                <Route path="/gallery/*" element={<Moved strip="/gallery" />} />
+                <Route path="/manage/*" element={<Moved strip="/manage" />} />
               </Route>
             </Route>
           </Routes>

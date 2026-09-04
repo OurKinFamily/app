@@ -75,7 +75,7 @@ export function V2BiographiesPage() {
               coverAlt=""
               icon={BookOpen}
               stacked={false}
-              onClick={() => navigate(`/v2/people/${p.id}/biography`)}
+              onClick={() => navigate(`/people/${p.id}/biography`)}
             >
               {isAdmin && (
                 <CollectionCard.Actions>

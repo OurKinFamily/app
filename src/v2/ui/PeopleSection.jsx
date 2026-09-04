@@ -42,7 +42,7 @@ export function PeopleSection({
             >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Link
-              to={p.id ? `/v2/people/${p.id}` : '#'}
+              to={p.id ? `/people/${p.id}` : '#'}
               // The face in front of you is one moment of a person; the page
               // behind the name is the rest of them. Not wrapping the crop
               // too: clicking a face means "who is this", which the pencil

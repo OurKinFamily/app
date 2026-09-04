@@ -81,7 +81,7 @@ export function V2AlbumsPage() {
               cover={a.cover_path ? mediumUrl(a.cover_path) : null}
               coverAlt=""
               icon={a.is_private ? Lock : Album}
-              onClick={() => navigate(`/v2/albums/${a.id}`)}
+              onClick={() => navigate(`/albums/${a.id}`)}
             />
           ))}
         </div>
@@ -90,7 +90,7 @@ export function V2AlbumsPage() {
       {creating && (
         <NewAlbumDialog
           onClose={() => setCreating(false)}
-          onCreated={id => { load(); navigate(`/v2/albums/${id}`) }}
+          onCreated={id => { load(); navigate(`/albums/${id}`) }}
         />
       )}
     </div>

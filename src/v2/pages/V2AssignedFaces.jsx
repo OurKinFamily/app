@@ -162,7 +162,7 @@ function ClusterFaces({ cluster }) {
         </div>
         {cluster.person_id && (
           <Link
-            to={`/v2/people/${cluster.person_id}`}
+            to={`/people/${cluster.person_id}`}
             style={{ fontSize: 12.5, color: C.activeText, textDecoration: 'none' }}
           >
             Their page →

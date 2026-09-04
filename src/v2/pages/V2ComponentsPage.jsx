@@ -211,7 +211,7 @@ export function V2ComponentsPage() {
               squeezed in here."
       >
         <Link
-          to="/v2/design/grid"
+          to="/design/grid"
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             height: 40, padding: '0 20px', borderRadius: 20,

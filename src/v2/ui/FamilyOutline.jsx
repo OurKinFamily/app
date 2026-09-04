@@ -218,7 +218,7 @@ function PersonPill({ person, canEdit, onAdd, onRemove, fixedWidth = true }) {
     }}>
       <button
         type="button"
-        onClick={() => !person.isSelf && navigate(`/v2/people/${person.id}/ancestry`)}
+        onClick={() => !person.isSelf && navigate(`/people/${person.id}/ancestry`)}
         title={person.isSelf ? undefined : `Open ${displayName(person)}`}
         style={{
           display: 'flex', alignItems: 'center', gap: 8,

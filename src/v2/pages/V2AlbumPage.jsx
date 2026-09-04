@@ -38,7 +38,7 @@ export function V2AlbumPage() {
   const [patched, setPatched] = useState({})
   const { favs: favorites, toggle: toggleFavorite } = useFavorites()
 
-  const basePath = `/v2/albums/${id}`
+  const basePath = `/albums/${id}`
   const match = useMatch(`${basePath}/photo/*`)
   const openPath = match?.params['*'] || null
 
@@ -120,14 +120,14 @@ export function V2AlbumPage() {
 
   async function removeAlbum() {
     await fetch(`/api/albums/${id}`, { method: 'DELETE' })
-    navigate('/v2/albums')
+    navigate('/albums')
   }
 
   if (missing) {
     return (
       <div style={{ padding: '48px 0', textAlign: 'center', color: C.muted }}>
         <p style={{ fontSize: 14 }}>That album is not here.</p>
-        <button type="button" onClick={() => navigate('/v2/albums')} style={linkButton}>
+        <button type="button" onClick={() => navigate('/albums')} style={linkButton}>
           Back to albums
         </button>
       </div>
@@ -138,7 +138,7 @@ export function V2AlbumPage() {
 
   return (
     <div>
-      <button type="button" onClick={() => navigate('/v2/albums')} style={backButton}>
+      <button type="button" onClick={() => navigate('/albums')} style={backButton}>
         <ArrowLeft size={15} /> Albums
       </button>
 

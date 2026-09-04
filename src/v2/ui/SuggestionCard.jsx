@@ -172,7 +172,7 @@ export function AncestryGapCard({ suggestion: s, onDone }) {
         {s.person?.name || 'Somebody'} — nobody recorded before them
       </span>
       <Link
-        to={`/v2/people/${s.person_id}/ancestry`}
+        to={`/people/${s.person_id}/ancestry`}
         onClick={async () => {
           await fetch(`/api/suggestions/${s.id}/accept`, { method: 'POST' })
           onDone(s.id)

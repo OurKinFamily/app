@@ -144,7 +144,7 @@ function Lanes({ rows, stack, hovered, onHover }) {
               onMouseLeave={() => onHover(null)}
               onFocus={() => onHover(row.id)}
               onBlur={() => onHover(null)}
-              onClick={() => alone && navigate(`/v2/people/${people[0].id}`)}
+              onClick={() => alone && navigate(`/people/${people[0].id}`)}
               title={`${people.map(displayName).join(', ')} · ${row.photo_count.toLocaleString()} photos · ${start}–${end}`}
               style={{
                 position: 'absolute',

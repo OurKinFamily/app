@@ -64,7 +64,7 @@ export const useIsAdmin = () => useContext(MeContext).isAdmin
 // family members land on their own person page (or the People list if their
 // email isn't mapped to a person yet).
 export function homePath(me) {
-  if (me?.can_see_gallery) return '/gallery'
-  if (me?.person?.id) return `/manage/people/${me.person.id}/overview`
-  return '/gallery/people'
+  if (me?.can_see_gallery) return '/'
+  if (me?.person?.id) return `/people/${me.person.id}/overview`
+  return '/people'
 }

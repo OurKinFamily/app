@@ -53,7 +53,7 @@ export function V2GridDemoPage() {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0 4px' }}>
         <Link
-          to="/v2/design/components"
+          to="/design/components"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
                    color: C.muted, textDecoration: 'none', fontSize: 13 }}
         >

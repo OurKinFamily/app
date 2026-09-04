@@ -67,7 +67,7 @@ export function V2PersonCircles() {
         )}
 
         {groups.map(g => (
-          <Link key={g.id} to={`/v2/groups/${g.id}`} style={card}>
+          <Link key={g.id} to={`/groups/${g.id}`} style={card}>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: 'block', fontSize: 13.5, color: C.text }}>
                 {g.name}
@@ -110,7 +110,7 @@ export function V2PersonCircles() {
             key={c.id}
             person={c}
             canEdit={isAdmin}
-            onOpen={() => navigate(`/v2/people/${c.id}`)}
+            onOpen={() => navigate(`/people/${c.id}`)}
             onRemove={() => disconnect(c.id)}
           />
         ))}

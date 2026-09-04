@@ -184,7 +184,7 @@ export function V2SimilarFaces() {
               </div>
             </div>
             {person && (
-              <Link to={`/v2/people/${person.id}`} style={linkish}>Their page →</Link>
+              <Link to={`/people/${person.id}`} style={linkish}>Their page →</Link>
             )}
             <div style={{ width: 200 }}>
               <PersonSearch

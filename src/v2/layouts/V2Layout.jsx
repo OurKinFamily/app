@@ -18,19 +18,19 @@ import { useMe } from '../../contexts/MeContext'
 const NAV = [
   {
     items: [
-      { to: '/v2', label: 'Gallery', icon: Images, end: true },
-      { to: '/v2/albums', label: 'Albums', icon: Album },
-      { to: '/v2/favorites', label: 'Favourites', icon: Star },
+      { to: '/', label: 'Gallery', icon: Images, end: true },
+      { to: '/albums', label: 'Albums', icon: Album },
+      { to: '/favorites', label: 'Favourites', icon: Star },
     ],
   },
   {
     heading: 'People & places',
     items: [
-      { to: '/v2/people', label: 'People', icon: Users },
-      { to: '/v2/places', label: 'Places', icon: MapPin },
-      { to: '/v2/family', label: 'Family tree', icon: Trees },
-      { to: '/v2/biographies', label: 'Biographies', icon: BookOpen },
-      { to: '/v2/scrapbook', label: 'Scrapbook', icon: Notebook },
+      { to: '/people', label: 'People', icon: Users },
+      { to: '/places', label: 'Places', icon: MapPin },
+      { to: '/family', label: 'Family tree', icon: Trees },
+      { to: '/biographies', label: 'Biographies', icon: BookOpen },
+      { to: '/scrapbook', label: 'Scrapbook', icon: Notebook },
     ],
   },
   {
@@ -38,31 +38,31 @@ const NAV = [
     // pile of files into an archive.
     heading: 'Manage',
     items: [
-      { to: '/v2/faces/suggestions', label: 'Face suggestions', icon: Wand2 },
-      { to: '/v2/faces/unassigned', label: 'Unassigned faces', icon: UserPlus },
-      { to: '/v2/faces/assigned', label: 'Assigned faces', icon: UserCheck },
-      { to: '/v2/groups', label: 'Groups', icon: Users2 },
-      { to: '/v2/suggestions', label: 'Suggestions', icon: Sparkles },
+      { to: '/faces/suggestions', label: 'Face suggestions', icon: Wand2 },
+      { to: '/faces/unassigned', label: 'Unassigned faces', icon: UserPlus },
+      { to: '/faces/assigned', label: 'Assigned faces', icon: UserCheck },
+      { to: '/groups', label: 'Groups', icon: Users2 },
+      { to: '/suggestions', label: 'Suggestions', icon: Sparkles },
     ],
   },
   {
     heading: 'Admin',
     items: [
-      { to: '/v2/admin/analytics', label: 'Analytics', icon: LayoutDashboard },
-      { to: '/v2/admin/health', label: 'Health', icon: Activity },
+      { to: '/admin/analytics', label: 'Analytics', icon: LayoutDashboard },
+      { to: '/admin/health', label: 'Health', icon: Activity },
       // The deep one: what every processor has and has not touched, per
       // directory. Only as current as the last Archive Report run, which is
       // why it sits next to Jobs.
-      { to: '/v2/admin/overview', label: 'Archive report', icon: ClipboardList },
-      { to: '/v2/admin/jobs', label: 'Jobs', icon: Play },
-      { to: '/v2/admin/mosaic', label: 'Mosaic', icon: Palette },
+      { to: '/admin/overview', label: 'Archive report', icon: ClipboardList },
+      { to: '/admin/jobs', label: 'Jobs', icon: Play },
+      { to: '/admin/mosaic', label: 'Mosaic', icon: Palette },
     ],
   },
   {
     // Bottom of the rail: the style guide is for us, not for family.
     heading: 'Design',
     items: [
-      { to: '/v2/design/components', label: 'Components', icon: Palette },
+      { to: '/design/components', label: 'Components', icon: Palette },
     ],
   },
 ]
@@ -158,7 +158,7 @@ export function V2Layout() {
             // year — not a prefix.
             onKeyDown={e => {
               if (e.key !== 'Enter' || !query.trim()) return
-              navigate(`/v2/search?q=${encodeURIComponent(query.trim())}`)
+              navigate(`/search?q=${encodeURIComponent(query.trim())}`)
             }}
             placeholder="Search your archive"
             style={{
@@ -174,7 +174,7 @@ export function V2Layout() {
             a place you navigate to — so it sits in the header rather than the
             rail, beside the account it belongs to. */}
         <Link
-          to="/v2/upload"
+          to="/upload"
           aria-label="Add photographs"
           title="Add photographs"
           style={{
@@ -189,7 +189,7 @@ export function V2Layout() {
             IS somebody in the archive, so the avatar goes where their photos,
             their family and their story are — not to a preferences panel. */}
         <Link
-          to={viewerPersonId ? `/v2/people/${viewerPersonId}` : '/v2/people'}
+          to={viewerPersonId ? `/people/${viewerPersonId}` : '/people'}
           aria-label="Your page"
           title="Your page"
           style={{

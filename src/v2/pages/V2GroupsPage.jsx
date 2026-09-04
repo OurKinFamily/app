@@ -100,7 +100,7 @@ export function V2GroupsPage() {
             gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
           }}>
             {kind.groups.map(g => (
-              <GroupRow key={g.id} group={g} onOpen={() => navigate(`/v2/groups/${g.id}`)} />
+              <GroupRow key={g.id} group={g} onOpen={() => navigate(`/groups/${g.id}`)} />
             ))}
           </div>
         </section>
@@ -109,7 +109,7 @@ export function V2GroupsPage() {
       {creating && (
         <NewGroupDialog
           onClose={() => setCreating(false)}
-          onCreated={id => { setCreating(false); load(); navigate(`/v2/groups/${id}`) }}
+          onCreated={id => { setCreating(false); load(); navigate(`/groups/${id}`) }}
         />
       )}
     </div>

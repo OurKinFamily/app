@@ -145,7 +145,7 @@ export function PersonPhotos({ personId }) {
           </button>
         )}
         <Link
-          to={`/v2/faces/similar?person_id=${personId}`}
+          to={`/faces/similar?person_id=${personId}`}
           title="Look for more of them across the archive"
           style={{ fontSize: 12.5, color: C.activeText, textDecoration: 'none' }}
         >

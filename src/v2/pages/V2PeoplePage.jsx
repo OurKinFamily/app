@@ -132,7 +132,7 @@ export function V2PeoplePage() {
               name={displayName(p)}
               secondary={personSubtitle(p)}
               avatar={p.avatar ? mediaUrl(p.avatar) : null}
-              onClick={() => navigate(`/v2/people/${p.id}`)}
+              onClick={() => navigate(`/people/${p.id}`)}
             />
           ))}
         </div>
@@ -148,7 +148,7 @@ export function V2PeoplePage() {
               name={displayName(p)}
               secondary={personSubtitle(p)}
               avatar={p.avatar ? mediaUrl(p.avatar) : null}
-              onClick={() => navigate(`/v2/people/${p.id}`)}
+              onClick={() => navigate(`/people/${p.id}`)}
             />
           ))}
         </div>
@@ -157,7 +157,7 @@ export function V2PeoplePage() {
       {adding && (
         <AddPersonModal
           onClose={() => setAdding(false)}
-          onCreated={person => navigate(`/v2/people/${person.id}`)}
+          onCreated={person => navigate(`/people/${person.id}`)}
         />
       )}
     </div>

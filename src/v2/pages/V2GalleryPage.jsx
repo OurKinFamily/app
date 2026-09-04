@@ -44,7 +44,7 @@ export function V2GalleryPage({
   showUndated = true,
   emptyMessage,
   // Where this view lives, so the open photograph can have an address.
-  basePath = '/v2',
+  basePath = '/',
 }) {
   const [buckets, setBuckets] = useState(null)
   const [undated, setUndated] = useState([])
