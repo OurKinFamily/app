@@ -3,6 +3,15 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { MediaDetail } from '../../../src/ui/MediaDetail'
 
+// The editing controls are hidden wherever the archive cannot be written to —
+// the deployed containers mount /photos read-only. This test is about what
+// Crop does once pressed, so it says plainly that editing is allowed here.
+vi.mock('../../../src/contexts/MeContext', () => ({
+  useCanEditMedia: () => true,
+  useMe: () => ({ isAdmin: true, canEditMedia: true, me: null, loading: false }),
+  useIsAdmin: () => true,
+}))
+
 const item = {
   path: 'archive/2026/x.jpg', url: '/api/media/archive/2026/x.jpg',
   thumbnail_url: '/t.webp', filename: 'x.jpg', width: 900, height: 900,

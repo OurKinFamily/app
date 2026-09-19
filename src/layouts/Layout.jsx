@@ -116,12 +116,19 @@ function NavItem({ to, label, icon: Icon, end }) {
 export function Layout() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
-  const { viewerPersonId, me, isAdmin } = useMe()
+  const { viewerPersonId, me, isAdmin, canEditMedia } = useMe()
   // What this person is allowed to reach, so the rail shows only that. It
   // mirrors the route guards rather than reimplementing them: anything hidden
   // here would have bounced them anyway.
   const canSeeGallery = !!me?.can_see_gallery
-  const allowed = need => (need === 'admin' ? isAdmin : need === 'gallery' ? canSeeGallery : true)
+  const allowed = need => (
+    need === 'admin' ? isAdmin
+      : need === 'gallery' ? canSeeGallery
+        // Writing to the archive at all. False on the deployed containers,
+        // where /photos is mounted read-only.
+        : need === 'edit' ? canSeeGallery && canEditMedia
+          : true
+  )
   const visibleNav = NAV
     .filter(group => allowed(group.needs))
     .map(group => ({ ...group, items: group.items.filter(item => allowed(item.needs)) }))
@@ -198,7 +205,7 @@ export function Layout() {
         {/* Only for whoever can add to the archive. An upload button that
             bounces a family member somewhere else reads as a broken app
             rather than as one that was never theirs to add to. */}
-        {canSeeGallery && (
+        {canSeeGallery && canEditMedia && (
           <Link
             to="/upload"
             aria-label="Add photographs"

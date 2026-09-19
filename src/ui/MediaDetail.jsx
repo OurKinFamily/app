@@ -12,6 +12,7 @@ import { useEditFlow } from '../lib/useEditFlow'
 import { applyCrop } from '../lib/applyCrop'
 import { useRestoreFlow } from '../lib/useRestoreFlow'
 import { facesFrom } from '../lib/facesFrom'
+import { useCanEditMedia } from '../contexts/MeContext'
 import { useLightboxKeys } from '../lib/useLightboxKeys'
 import { useScrollLock } from '../lib/useScrollLock'
 import { DetailToolbar } from './DetailToolbar'
@@ -67,6 +68,7 @@ export function MediaDetail({
   hasNext = false,
 }) {
   const wide = useIsWide()
+  const canEdit = useCanEditMedia()
   // Open by default: in a family archive the facts are half the point, and
   // hiding them behind a button means they are rarely looked at.
   const [showInfo, setShowInfo] = useState(true)
@@ -114,6 +116,21 @@ export function MediaDetail({
   useScrollLock()
 
   if (!item) return null
+
+  // The actions that rewrite the file, plus delete, which moves it. Withheld
+  // rather than disabled where the archive cannot be written to: the deployed
+  // containers mount /photos read-only, and a greyed-out row of controls
+  // invites the question "why" whose answer is a mount flag nobody should have
+  // to know about. Favouriting, albums, dates and descriptions all live in the
+  // graph, so they stay.
+  const edits = canEdit ? {
+    rotate: onRotate,
+    startCrop: () => { setCrop(true); setBox(DEFAULT_BOX); setAngle(0) },
+    restore: onRestorePreview && restore.start,
+    tone: onTone && tone.open,
+    crop: onCrop,
+    remove: onDelete,
+  } : {}
 
   return (
     <div
@@ -166,13 +183,13 @@ export function MediaDetail({
             onClose={onClose}
             onToggleFavourite={onToggleFavourite}
             onAddToAlbum={onAddToAlbum}
-            onRotate={onRotate}
-            onStartCrop={() => { setCrop(true); setBox(DEFAULT_BOX); setAngle(0) }}
-            onRestore={onRestorePreview && restore.start}
-            onTone={onTone && tone.open}
-            onCrop={onCrop}
+            onRotate={edits.rotate}
+            onStartCrop={edits.startCrop}
+            onRestore={edits.restore}
+            onTone={edits.tone}
+            onCrop={edits.crop}
             onDownload={onDownload}
-            onDelete={onDelete}
+            onDelete={edits.remove}
             onConfirmDelete={setConfirmDelete}
             onToggleInfo={() => { setShowInfo(v => !v); onShowInfo?.(item) }}
           />
