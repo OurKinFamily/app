@@ -53,7 +53,6 @@ export default defineConfig({
         // Listed one by one rather than excluding src/lib wholesale, so the
         // 100% gate still means something for everything above and this list
         // is a backlog that shrinks. Delete a line when its tests land.
-        'src/lib/useAnalytics.js',
         'src/lib/useBulkActions.js',
         'src/lib/useClusterAssign.js',
         'src/lib/useClusterQueue.js',
@@ -61,7 +60,6 @@ export default defineConfig({
         'src/lib/useFaceReview.js',
         'src/lib/useFamilyOutline.js',
         'src/lib/useMediaActions.js',
-        'src/lib/useMosaic.js',
         'src/lib/useRestoreFlow.js',
         'src/lib/useScrapbook.js',
       ],
