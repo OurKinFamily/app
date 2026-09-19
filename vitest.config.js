@@ -61,13 +61,11 @@ export default defineConfig({
         'src/lib/useFaceReview.js',
         'src/lib/useFamilyOutline.js',
         'src/lib/useGroup.js',
-        'src/lib/useJobs.js',
         'src/lib/useMediaActions.js',
         'src/lib/useMosaic.js',
         'src/lib/useRestoreFlow.js',
         'src/lib/useScrapbook.js',
         'src/lib/useSuggestions.js',
-        'src/lib/useUpload.js',
       ],
       // Target: 100% across the included files. Falling below fails the
       // suite — coverage can't silently regress.

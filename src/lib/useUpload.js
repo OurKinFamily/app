@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getUploadStatus, uploadMedia } from '../lib/upload'
 import { useToast } from '../components/Toast'
 
@@ -38,7 +38,16 @@ export function useUpload() {
 
   // Previews are object URLs; the browser holds the whole file behind each one
   // until it is revoked, and a batch of four hundred photographs is gigabytes.
-  useEffect(() => () => picked.forEach(p => URL.revokeObjectURL(p.url)), [picked])
+  //
+  // Only on the way out. Written with `picked` as a dependency this ran its
+  // cleanup on every change to the list, so choosing a second batch revoked
+  // the first batch's previews while they were still on screen and their
+  // thumbnails went blank. Taking a file back off, clearing, and sending all
+  // revoke what they drop; this is for whatever is still held when the page
+  // goes.
+  const held = useRef([])
+  useEffect(() => { held.current = picked }, [picked])
+  useEffect(() => () => held.current.forEach(p => URL.revokeObjectURL(p.url)), [])
 
   useEffect(() => {
     if (!job || job.status === 'done') return
