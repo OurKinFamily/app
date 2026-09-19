@@ -53,13 +53,7 @@ export default defineConfig({
         // Listed one by one rather than excluding src/lib wholesale, so the
         // 100% gate still means something for everything above and this list
         // is a backlog that shrinks. Delete a line when its tests land.
-        'src/lib/applyCrop.js',
-        'src/lib/circleTypes.js',
-        'src/lib/facesFrom.js',
-        'src/lib/formatDate.js',
-        'src/lib/lifespan.js',
         'src/lib/modalButton.js',
-        'src/lib/peopleSort.js',
         'src/lib/useAnalytics.js',
         'src/lib/useArchiveReport.js',
         'src/lib/useBulkActions.js',
