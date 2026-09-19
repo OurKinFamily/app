@@ -97,7 +97,11 @@ describe('AvatarPicker', () => {
       mockFetch(faces)
       const { container } = renderPicker()
       await waitFor(() => expect(container.querySelectorAll('img').length).toBe(60))
-      expect(created.length).toBeGreaterThan(0)
+      // Awaited, not asserted on the spot. The observer is attached by an
+      // effect that runs after the faces land, so checking it the instant the
+      // sixtieth image appears is a race — one this lost on CI while passing
+      // locally.
+      await waitFor(() => expect(created.length).toBeGreaterThan(0))
     })
 
     it('shows the rest once the end comes into view', async () => {
@@ -105,6 +109,7 @@ describe('AvatarPicker', () => {
       mockFetch(faces)
       const { container } = renderPicker()
       await waitFor(() => expect(container.querySelectorAll('img').length).toBe(60))
+      await waitFor(() => expect(created.length).toBeGreaterThan(0))
 
       created.at(-1).cb([{ isIntersecting: true }])
       await waitFor(() => expect(container.querySelectorAll('img').length).toBe(80))
