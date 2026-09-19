@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { assignCluster, createPerson, getCluster, skipCluster } from '../lib/api'
 import { useToast } from '../components/Toast'
 
@@ -27,6 +27,11 @@ export function useClusterAssign(cluster, { onAssigned, onSkipped }) {
   const [excluded, setExcluded] = useState(() => new Set())
   const [lastNamed, setLastNamed] = useState(null)
   const [saving, setSaving] = useState(false)
+  // The same fact as `saving`, readable straight away. State is only visible
+  // to the next render, so two calls in one tick — a double-click, or Enter
+  // held down — both saw false and both went through, telling the queue that
+  // twenty faces were taken out of a group of ten.
+  const inFlight = useRef(false)
 
   useEffect(() => {
     if (!clusterId) return
@@ -57,7 +62,8 @@ export function useClusterAssign(cluster, { onAssigned, onSkipped }) {
   }, [detail, shown, excluded])
 
   const assign = useCallback(async (personId, personName) => {
-    if (saving || !clusterId) return
+    if (inFlight.current || !clusterId) return
+    inFlight.current = true
     setSaving(true)
     try {
       const args = currentBatch()
@@ -65,7 +71,10 @@ export function useClusterAssign(cluster, { onAssigned, onSkipped }) {
       const taken = args.handled.size
       setDetail(d => (d ? {
         ...d,
-        faces: d.faces.filter(f => !args.handled.has(`${f.photo_path}|${f.face_index}`)),
+        // Guarded the same way the read is. A group that comes back with no
+        // faces at all — emptied between the queue loading and being opened —
+        // otherwise threw here on the way to saving nothing.
+        faces: (d.faces || []).filter(f => !args.handled.has(`${f.photo_path}|${f.face_index}`)),
         size: Math.max(0, (d.size || 0) - taken),
       } : d))
       setExcluded(new Set())
@@ -76,20 +85,21 @@ export function useClusterAssign(cluster, { onAssigned, onSkipped }) {
     } catch (e) {
       toast.error(e.message || 'That did not save')
     } finally {
+      inFlight.current = false
       setSaving(false)
     }
-  }, [saving, clusterId, currentBatch, batch, onAssigned, toast])
+  }, [clusterId, currentBatch, batch, onAssigned, toast])
 
   const createAndAssign = useCallback(async name => {
     const trimmed = name.trim()
-    if (!trimmed || saving) return
+    if (!trimmed || inFlight.current) return
     try {
       const person = await createPerson({ name: trimmed })
       await assign(person.id, trimmed)
     } catch (e) {
       toast.error(e.message || 'Could not add them')
     }
-  }, [saving, assign, toast])
+  }, [assign, toast])
 
   const skip = useCallback(async () => {
     if (!clusterId) return

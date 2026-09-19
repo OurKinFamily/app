@@ -54,8 +54,6 @@ export default defineConfig({
         // 100% gate still means something for everything above and this list
         // is a backlog that shrinks. Delete a line when its tests land.
         'src/lib/useBulkActions.js',
-        'src/lib/useClusterAssign.js',
-        'src/lib/useClusterQueue.js',
         'src/lib/useEditFlow.js',
         'src/lib/useFaceReview.js',
         'src/lib/useFamilyOutline.js',
