@@ -8,9 +8,11 @@ import { C } from './tokens'
  * Somebody's life, as they wrote it.
  *
  * The only long-form reading in the archive, so it is set like reading rather
- * than like an interface: a serif, a generous line height, and a measure that
- * stops around 68 characters. Everything else here is a control panel; this is
- * a page from a book.
+ * than like an interface: a serif and a generous line height. Everything else
+ * here is a control panel; this is a page from a book.
+ *
+ * It runs the full width of the page rather than sitting in a column. See the
+ * note at the foot of this file — that is a decision, not an oversight.
  *
  * Photographs are written into the markdown as
  * `![caption](archive/bios/<name>/file.jpg)`. One on its own becomes a figure
@@ -33,7 +35,18 @@ export function BiographyProse({ markdown }) {
       if (isVideo(src)) {
         return (
           <figure style={figure}>
-            <video controls preload="metadata" src={mediaUrl(src)} style={media} />
+            {/* The poster matters here more than in the gallery: these are
+                archival documentaries that open on black, so without one the
+                browser shows frame zero and the reader sees a black rectangle
+                with a play button — indistinguishable from something broken.
+                The poster is generated beside the file as <name>.poster.jpg. */}
+            <video
+              controls
+              preload="metadata"
+              poster={mediaUrl(`${src}.poster.jpg`)}
+              src={mediaUrl(src)}
+              style={media}
+            />
             {alt && <figcaption style={caption}>{alt}</figcaption>}
           </figure>
         )
@@ -60,8 +73,8 @@ export function BiographyProse({ markdown }) {
       if (images.length >= 2 && meaningful.length === images.length) {
         return (
           <div style={{
-            display: 'grid', gap: 6, margin: '24px 0',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+            display: 'grid', gap: 8, margin: '28px 0',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
           }}>
             {images.map((c, i) => (
               <button
@@ -108,7 +121,7 @@ export function BiographyProse({ markdown }) {
   return (
     <div style={{
       fontFamily: 'Georgia, "Iowan Old Style", "Times New Roman", serif',
-      fontSize: 16.5, lineHeight: 1.72, color: C.text, maxWidth: '68ch',
+      fontSize: 16.5, lineHeight: 1.72, color: C.text,
     }}>
       <ReactMarkdown components={components}>{markdown}</ReactMarkdown>
 
@@ -172,3 +185,9 @@ const heading = size => ({
   fontSize: size, fontWeight: 600, color: C.text,
   margin: '0 0 .5em', lineHeight: 1.3,
 })
+
+// Deliberately no reading measure. The usual advice caps prose around 70–80
+// characters so the eye does not lose the line on its way back — but these
+// pages are read on a wide monitor with a rail already taking the left, and
+// Stephen would rather the words use the room than sit in a column with
+// white space either side. Chosen, not overlooked.

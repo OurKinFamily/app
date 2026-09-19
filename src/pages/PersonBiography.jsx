@@ -54,7 +54,7 @@ export function PersonBiography() {
 
   if (editing) {
     return (
-      <div style={{ maxWidth: 760 }}>
+      <div>
         <p style={{ fontSize: 12.5, color: C.muted, margin: '0 0 8px' }}>
           Markdown. Drop a photograph in with{' '}
           <code style={code}>![caption](archive/bios/&lt;name&gt;/file.jpg)</code>
@@ -91,8 +91,11 @@ export function PersonBiography() {
     )
   }
 
+  // No page-level width cap. The prose carries its own reading measure, block
+  // by block, so the photograph grids inside a biography can use the rest of
+  // the page instead of being squeezed into a column of text.
   return (
-    <div style={{ position: 'relative', maxWidth: 780 }}>
+    <div style={{ position: 'relative' }}>
       {isAdmin && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
           {person.bio_private && (
