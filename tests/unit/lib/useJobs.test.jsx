@@ -86,6 +86,47 @@ describe('useJobs', () => {
     return view
   }
 
+  describe('the order runs are shown in', () => {
+    // A fresh run landing in the middle of thirty others reads exactly like a
+    // button that did nothing.
+    const jumbled = [
+      { id: 'old', job_id: 'faces-index', started_at: '2026-05-26T19:27:00' },
+      { id: 'new', job_id: 'faces-index', started_at: '2026-09-19T12:10:07' },
+      { id: 'mid', job_id: 'faces-cluster', started_at: '2026-09-01T12:44:00' },
+    ]
+
+    it('puts the newest at the top, whatever order they arrive in', async () => {
+      server({ runs: jumbled })
+      const view = renderHook(() => useJobs())
+      await waitFor(() => expect(view.result.current.loading).toBe(false))
+      expect(view.result.current.runs.map(r => r.id)).toEqual(['new', 'mid', 'old'])
+    })
+
+    it('puts a run that has not started yet above all of them', async () => {
+      server({ runs: [...jumbled, { id: 'queued', job_id: 'faces-index', started_at: null }] })
+      const view = renderHook(() => useJobs())
+      await waitFor(() => expect(view.result.current.loading).toBe(false))
+      expect(view.result.current.runs[0].id).toBe('queued')
+    })
+
+    it('does so wherever the queued one happens to arrive in the list', async () => {
+      server({ runs: [{ id: 'queued', job_id: 'x', started_at: null }, ...jumbled] })
+      const view = renderHook(() => useJobs())
+      await waitFor(() => expect(view.result.current.loading).toBe(false))
+      expect(view.result.current.runs.map(r => r.id)).toEqual(['queued', 'new', 'mid', 'old'])
+    })
+
+    it('keeps them sorted when the poll brings a new one', async () => {
+      const data = server({ runs: jumbled })
+      const view = renderHook(() => useJobs())
+      await waitFor(() => expect(view.result.current.loading).toBe(false))
+
+      data.runs = [...jumbled, { id: 'newest', job_id: 'faces-cluster', started_at: '2026-09-19T13:00:00' }]
+      await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+      await waitFor(() => expect(view.result.current.runs[0].id).toBe('newest'))
+    })
+  })
+
   it('reads the jobs and their runs', async () => {
     const { result } = await load()
     expect(result.current.jobs).toEqual(JOBS)

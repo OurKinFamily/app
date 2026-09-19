@@ -12,6 +12,25 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 const API = '/api/jobs'
 const POLL_MS = 5000
 
+/**
+ * Newest first, because the run somebody just started is the one they are
+ * looking for.
+ *
+ * The endpoint returns them in no particular order, and a fresh run landing
+ * somewhere in the middle of thirty others reads exactly like a button that
+ * did nothing. It cost an afternoon: I read the same unsorted list and told
+ * Stephen the index had not been rebuilt since May, when in fact he had just
+ * rebuilt it.
+ *
+ * A queued run has no start time yet and belongs at the top — it is the most
+ * recent thing that happened.
+ */
+const newestFirst = runs => [...runs].sort((a, b) => {
+  if (!a.started_at) return -1
+  if (!b.started_at) return 1
+  return b.started_at.localeCompare(a.started_at)
+})
+
 export function useJobs() {
   const [jobs, setJobs] = useState([])
   const [runs, setRuns] = useState([])
@@ -20,7 +39,7 @@ export function useJobs() {
 
   const refreshRuns = useCallback(async () => {
     const r = await fetch(`${API}/runs`).then(res => res.json()).catch(() => null)
-    if (Array.isArray(r)) setRuns(r)
+    if (Array.isArray(r)) setRuns(newestFirst(r))
   }, [])
 
   useEffect(() => {
@@ -31,7 +50,7 @@ export function useJobs() {
     ]).then(([j, r]) => {
       if (!alive) return
       setJobs(Array.isArray(j) ? j : [])
-      setRuns(Array.isArray(r) ? r : [])
+      setRuns(Array.isArray(r) ? newestFirst(r) : [])
       setLoading(false)
     })
     const timer = setInterval(refreshRuns, POLL_MS)
