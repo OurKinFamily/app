@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AvatarPicker } from '../../../src/components/AvatarPicker'
 import { mockFetch } from '../helpers'
@@ -70,26 +70,44 @@ describe('AvatarPicker', () => {
   })
 
   describe('infinite-scroll sentinel', () => {
-    it('attaches an IntersectionObserver to the load-more sentinel when there are more faces than the page size', async () => {
-      // Install firing observer BEFORE rendering so the effect picks it up.
-      const created = []
-      const RealIO = globalThis.IntersectionObserver
+    // The fake observer is installed and taken away around every test in here,
+    // rather than at the end of the body. Restoring only on success left a
+    // stub behind whenever the test failed, and whichever file the runner
+    // scheduled next in this worker failed too — which reads as an unrelated
+    // flake in something nobody touched.
+    let created
+    let realIO
+
+    beforeEach(() => {
+      created = []
+      realIO = globalThis.IntersectionObserver
       globalThis.IntersectionObserver = class {
         constructor(cb) { this.cb = cb; created.push(this) }
         observe() {}
         unobserve() {}
         disconnect() {}
       }
-      // Render with > PAGE_SIZE (60) faces so the sentinel ref is mounted.
+    })
+
+    afterEach(() => { globalThis.IntersectionObserver = realIO })
+
+    it('watches for the end of the list when there are more faces than fit', async () => {
+      // More than one page (60), so the sentinel is mounted at all.
       const faces = Array.from({ length: 80 }, (_, i) => ({ crop_path: `crop/${i}.jpg` }))
       mockFetch(faces)
       const { container } = renderPicker()
       await waitFor(() => expect(container.querySelectorAll('img').length).toBe(60))
       expect(created.length).toBeGreaterThan(0)
-      // Firing the callback as intersecting should reveal more.
+    })
+
+    it('shows the rest once the end comes into view', async () => {
+      const faces = Array.from({ length: 80 }, (_, i) => ({ crop_path: `crop/${i}.jpg` }))
+      mockFetch(faces)
+      const { container } = renderPicker()
+      await waitFor(() => expect(container.querySelectorAll('img').length).toBe(60))
+
       created.at(-1).cb([{ isIntersecting: true }])
       await waitFor(() => expect(container.querySelectorAll('img').length).toBe(80))
-      globalThis.IntersectionObserver = RealIO
     })
   })
 

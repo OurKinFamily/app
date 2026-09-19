@@ -53,10 +53,8 @@ export default defineConfig({
         // Listed one by one rather than excluding src/lib wholesale, so the
         // 100% gate still means something for everything above and this list
         // is a backlog that shrinks. Delete a line when its tests land.
-        'src/lib/useBulkActions.js',
         'src/lib/useFaceReview.js',
         'src/lib/useMediaActions.js',
-        'src/lib/useScrapbook.js',
       ],
       // Target: 100% across the included files. Falling below fails the
       // suite — coverage can't silently regress.
