@@ -53,16 +53,13 @@ export default defineConfig({
         // Listed one by one rather than excluding src/lib wholesale, so the
         // 100% gate still means something for everything above and this list
         // is a backlog that shrinks. Delete a line when its tests land.
-        'src/lib/modalButton.js',
         'src/lib/useAnalytics.js',
         'src/lib/useArchiveReport.js',
         'src/lib/useBulkActions.js',
         'src/lib/useClusterAssign.js',
         'src/lib/useClusterQueue.js',
-        'src/lib/useCropDrag.js',
         'src/lib/useDiskReport.js',
         'src/lib/useEditFlow.js',
-        'src/lib/useElementRect.js',
         'src/lib/useFaceReview.js',
         'src/lib/useFamilyOutline.js',
         'src/lib/useGroup.js',
