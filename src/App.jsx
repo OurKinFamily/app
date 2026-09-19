@@ -5,40 +5,40 @@ import { MeProvider } from './contexts/MeContext'
 import { AdminOnly } from './components/AdminOnly'
 import { GalleryOnly } from './components/GalleryOnly'
 import { ViewerPreviewBadge } from './components/ViewerPreviewBadge'
-import { V2Layout } from './v2/layouts/V2Layout'
-import { V2GalleryPage } from './v2/pages/V2GalleryPage'
-import { V2FavoritesPage } from './v2/pages/V2FavoritesPage'
-import { V2AlbumsPage } from './v2/pages/V2AlbumsPage'
-import { V2AlbumPage } from './v2/pages/V2AlbumPage'
-import { V2PeoplePage } from './v2/pages/V2PeoplePage'
-import { V2PlacesPage } from './v2/pages/V2PlacesPage'
-import { V2FamilyPage } from './v2/pages/V2FamilyPage'
-import { V2BiographiesPage } from './v2/pages/V2BiographiesPage'
-import { V2PersonPage } from './v2/pages/V2PersonPage'
-import { V2PersonOverview } from './v2/pages/V2PersonOverview'
-import { V2PersonBiography } from './v2/pages/V2PersonBiography'
-import { V2PersonCircles } from './v2/pages/V2PersonCircles'
-import { V2PersonTimeline } from './v2/pages/V2PersonTimeline'
-import { V2PersonAncestry } from './v2/pages/V2PersonAncestry'
-import { V2PersonScrapbook } from './v2/pages/V2PersonScrapbook'
-import { V2PersonTravel } from './v2/pages/V2PersonTravel'
-import { V2AssignedFaces } from './v2/pages/V2AssignedFaces'
-import { V2GroupsPage } from './v2/pages/V2GroupsPage'
-import { V2FaceSuggestions } from './v2/pages/V2FaceSuggestions'
-import { V2SimilarFaces } from './v2/pages/V2SimilarFaces'
-import { V2JobsPage } from './v2/pages/V2JobsPage'
-import { V2HealthPage } from './v2/pages/V2HealthPage'
-import { V2MosaicPage } from './v2/pages/V2MosaicPage'
-import { V2AnalyticsPage } from './v2/pages/V2AnalyticsPage'
-import { V2OverviewPage } from './v2/pages/V2OverviewPage'
-import { V2UnassignedFaces } from './v2/pages/V2UnassignedFaces'
-import { V2SuggestionsPage } from './v2/pages/V2SuggestionsPage'
-import { V2SearchPage } from './v2/pages/V2SearchPage'
-import { V2UploadPage } from './v2/pages/V2UploadPage'
-import { V2GroupPage } from './v2/pages/V2GroupPage'
-import { V2ScrapbookPage } from './v2/pages/V2ScrapbookPage'
-import { V2ComponentsPage } from './v2/pages/V2ComponentsPage'
-import { V2GridDemoPage } from './v2/pages/V2GridDemoPage'
+import { Layout } from './layouts/Layout'
+import { GalleryPage } from './pages/GalleryPage'
+import { FavoritesPage } from './pages/FavoritesPage'
+import { AlbumsPage } from './pages/AlbumsPage'
+import { AlbumPage } from './pages/AlbumPage'
+import { PeoplePage } from './pages/PeoplePage'
+import { PlacesPage } from './pages/PlacesPage'
+import { FamilyPage } from './pages/FamilyPage'
+import { BiographiesPage } from './pages/BiographiesPage'
+import { PersonPage } from './pages/PersonPage'
+import { PersonOverview } from './pages/PersonOverview'
+import { PersonBiography } from './pages/PersonBiography'
+import { PersonCircles } from './pages/PersonCircles'
+import { PersonTimeline } from './pages/PersonTimeline'
+import { PersonAncestry } from './pages/PersonAncestry'
+import { PersonScrapbook } from './pages/PersonScrapbook'
+import { PersonTravel } from './pages/PersonTravel'
+import { AssignedFaces } from './pages/AssignedFaces'
+import { GroupsPage } from './pages/GroupsPage'
+import { FaceSuggestions } from './pages/FaceSuggestions'
+import { SimilarFaces } from './pages/SimilarFaces'
+import { JobsPage } from './pages/JobsPage'
+import { HealthPage } from './pages/HealthPage'
+import { MosaicPage } from './pages/MosaicPage'
+import { AnalyticsPage } from './pages/AnalyticsPage'
+import { OverviewPage } from './pages/OverviewPage'
+import { UnassignedFaces } from './pages/UnassignedFaces'
+import { SuggestionsPage } from './pages/SuggestionsPage'
+import { SearchPage } from './pages/SearchPage'
+import { UploadPage } from './pages/UploadPage'
+import { GroupPage } from './pages/GroupPage'
+import { ScrapbookPage } from './pages/ScrapbookPage'
+import { ComponentsPage } from './pages/ComponentsPage'
+import { GridDemoPage } from './pages/GridDemoPage'
 import { HomePage } from './pages/HomePage'
 import { MomChildhoodHomePage } from './pages/MomChildhoodHomePage'
 import { GrandmaBeforeMomPage } from './pages/GrandmaBeforeMomPage'
@@ -92,63 +92,63 @@ export default function App() {
               <Route path="/home/mom-childhood" element={<MomChildhoodHomePage />} />
               <Route path="/home/grandma-before-mom" element={<GrandmaBeforeMomPage />} />
 
-              <Route element={<V2Layout />}>
+              <Route element={<Layout />}>
                 {/* Open to everybody signed in: the people, what has been written about
                     them, and the collections somebody made on purpose. */}
-                <Route path="/people" element={<V2PeoplePage />} />
-                <Route path="/people/:id" element={<V2PersonPage />}>
+                <Route path="/people" element={<PeoplePage />} />
+                <Route path="/people/:id" element={<PersonPage />}>
                   <Route index element={<Navigate to="overview" replace />} />
-                  <Route path="overview" element={<V2PersonOverview />} />
-                  <Route path="biography" element={<V2PersonBiography />} />
-                  <Route path="circles" element={<V2PersonCircles />} />
-                  <Route path="timeline" element={<V2PersonTimeline />} />
-                  <Route path="ancestry" element={<V2PersonAncestry />} />
-                  <Route path="scrapbook" element={<V2PersonScrapbook />} />
-                  <Route path="scrapbook/:collectionId" element={<V2PersonScrapbook />} />
-                  <Route path="travel" element={<V2PersonTravel />} />
+                  <Route path="overview" element={<PersonOverview />} />
+                  <Route path="biography" element={<PersonBiography />} />
+                  <Route path="circles" element={<PersonCircles />} />
+                  <Route path="timeline" element={<PersonTimeline />} />
+                  <Route path="ancestry" element={<PersonAncestry />} />
+                  <Route path="scrapbook" element={<PersonScrapbook />} />
+                  <Route path="scrapbook/:collectionId" element={<PersonScrapbook />} />
+                  <Route path="travel" element={<PersonTravel />} />
                 </Route>
-                <Route path="/biographies" element={<V2BiographiesPage />} />
-                <Route path="/scrapbook" element={<V2ScrapbookPage />} />
-                <Route path="/family" element={<V2FamilyPage />} />
-                <Route path="/albums" element={<V2AlbumsPage />} />
-                <Route path="/albums/:id" element={<V2AlbumPage />}>
+                <Route path="/biographies" element={<BiographiesPage />} />
+                <Route path="/scrapbook" element={<ScrapbookPage />} />
+                <Route path="/family" element={<FamilyPage />} />
+                <Route path="/albums" element={<AlbumsPage />} />
+                <Route path="/albums/:id" element={<AlbumPage />}>
                   <Route path="photo/*" element={null} />
                 </Route>
-                <Route path="/favorites" element={<V2FavoritesPage />}>
+                <Route path="/favorites" element={<FavoritesPage />}>
                   <Route path="photo/*" element={null} />
                 </Route>
-                <Route path="/search" element={<V2SearchPage />} />
+                <Route path="/search" element={<SearchPage />} />
 
                 {/* The whole archive at once, and the ways into it. Owner and Cayce
                     only — everybody else is shown the people they know rather than
                     150,000 unsorted files. */}
                 <Route element={<GalleryOnly />}>
-                  <Route path="/" element={<V2GalleryPage />}>
+                  <Route path="/" element={<GalleryPage />}>
                     <Route path="photo/*" element={null} />
                   </Route>
-                  <Route path="/places" element={<V2PlacesPage />} />
-                  <Route path="/upload" element={<V2UploadPage />} />
+                  <Route path="/places" element={<PlacesPage />} />
+                  <Route path="/upload" element={<UploadPage />} />
                 </Route>
 
                 {/* Back of house: the work of turning a pile of files into an archive.
                     Nothing here is for a family member. */}
                 <Route element={<AdminOnly />}>
-                  <Route path="/faces/suggestions" element={<V2FaceSuggestions />} />
-                  <Route path="/faces/unassigned" element={<V2UnassignedFaces />} />
-                  <Route path="/faces/assigned" element={<V2AssignedFaces />} />
-                  <Route path="/faces/similar" element={<V2SimilarFaces />} />
-                  <Route path="/groups" element={<V2GroupsPage />} />
-                  <Route path="/groups/:id" element={<V2GroupPage />} />
-                  <Route path="/suggestions" element={<V2SuggestionsPage />} />
+                  <Route path="/faces/suggestions" element={<FaceSuggestions />} />
+                  <Route path="/faces/unassigned" element={<UnassignedFaces />} />
+                  <Route path="/faces/assigned" element={<AssignedFaces />} />
+                  <Route path="/faces/similar" element={<SimilarFaces />} />
+                  <Route path="/groups" element={<GroupsPage />} />
+                  <Route path="/groups/:id" element={<GroupPage />} />
+                  <Route path="/suggestions" element={<SuggestionsPage />} />
                   <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
-                  <Route path="/admin/overview" element={<V2OverviewPage />} />
-                  <Route path="/admin/analytics" element={<V2AnalyticsPage />} />
-                  <Route path="/admin/health" element={<V2HealthPage />} />
-                  <Route path="/admin/mosaic" element={<V2MosaicPage />} />
-                  <Route path="/admin/jobs" element={<V2JobsPage />} />
+                  <Route path="/admin/overview" element={<OverviewPage />} />
+                  <Route path="/admin/analytics" element={<AnalyticsPage />} />
+                  <Route path="/admin/health" element={<HealthPage />} />
+                  <Route path="/admin/mosaic" element={<MosaicPage />} />
+                  <Route path="/admin/jobs" element={<JobsPage />} />
                   <Route path="/design" element={<Navigate to="/design/components" replace />} />
-                  <Route path="/design/components" element={<V2ComponentsPage />} />
-                  <Route path="/design/grid" element={<V2GridDemoPage />} />
+                  <Route path="/design/components" element={<ComponentsPage />} />
+                  <Route path="/design/grid" element={<GridDemoPage />} />
                 </Route>
 
                 {/* Where the app used to live. */}

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { addRelationship, createPerson, searchPeople } from '../lib/api'
-import { Modal } from '../v2/ui/Modal'
-import { Choices, Field, Note } from '../v2/ui/Field'
-import { modalButton } from '../v2/lib/modalButton'
+import { Modal } from '../ui/Modal'
+import { Choices, Field, Note } from '../ui/Field'
+import { modalButton } from '../lib/modalButton'
 import { displayName, otherName } from '../lib/people'
-import { C } from '../v2/ui/tokens'
+import { C } from '../ui/tokens'
 
 /**
  * Joining somebody to the family — either a person already here, or one who is

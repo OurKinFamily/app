@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { createPerson } from '../lib/api'
-import { Modal } from '../v2/ui/Modal'
-import { Field, Note } from '../v2/ui/Field'
-import { modalButton } from '../v2/lib/modalButton'
+import { Modal } from '../ui/Modal'
+import { Field, Note } from '../ui/Field'
+import { modalButton } from '../lib/modalButton'
 
 /**
  * Somebody new.

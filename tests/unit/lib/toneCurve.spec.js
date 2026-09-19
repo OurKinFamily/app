@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildLut, isNoop } from '../../../src/v2/lib/toneCurve'
+import { buildLut, isNoop } from '../../../src/lib/toneCurve'
 
 /**
  * The browser previews the adjustment and the server writes it, from two

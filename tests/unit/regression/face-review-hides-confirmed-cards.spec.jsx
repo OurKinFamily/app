@@ -19,7 +19,7 @@ vi.mock('../../../src/lib/api', () => ({
   getLeftoverClusters: vi.fn(() => Promise.resolve({ leftover: [], total: 0 })),
 }))
 
-import { V2FaceSuggestions } from '../../../src/v2/pages/V2FaceSuggestions'
+import { FaceSuggestions } from '../../../src/pages/FaceSuggestions'
 
 /**
  * Regression: confirming a suggestion assigned the faces and then left the card
@@ -40,7 +40,7 @@ describe('with the real toast provider', () => {
 
   it('removes the card after confirming', async () => {
     render(
-      <MemoryRouter><ToastProvider><V2FaceSuggestions /></ToastProvider></MemoryRouter>,
+      <MemoryRouter><ToastProvider><FaceSuggestions /></ToastProvider></MemoryRouter>,
     )
     await screen.findByText('Aunt Ada')
     fireEvent.click(screen.getByText(/Confirm/))

@@ -22,11 +22,19 @@ export default defineConfig([
     },
   },
   {
-    // Legacy components + pages: relax the rules we're migrating away from.
-    // RootLayout + GalleryPage already follow the new patterns — keep them strict.
-    // (Everything under src/components/new/** stays strict by default.)
-    files: ['src/components/*.jsx', 'src/pages/*.jsx'],
-    ignores: ['src/components/RootLayout.jsx', 'src/pages/GalleryPage.jsx'],
+    // The last three files written for the old app. PhotoViewer is 454 lines
+    // and reads refs during render; PhotoMap and Toast have their own history.
+    // They survived the v1 deletion because the current app still uses them.
+    //
+    // Named one by one on purpose. This used to be a blanket exemption for
+    // `src/pages/*.jsx`, which was harmless while that folder held only legacy
+    // code — and then the whole app moved into it and the gates silently came
+    // off everything. A list that has to be edited to grow is the point.
+    files: [
+      'src/components/PhotoViewer.jsx',
+      'src/components/PhotoMap.jsx',
+      'src/components/Toast.jsx',
+    ],
     rules: {
       'max-lines': 'off',
       'react-hooks/set-state-in-effect': 'off',
@@ -36,8 +44,6 @@ export default defineConfig([
       'react-hooks/exhaustive-deps': 'off',
       'react-refresh/only-export-components': 'off',
       'no-unused-vars': 'off',
-      'no-undef': 'off',
-      'no-empty': 'off',
     },
   },
   {

@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { MediaDetail } from '../../../src/v2/ui/MediaDetail'
+import { MediaDetail } from '../../../src/ui/MediaDetail'
 
 const item = {
   path: 'archive/2026/x.jpg', url: '/api/media/archive/2026/x.jpg',

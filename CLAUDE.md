@@ -34,22 +34,20 @@ npm run build     # production build
 
 ```
 src/
-  App.jsx             # every route, and the redirects from the old ones
-  index.css           # Tailwind import + base styles
-  lib/                # api.js and the shared helpers — all calls go through here
-  contexts/           # MeContext (who is signed in, and what they may see)
-  components/         # the few shared pieces the shell does not own: the
-                      # toast, the route guards, the dialogs, the photo map
-  v2/                 # the app itself
-    layouts/V2Layout  # the only shell: header, rail, main
-    pages/            # one file per route
-    ui/               # everything the pages are built from
-    lib/              # hooks and pure helpers, one concern each
+  App.jsx        # every route, and the redirects from the old ones
+  index.css      # Tailwind import + base styles
+  layouts/       # Layout — header, rail, main. The only shell.
+  pages/         # one file per route
+  ui/            # everything the pages are built from
+  lib/           # api.js, hooks, and pure helpers — one concern each
+  contexts/      # MeContext (who is signed in, and what they may see)
+  components/    # the last pieces written for the old app and still used:
+                 # the toast, the route guards, the dialogs, the photo map
 ```
 
-The `v2/` name is a leftover from the reskin, when it lived beside the old
-app at `/v2`. That app is gone and this is simply the app; the folder keeps
-the name only until somebody renames it.
+`components/` is the only folder with any history left in it — three of its
+files are exempted by name in `eslint.config.js` because they predate the
+current rules. Everything else is held to them. New shared UI goes in `ui/`.
 
 ## Routes
 

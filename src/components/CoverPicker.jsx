@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { AlignCenterHorizontal, AlignEndHorizontal, AlignStartHorizontal, Frame } from 'lucide-react'
 import { setCover } from '../lib/api'
-import { Modal } from '../v2/ui/Modal'
-import { Choices } from '../v2/ui/Field'
-import { modalButton } from '../v2/lib/modalButton'
-import { C } from '../v2/ui/tokens'
+import { Modal } from '../ui/Modal'
+import { Choices } from '../ui/Field'
+import { modalButton } from '../lib/modalButton'
+import { C } from '../ui/tokens'
 
 /**
  * How somebody's cover photograph sits in the banner.

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { getFaces, setAvatar } from '../lib/api'
 import { mediaUrl } from '../lib/media'
-import { Modal } from '../v2/ui/Modal'
-import { C } from '../v2/ui/tokens'
+import { Modal } from '../ui/Modal'
+import { C } from '../ui/tokens'
 
 /**
  * Which face of theirs stands for them.
