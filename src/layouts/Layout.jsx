@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Activity, Album, BookOpen, ClipboardList, Images, LayoutDashboard, MapPin, Menu, Notebook, Palette, Play, Search, Sparkles, Star, Trees, Upload, UserCheck, UserPlus, Users, Users2, Wand2 } from 'lucide-react'
+import { Menu, Search, Upload } from 'lucide-react'
 import { C } from '../ui/tokens'
 import { useMe } from '../contexts/MeContext'
+import { useIsWide } from '../lib/useIsWide'
+import { NAV } from './nav'
 
 /**
  * v2 app shell — light, Google Photos in feel.
@@ -15,70 +17,6 @@ import { useMe } from '../contexts/MeContext'
  * centre of gravity in the header, a pill-shaped active state in the sidebar,
  * hairline dividers instead of boxes, and a lot of white.
  */
-
-/**
- * The rail.
- *
- * `needs` says who a group is for, matching the route guards: 'gallery' is the
- * owner and Cayce, 'admin' is the back of house. A family member signing in
- * sees the people and what has been written about them — not a rail of links
- * that bounce them somewhere else, which reads as a broken app rather than as
- * one that was never theirs to use.
- */
-const NAV = [
-  {
-    items: [
-      { to: '/', label: 'Gallery', icon: Images, end: true, needs: 'gallery' },
-      { to: '/albums', label: 'Albums', icon: Album },
-      { to: '/favorites', label: 'Favourites', icon: Star },
-    ],
-  },
-  {
-    heading: 'People & places',
-    items: [
-      { to: '/people', label: 'People', icon: Users },
-      { to: '/places', label: 'Places', icon: MapPin, needs: 'gallery' },
-      { to: '/family', label: 'Family tree', icon: Trees },
-      { to: '/biographies', label: 'Biographies', icon: BookOpen },
-      { to: '/scrapbook', label: 'Scrapbook', icon: Notebook },
-    ],
-  },
-  {
-    // Back-of-house. Family never sees these; they are the work of turning a
-    // pile of files into an archive.
-    needs: 'admin',
-    heading: 'Manage',
-    items: [
-      { to: '/faces/suggestions', label: 'Face suggestions', icon: Wand2 },
-      { to: '/faces/unassigned', label: 'Unassigned faces', icon: UserPlus },
-      { to: '/faces/assigned', label: 'Assigned faces', icon: UserCheck },
-      { to: '/groups', label: 'Groups', icon: Users2 },
-      { to: '/suggestions', label: 'Suggestions', icon: Sparkles },
-    ],
-  },
-  {
-    needs: 'admin',
-    heading: 'Admin',
-    items: [
-      { to: '/admin/analytics', label: 'Analytics', icon: LayoutDashboard },
-      { to: '/admin/health', label: 'Health', icon: Activity },
-      // The deep one: what every processor has and has not touched, per
-      // directory. Only as current as the last Archive Report run, which is
-      // why it sits next to Jobs.
-      { to: '/admin/overview', label: 'Archive report', icon: ClipboardList },
-      { to: '/admin/jobs', label: 'Jobs', icon: Play },
-      { to: '/admin/mosaic', label: 'Mosaic', icon: Palette },
-    ],
-  },
-  {
-    // Bottom of the rail: the style guide is for us, not for family.
-    needs: 'admin',
-    heading: 'Design',
-    items: [
-      { to: '/design/components', label: 'Components', icon: Palette },
-    ],
-  },
-]
 
 function NavItem({ to, label, icon: Icon, end }) {
   return (
@@ -136,7 +74,13 @@ export function Layout() {
   // Their own initial, not a hard-coded S — this shell is for whoever is
   // signed in, and there is more than one person in this family.
   const initial = (me?.name || me?.email || '?').trim()[0].toUpperCase()
-  const [navOpen, setNavOpen] = useState(true)
+  // Wide enough for the rail to sit beside the photographs rather than on top
+  // of them. Below it the rail is a drawer: 216px out of a phone's width left
+  // the gallery a column so narrow that a date heading wrapped onto four lines.
+  const wide = useIsWide()
+  const [navOpen, setNavOpen] = useState(
+    () => typeof window === 'undefined' || window.innerWidth >= 900,
+  )
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, color: C.text,
@@ -167,8 +111,27 @@ export function Layout() {
           ourkin
         </span>
 
-        {/* The search field is the centrepiece, not an afterthought — it's the
-            single strongest signal of the Photos look. */}
+        {/* The search field is the centrepiece on a desktop — the single
+            strongest signal of the Photos look. On a phone it is a button:
+            at full width it pushed the upload and account controls off the
+            edge, and a 48px-tall field for a question you ask once a session
+            is a poor trade for the whole header. */}
+        {!wide && (
+          <Link
+            to="/search"
+            aria-label="Search your archive"
+            title="Search your archive"
+            style={{
+              display: 'grid', placeItems: 'center', width: 44, height: 44,
+              marginLeft: 'auto', borderRadius: '50%',
+              color: C.text, textDecoration: 'none',
+            }}
+          >
+            <Search size={22} />
+          </Link>
+        )}
+
+        {wide && (
         <div
           style={{
             flex: 1, maxWidth: 720, marginLeft: 24,
@@ -196,8 +159,9 @@ export function Layout() {
             }}
           />
         </div>
+        )}
 
-        <div style={{ flex: 1 }} />
+        {wide && <div style={{ flex: 1 }} />}
 
         {/* Adding photographs is something you do from wherever you are, not
             a place you navigate to — so it sits in the header rather than the
@@ -242,16 +206,38 @@ export function Layout() {
         )}
       </header>
 
-      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+      {/* Fills whatever is left below the header. Without a minimum the row
+          is only as tall as its content, and a page with four albums on it
+          left the ground showing underneath. */}
+      <div style={{ display: 'flex', alignItems: 'flex-start',
+                    minHeight: 'calc(100vh - 64px)' }}>
         {/* ── Sidebar ──────────────────────────────────────────── */}
+        {/* Over the content on a phone, beside it on a desktop. Tapping a
+            scrim is how every drawer on a phone closes, so it closes that way
+            too. */}
+        {navOpen && !wide && (
+          <div
+            onClick={() => setNavOpen(false)}
+            style={{
+              position: 'fixed', inset: '64px 0 0 0', zIndex: 15,
+              background: 'rgba(32,33,36,.4)',
+            }}
+          />
+        )}
         {navOpen && (
           <nav
-            style={{
+            style={wide ? {
               position: 'sticky', top: 64,
               width: 216, flexShrink: 0,
               height: 'calc(100vh - 64px)', overflowY: 'auto',
               paddingTop: 8, background: C.bg,
+            } : {
+              position: 'fixed', top: 64, left: 0, zIndex: 16,
+              width: 264, height: 'calc(100vh - 64px)', overflowY: 'auto',
+              paddingTop: 8, background: C.bg,
+              boxShadow: '2px 0 16px rgba(0,0,0,.18)',
             }}
+            onClick={() => { if (!wide) setNavOpen(false) }}
           >
             {visibleNav.map((group, gi) => (
               <div key={gi} style={{ marginBottom: 8 }}>

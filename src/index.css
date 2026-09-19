@@ -1,9 +1,18 @@
 @import "tailwindcss";
 
+/* The ground the whole app stands on. This was #0f0f0f, left over from the
+   dark app: the light layout painted over most of it, so it only showed where
+   the layout did not reach — below short content, and behind the mobile
+   drawer. That read as the page floating on a black container.
+
+   html gets it too, because a viewport taller than the body shows html's
+   background, not the body's. */
+html,
 body {
   margin: 0;
-  background: #0f0f0f;
-  color: #e5e5e5;
+  min-height: 100%;
+  background: #ffffff;
+  color: #1f1f1f;
   font-family: system-ui, sans-serif;
 }
 
