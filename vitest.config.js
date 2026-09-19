@@ -46,15 +46,6 @@ export default defineConfig({
         // still settling on /design. Add tests once it stabilizes.
         'src/components/Toast.jsx',
 
-        // The hooks that came out of the reskin. They have no unit tests yet
-        // — they were written under "ship the UI, test once the design stops
-        // moving", and the design has only just stopped.
-        //
-        // Listed one by one rather than excluding src/lib wholesale, so the
-        // 100% gate still means something for everything above and this list
-        // is a backlog that shrinks. Delete a line when its tests land.
-        'src/lib/useFaceReview.js',
-        'src/lib/useMediaActions.js',
       ],
       // Target: 100% across the included files. Falling below fails the
       // suite — coverage can't silently regress.

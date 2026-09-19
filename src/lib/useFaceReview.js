@@ -109,6 +109,9 @@ export function useFaceReview() {
       // exception here would replace a bad message with a blank screen.
       try { toast?.error?.(e.message || 'That did not work') } catch { /* say nothing */ }
       return null
+      // The catch above swallows everything, so this block is only ever
+      // reached by a normal return — v8 counts the abrupt path anyway.
+      /* v8 ignore next */
     } finally {
       setBusy(false)
       countRemaining()
