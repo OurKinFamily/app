@@ -4,7 +4,6 @@ import { ToastProvider } from './components/Toast'
 import { MeProvider } from './contexts/MeContext'
 import { AdminOnly } from './components/AdminOnly'
 import { GalleryOnly } from './components/GalleryOnly'
-import { ViewerPreviewBadge } from './components/ViewerPreviewBadge'
 import { Layout } from './layouts/Layout'
 import { GalleryPage } from './pages/GalleryPage'
 import { FavoritesPage } from './pages/FavoritesPage'
@@ -161,7 +160,6 @@ export default function App() {
               </Route>
             </Route>
           </Routes>
-          <ViewerPreviewBadge />
         </ToastProvider>
       </MeProvider>
     </BrowserRouter>

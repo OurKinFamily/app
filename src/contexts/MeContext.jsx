@@ -11,9 +11,12 @@ const PREVIEW_KEY = 'ourkin_preview_person_id'
 export function MeProvider({ children }) {
   const [me, setMe] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [previewPersonId, setPreviewPersonIdState] = useState(
-    () => localStorage.getItem(PREVIEW_KEY) || null
-  )
+  // "View as <family member>" is not rendered at the moment — the badge that
+  // sets and clears it is unmounted in App.jsx. The machinery stays, but a
+  // stored value is deliberately ignored while there is no control to turn it
+  // off with: honouring one would leave an admin looking at the archive as
+  // somebody else with no way back except clearing site data.
+  const [previewPersonId, setPreviewPersonIdState] = useState(null)
 
   useEffect(() => {
     fetch('/api/admin/me')
