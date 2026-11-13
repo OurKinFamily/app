@@ -118,6 +118,10 @@ function CollectionCardBase({
   cover,
   coverAlt,
   color,
+  // A small coloured pill beside the title: {label, fg, bg}. Albums use it to
+  // say what kind they are, which the subtitle cannot carry without the line
+  // becoming a list of everything.
+  badge,
   icon,
   stacked = true,
   layout = 'grid',
@@ -193,9 +197,26 @@ function CollectionCardBase({
             {title}
           </div>
 
-          {(subtitle || counted) && (
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
-              {[subtitle, counted].filter(Boolean).join(' · ')}
+          {(subtitle || counted || badge) && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 12, color: C.muted, marginTop: 3, minWidth: 0,
+            }}>
+              {badge && (
+                <span style={{
+                  flex: '0 0 auto', fontSize: 10.5, lineHeight: 1.6,
+                  padding: '0 7px', borderRadius: 9,
+                  background: badge.bg, color: badge.fg,
+                  letterSpacing: '.02em',
+                }}>
+                  {badge.label}
+                </span>
+              )}
+              <span style={{
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {[subtitle, counted].filter(Boolean).join(' · ')}
+              </span>
             </div>
           )}
 

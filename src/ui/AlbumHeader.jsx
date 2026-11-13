@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Image, Lock, Pencil, Trash2, Users, X } from 'lucide-react'
 import { ConfirmPopover } from './ConfirmPopover'
 import { C } from './tokens'
+import { AlbumPeople } from './AlbumPeople'
 
 /**
  * The top of an album: what it is called, what it is for, and who can see it.
@@ -38,6 +39,8 @@ export function AlbumHeader({
               {album.description}
             </p>
           )}
+
+          <AlbumPeople people={album.people} />
 
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10,
