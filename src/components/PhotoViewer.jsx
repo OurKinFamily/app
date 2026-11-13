@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { searchPeople } from '../lib/api'
 import { mediaUrl } from '../lib/media'
+import { captionTrack } from '../lib/captions'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -308,7 +309,10 @@ export function PhotoViewer({ photos, initialIndex, onClose, onNeedMore, onNavig
             src={photo.url}
             controls
             className="max-h-full max-w-full object-contain"
-          />
+          >
+            {/* Digitised home videos carry a Whisper transcript; see lib/captions. */}
+            {captionTrack(detail) && <track default {...captionTrack(detail)} />}
+          </video>
         ) : (
           <img
             ref={imgRef}
