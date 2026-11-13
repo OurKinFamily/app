@@ -18,6 +18,7 @@ import { useScrollLock } from '../lib/useScrollLock'
 import { DetailToolbar } from './DetailToolbar'
 import { useElementRect } from '../lib/useElementRect'
 import { useIsWide } from '../lib/useIsWide'
+import { useVideoCaptions } from '../lib/useVideoCaptions'
 
 /**
  * One photograph, full size. Placeholder — the photo, a way out, nothing else.
@@ -81,6 +82,7 @@ export function MediaDetail({
   const [namingFace, setNamingFace] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [detailData, setDetailData] = useState(null)
+  const captions = useVideoCaptions({ path: item?.path, isVideo: item?.is_video, detail: detail ?? detailData })
   const imgRef = useRef(null)
   // Crop lives in the detail view because it needs the photograph at a size
   // worth drawing on. Fractions of the displayed image, converted to pixels
@@ -209,7 +211,9 @@ export function MediaDetail({
           // min-height 0 so the grid item is allowed to shrink; without it a
           // tall video overflows instead of fitting.
           style={{ maxWidth: '100%', maxHeight: '100%', minHeight: 0, minWidth: 0 }}
-        />
+        >
+          {captions && <track default {...captions} />}
+        </video>
       ) : (
         <img
           ref={imgRef}
