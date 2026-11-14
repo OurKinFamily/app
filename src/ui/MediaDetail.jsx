@@ -59,10 +59,8 @@ export function MediaDetail({
   detail,                  // supplied by the style guide; otherwise fetched
   onRedate,
   onRelocate,
-  onAssignFace,
-  onCreatePerson,
-  onDismissFace,
-  onUnassignFace,
+  // Anything that changes who is in the photograph. Bumped revision after.
+  onAssignFace, onCreatePerson, onDismissFace, onUnassignFace, onRejectGuess,
   onPrev,
   onNext,
   hasPrev = false,
@@ -307,6 +305,7 @@ export function MediaDetail({
           onCreatePerson={afterFaceChange(onCreatePerson)}
           onDismissFace={afterFaceChange(onDismissFace)}
           onUnassignFace={afterFaceChange(onUnassignFace)}
+          onRejectGuess={afterFaceChange(onRejectGuess)}
           revision={revision}
           naming={namingFace}
           onNaming={setNamingFace}

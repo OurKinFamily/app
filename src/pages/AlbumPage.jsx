@@ -9,6 +9,7 @@ import { AlbumHeader } from '../ui/AlbumHeader'
 import { SelectionBar } from '../ui/SelectionBar'
 import { AlbumPicker } from '../ui/AlbumPicker'
 import { useMediaActions } from '../lib/useMediaActions'
+import { nextAfterRemoval } from '../lib/nextAfterRemoval'
 import { useFavorites } from '../lib/useFavorites'
 import { mediaUrl, thumbUrl } from '../lib/media'
 import { C } from '../ui/tokens'
@@ -88,6 +89,11 @@ export function AlbumPage() {
       items: (a.items || []).filter(i => i.path !== path),
       total: Math.max(0, (a.total ?? 0) - 1),
     } : a)), []),
+    advance: useCallback(path => {
+      const next = nextAfterRemoval(items, path)
+      if (next) setOpen(next, { replace: true })
+      return !!next
+    }, [items, setOpen]),
   })
 
   const index = open ? items.findIndex(m => m.path === open.path) : -1
@@ -208,6 +214,7 @@ export function AlbumPage() {
           onCreatePerson={actions.createPerson}
           onDismissFace={actions.dismissFace}
           onUnassignFace={actions.unassignFace}
+          onRejectGuess={actions.rejectGuess}
           onRotate={actions.rotate}
           onCrop={actions.crop}
           onTone={actions.tone}

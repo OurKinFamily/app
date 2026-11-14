@@ -34,6 +34,12 @@ function Face({ face, off, onToggle, onOpenPhoto }) {
   const [broken, setBroken] = useState(false)
   const src = face.crop_url || face.sample || face.url
 
+  // A cluster can have several crops on screen at once, and clicking any one
+  // of them sets the whole cluster aside — all its tiles dim together. Say so
+  // in the tooltip, or the extra tiles going grey looks like a bug.
+  const n = Number(face.n_faces)
+  const also = Number.isFinite(n) && n > 1 ? ` (${n.toLocaleString()} faces)` : ''
+
   return (
     <div
       style={{ position: 'relative', aspectRatio: '1 / 1' }}
@@ -43,7 +49,7 @@ function Face({ face, off, onToggle, onOpenPhoto }) {
       <button
         type="button"
         onClick={onToggle}
-        title={onToggle ? (off ? 'Put this face back' : 'Not this person') : undefined}
+        title={onToggle ? (off ? `Put these back${also}` : `Not this person${also}`) : undefined}
         style={{
           width: '100%', height: '100%', padding: 0, border: 0, borderRadius: 6,
           overflow: 'hidden', background: C.hover,

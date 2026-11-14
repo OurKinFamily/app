@@ -13,7 +13,7 @@ import { useCallback } from 'react'
  * month to reflect one changed date would throw away the reader's place in an
  * 8.6-million-pixel page.
  */
-export function useMediaActions({ openPath, close, onVersion, onRemoved }) {
+export function useMediaActions({ openPath, close, onVersion, onRemoved, advance }) {
   const redate = useCallback(async (item, patch) => {
     await fetch(`/api/gallery/media?path=${encodeURIComponent(item.path)}`, {
       method: 'PATCH',
@@ -63,6 +63,22 @@ export function useMediaActions({ openPath, close, onVersion, onRemoved }) {
       face_index: person.face_index,
     })
     const res = await fetch(`/api/faces/assignment?${q}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(`${res.status}`)
+  }, [openPath])
+
+  // "No, that isn't her." Recorded against the person rather than the face:
+  // the face is still unnamed and might be somebody else, so dismissing it
+  // outright would throw away a real question. The brain remembers the
+  // rejection and stops offering that person for this face.
+  const rejectGuess = useCallback(async (face, personId) => {
+    const res = await fetch('/api/faces/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        person_id: personId,
+        faces: [{ photo_path: openPath, face_index: face.face_index }],
+      }),
+    })
     if (!res.ok) throw new Error(`${res.status}`)
   }, [openPath])
 
@@ -166,8 +182,13 @@ export function useMediaActions({ openPath, close, onVersion, onRemoved }) {
     // in the grid until a reload invites a second delete on something that is
     // already gone.
     onRemoved?.(item.path)
-    close()
-  }, [close, onRemoved])
+    // Then carry on to the next one rather than closing. Clearing out a run
+    // of near-duplicates is the main reason anybody deletes from here, and
+    // being thrown back to the grid each time means finding your place again.
+    // `advance` says whether it found somewhere to go; a page with no list of
+    // its own does not pass one at all.
+    if (!advance?.(item.path)) close()
+  }, [close, onRemoved, advance])
 
   const download = useCallback(item => {
     const a = document.createElement('a')
@@ -178,6 +199,7 @@ export function useMediaActions({ openPath, close, onVersion, onRemoved }) {
 
   return {
     redate, relocate, assignFace, createPerson, dismissFace, unassignFace,
+    rejectGuess,
     rotate, crop, tone, describe, remove, download,
     restorePreview, restoreDiscard, restoreApply,
   }

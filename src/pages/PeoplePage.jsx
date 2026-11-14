@@ -7,6 +7,7 @@ import { LoadingDots } from '../ui/LoadingDots'
 import { PeopleToolbar } from '../ui/PeopleToolbar'
 import { personSubtitle } from '../lib/lifespan'
 import { displayName } from '../lib/people'
+import { DEFAULT_SORT, sortPeople } from '../lib/peopleSort'
 import { mediaUrl } from '../lib/media'
 import { useIsAdmin } from '../contexts/MeContext'
 import { AddPersonModal } from '../components/AddPersonModal'
@@ -36,9 +37,9 @@ export function PeoplePage() {
   // The 'v2.' prefix on these keys is a fossil of the reskin. It stays: the
   // keys are already in people's browsers, and renaming them would quietly
   // reset the view every person here had chosen.
-  const [sort, setSort] = useState(() => read('v2.people.sort', 'suggested'))
+  const [sort, setSort] = useState(() => read('v3.people.sort', DEFAULT_SORT))
   const [view, setView] = useState(() => read('v2.people.view', 'grid'))
-  useEffect(() => write('v2.people.sort', sort), [sort])
+  useEffect(() => write('v3.people.sort', sort), [sort])
   useEffect(() => write('v2.people.view', view), [view])
 
   // Typing stays responsive while 523 cards re-filter behind it.
@@ -51,23 +52,11 @@ export function PeoplePage() {
       .catch(() => setPeople([]))
   }, [])
 
-  const sorted = useMemo(() => {
-    const rows = people || []
-    // "Closest first" is the order the API already returned — the viewer, then
-    // kin, then people sharing a surname, each tier by how often they appear.
-    // Re-sorting it alphabetically threw all of that away, which is why the
-    // family list opened on three unnamed placeholders.
-    if (sort === 'suggested') return [...rows].sort(byPlaceholder)
-    if (sort === 'born') {
-      return [...rows].sort((a, b) => byPlaceholder(a, b)
-        || (a.birth_date ? 0 : 1) - (b.birth_date ? 0 : 1)
-        || String(a.birth_date || '').localeCompare(String(b.birth_date || ''))
-        || displayName(a).localeCompare(displayName(b)))
-    }
-    return [...rows].sort((a, b) => byPlaceholder(a, b)
-      || surname(a).localeCompare(surname(b))
-      || displayName(a).localeCompare(displayName(b)))
-  }, [people, sort])
+  // Orderings live in lib/peopleSort so they can be tested without standing
+  // up the whole page. "Closest first" is the order the API already returned
+  // — the viewer, then kin, then people sharing a surname — so that one only
+  // settles placeholders and otherwise leaves it alone.
+  const sorted = useMemo(() => sortPeople(people, sort), [people, sort])
 
   const shown = useMemo(() => {
     const q = deferred.trim().toLowerCase()
@@ -170,8 +159,6 @@ export function PeoplePage() {
 /** Placeholders last in every ordering: three of them, all called
  *  "Unknown person <timestamp>", and by surname that timestamp sorted them
  *  to the very top of the family. */
-const byPlaceholder = (a, b) => isPlaceholder(a) - isPlaceholder(b)
-
 const read = (key, fallback) => {
   try { return localStorage.getItem(key) || fallback } catch { return fallback }
 }
@@ -180,10 +167,5 @@ const write = (key, value) => {
 }
 
 /** A person created by the face pipeline and never named. */
-const isPlaceholder = p => (/^Unknown person\b/.test(p.name || '') ? 1 : 0)
 
 /** Last word of the name, so the family sorts together. */
-function surname(p) {
-  const parts = String(p.name || '').trim().split(/\s+/)
-  return parts.length > 1 ? parts[parts.length - 1] : (p.name || '')
-}

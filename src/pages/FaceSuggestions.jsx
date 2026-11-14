@@ -5,9 +5,8 @@ import { CandidateCard } from '../ui/faces/CandidateCard'
 import { AmbiguousCard } from '../ui/faces/AmbiguousCard'
 import { LeftoverRow } from '../ui/faces/LeftoverRow'
 import { LoadingDots } from '../ui/LoadingDots'
-import { MediaDetail } from '../ui/MediaDetail'
+import { SuggestionPhoto } from '../ui/faces/SuggestionPhoto'
 import { useFaceReview } from '../lib/useFaceReview'
-import { isVideo, mediaUrl } from '../lib/media'
 import { C } from '../ui/tokens'
 
 /**
@@ -30,6 +29,7 @@ export function FaceSuggestions() {
   const [photo, setPhoto] = useState(null)
 
   const openPhoto = useCallback(path => path && setPhoto(path), [])
+  const closePhoto = useCallback(() => setPhoto(null), [])
   const more = key => setShown(s => ({ ...s, [key]: s[key] + 10 }))
 
   const { data, hidden, busy } = review
@@ -54,6 +54,7 @@ export function FaceSuggestions() {
 
         <Tuner
           label="Confidence"
+          busy={review.loading}
           value={review.threshold}
           onChange={review.setThreshold}
           // Down to 30%. The low end is where the thin cases live — somebody
@@ -64,6 +65,7 @@ export function FaceSuggestions() {
         />
         <Tuner
           label="Smallest group"
+          busy={review.loading}
           value={review.minClusterSize}
           onChange={review.setMinClusterSize}
           options={[1, 2, 3, 5, 10]}
@@ -85,6 +87,25 @@ export function FaceSuggestions() {
 
       {review.loading && !data && <LoadingDots />}
 
+      {/* Changing the confidence re-scores the whole archive, which takes
+          about twenty-five seconds. Until this said so, the old results sat
+          there unchanged and the only clue was the Rescore button's label
+          off to the right — so it read as the control doing nothing. */}
+      {review.loading && data && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          fontSize: 12.5, color: C.muted, margin: '0 0 14px',
+        }}>
+          <LoadingDots />
+          Re-scoring at {Math.round(review.threshold * 100)}% — about twenty-five seconds.
+        </div>
+      )}
+
+      <div style={{
+        opacity: review.loading && data ? 0.4 : 1,
+        pointerEvents: review.loading ? 'none' : 'auto',
+        transition: 'opacity 120ms ease',
+      }}>
       <Section
         title="Looks like somebody you have named"
         count={groups.length}
@@ -165,21 +186,13 @@ export function FaceSuggestions() {
           </button>
         )}
       </Section>
+      </div>
 
       {photo && (
-        <MediaDetail
-          item={{
-            path: photo,
-            url: mediaUrl(photo),
-            // Faces are pulled from video frames as well as photographs, and
-            // a .mov inside an <img> renders nothing at all.
-            is_video: isVideo(photo),
-            thumbnail_url: isVideo(photo)
-              ? mediaUrl(`${photo}.poster.jpg`)
-              : mediaUrl(photo),
-            filename: photo.split('/').pop(),
-          }}
-          onClose={() => setPhoto(null)}
+        <SuggestionPhoto
+          path={photo}
+          onClose={closePhoto}
+          onFaceChange={review.recount}
         />
       )}
     </div>
@@ -214,17 +227,25 @@ function More({ shown, total, onMore }) {
   )
 }
 
-function Tuner({ label, value, onChange, options, format }) {
+// Locked while a pass is running. Changing one of these re-scores the whole
+// archive, so a second change mid-pass just queues another twenty-five
+// seconds behind the first.
+function Tuner({ label, value, onChange, options, format, busy }) {
   return (
-    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.muted }}>
+    <label style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5,
+      color: C.muted, opacity: busy ? 0.5 : 1,
+    }}>
       {label}
       <select
         value={value}
+        disabled={busy}
         onChange={e => onChange(Number(e.target.value))}
         style={{
           height: 30, padding: '0 8px', borderRadius: 8,
           border: `1px solid ${C.border}`, background: C.bg,
-          font: 'inherit', fontSize: 12.5, color: C.text, cursor: 'pointer',
+          font: 'inherit', fontSize: 12.5, color: C.text,
+          cursor: busy ? 'progress' : 'pointer',
         }}
       >
         {options.map(o => <option key={o} value={o}>{format(o)}</option>)}

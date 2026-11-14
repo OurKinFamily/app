@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { RootLayout } from './components/RootLayout'
 import { ToastProvider } from './components/Toast'
+import { ApiErrorToasts } from './components/ApiErrorToasts'
 import { MeProvider } from './contexts/MeContext'
 import { AdminOnly } from './components/AdminOnly'
 import { GalleryOnly } from './components/GalleryOnly'
@@ -82,6 +83,7 @@ export default function App() {
     <BrowserRouter>
       <MeProvider>
         <ToastProvider>
+          <ApiErrorToasts />
           <Routes>
             <Route element={<RootLayout />}>
               {/* The napkin POCs for the home-page vision. Full-bleed pages that bring
