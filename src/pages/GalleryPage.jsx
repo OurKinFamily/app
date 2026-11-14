@@ -9,6 +9,7 @@ import { AlbumPicker } from '../ui/AlbumPicker'
 import { SelectionBar } from '../ui/SelectionBar'
 import { useFavorites } from '../lib/useFavorites'
 import { useMediaActions } from '../lib/useMediaActions'
+import { nextAfterRemoval } from '../lib/nextAfterRemoval'
 import { mediaUrl, thumbUrl } from '../lib/media'
 import { C } from '../ui/tokens'
 
@@ -134,7 +135,7 @@ export function GalleryPage({
   }, [])
 
   const {
-    redate, relocate, assignFace, createPerson, dismissFace, unassignFace,
+    redate, relocate, assignFace, createPerson, dismissFace, unassignFace, rejectGuess,
     rotate, crop, tone, describe, remove, download,
     restorePreview, restoreDiscard, restoreApply,
   } = useMediaActions({
@@ -142,6 +143,11 @@ export function GalleryPage({
     close: useCallback(() => setOpen(null), [setOpen]),
     onVersion,
     onRemoved: useCallback(path => setRemoved(cur => new Set(cur).add(path)), []),
+    advance: useCallback(path => {
+      const next = nextAfterRemoval(ordered, path, removed)
+      if (next) setOpen(next, { replace: true })
+      return !!next
+    }, [ordered, removed, setOpen]),
   })
 
   // Where the open photograph sits in what has loaded, so the arrows know
@@ -233,6 +239,7 @@ export function GalleryPage({
           onCreatePerson={createPerson}
           onDismissFace={dismissFace}
           onUnassignFace={unassignFace}
+          onRejectGuess={rejectGuess}
           onRotate={rotate}
           onCrop={crop}
           onTone={tone}

@@ -123,6 +123,29 @@ describe('useMediaActions', () => {
         faces: [{ photo_path: 'archive/2026/a b.jpg', face_index: 1 }],
       })
     })
+
+    describe('turning down a guess', () => {
+      it('records it against the person, not the face', async () => {
+        // The face is still somebody — just not her. Rejecting teaches the
+        // brain so the same wrong guess is not offered again, and leaves the
+        // face in the queue for whoever it really is.
+        const s = setup()
+        await act(async () => { await s.result.current.rejectGuess({ face_index: 2 }, 'p9') })
+        expect(String(lastCall()[0])).toBe('/api/faces/reject')
+        expect(bodyOf()).toEqual({
+          person_id: 'p9',
+          faces: [{ photo_path: 'archive/2026/a b.jpg', face_index: 2 }],
+        })
+      })
+
+      it('raises when the server refuses', async () => {
+        const s = setup()
+        global.fetch = vi.fn(() => refused(500))
+        await act(async () => {
+          await expect(s.result.current.rejectGuess({ face_index: 2 }, 'p9')).rejects.toThrow('500')
+        })
+      })
+    })
   })
 
   describe('changing the picture itself', () => {
@@ -252,6 +275,45 @@ describe('useMediaActions', () => {
       const s = setup({ onRemoved: undefined })
       await act(async () => { await s.result.current.remove(ITEM) })
       expect(s.close).toHaveBeenCalled()
+    })
+
+    describe('and carrying on through a set', () => {
+      it('moves to the next photograph instead of closing', async () => {
+        // Clearing out a run of near-duplicates is the main reason anybody
+        // deletes from in here. Closing each time means finding your place
+        // again.
+        const advance = vi.fn(() => true)
+        const s = setup({ advance })
+        await act(async () => { await s.result.current.remove(ITEM) })
+        expect(advance).toHaveBeenCalledWith('archive/2026/a b.jpg')
+        expect(s.close).not.toHaveBeenCalled()
+      })
+
+      it('closes when that was the last one in the set', async () => {
+        const s = setup({ advance: vi.fn(() => false) })
+        await act(async () => { await s.result.current.remove(ITEM) })
+        expect(s.close).toHaveBeenCalled()
+      })
+
+      it('does not move anywhere when the delete was refused', async () => {
+        const advance = vi.fn(() => true)
+        global.fetch = vi.fn(() => refused(403))
+        const s = setup({ advance })
+        await act(async () => { await s.result.current.remove(ITEM) })
+        expect(advance).not.toHaveBeenCalled()
+      })
+
+      it('tells the page before moving on', async () => {
+        // The page needs to drop the tile first; `advance` works out where to
+        // go from the list as it stands before that lands.
+        const order = []
+        const s = setup({
+          onRemoved: vi.fn(() => order.push('removed')),
+          advance: vi.fn(() => { order.push('advanced'); return true }),
+        })
+        await act(async () => { await s.result.current.remove(ITEM) })
+        expect(order).toEqual(['removed', 'advanced'])
+      })
     })
   })
 

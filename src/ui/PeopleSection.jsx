@@ -6,6 +6,8 @@ import { C } from './tokens'
 import { mediaUrl } from '../lib/media'
 import { ageAt } from './ageAt'
 import { FaceAssigner } from './FaceAssigner'
+import { FaceGuess } from './FaceGuess'
+import { groupPeopleRows } from '../lib/groupFaces'
 import { ConfirmPopover } from './ConfirmPopover'
 
 /**
@@ -16,28 +18,32 @@ import { ConfirmPopover } from './ConfirmPopover'
  */
 export function PeopleSection({
   detail: d, takenAt, hovered, onHover, canEdit, onUnassignFace,
-  onAssignFace, onCreatePerson, onDismissFace, naming, onNaming,
+  onAssignFace, onCreatePerson, onDismissFace, onRejectGuess, naming, onNaming,
 }) {
   const [dismissing, setDismissing] = useState(null)
   // Badges appear on the face you are pointing at, not on every face at once —
   // a row of crops each wearing two buttons is a control panel, not a set of
   // faces. Focus counts too, or a keyboard user never sees them.
   const [activeFace, setActiveFace] = useState(null)
+  // One row per person, not per face. Video faces come from eight sampled
+  // frames, so the same person recurs in one file and the raw list read
+  // "Cayce, Cayce" against a single clip.
+  const rows = groupPeopleRows(d.people)
   return (
     <>
       <SectionLabel>People</SectionLabel>
-      {d.people?.length ? (
+      {rows.length ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {/* Rows, so full names fit and the ages line up down the column.
               Unnamed faces below stay a wrapped grid. */}
-          {d.people.map(p => (
+          {rows.map(p => (
             <div
               key={p.id || p.name}
               onMouseEnter={() => onHover?.(p.face_index)}
               onMouseLeave={() => onHover?.(null)}
               style={{
                 borderRadius: 6, padding: '2px 4px',
-                background: hovered === p.face_index ? C.hover : 'transparent',
+                background: p.face_indexes.includes(hovered) ? C.hover : 'transparent',
               }}
             >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -75,7 +81,9 @@ export function PeopleSection({
             {canEdit && onUnassignFace && p.id && (
               <button
                 type="button"
-                onClick={() => onUnassignFace(p)}
+                onClick={() => p.face_indexes.forEach(
+                  fi => onUnassignFace({ ...p, face_index: fi }),
+                )}
                 aria-label={`Not ${p.known_as || p.name}`}
                 title={`Not ${p.known_as || p.name} — put this face back`}
                 style={{
@@ -174,6 +182,30 @@ export function PeopleSection({
             </button>
           ))}
         </div>
+      )}
+
+      {/* Under the faces: a guess is only worth answering once you have seen
+          the crop it is about. Editors only — it writes on one click. */}
+      {canEdit && (
+        <FaceGuess
+          // Which photograph these questions belong to: the component stays
+          // mounted while you page through with the chevrons.
+          path={d.path}
+          guesses={d.unidentified}
+          // A grouped question covers every frame of that person in this
+          // file. One at a time rather than all at once: a bulk of parallel
+          // assigns has stampeded the Neo4j pool before.
+          onConfirm={async (g, personId) => {
+            for (const fi of g.face_indexes) {
+              await onAssignFace?.({ face_index: fi }, { id: personId })
+            }
+          }}
+          onReject={async (g, personId) => {
+            for (const fi of g.face_indexes) {
+              await onRejectGuess?.({ face_index: fi }, personId)
+            }
+          }}
+        />
       )}
 
       {/* Opens under the faces rather than in a dialog: you are still looking

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, Maximize2, X } from 'lucide-react'
 import { Avatar } from '../Avatar'
 import { FaceStrip } from './FaceStrip'
+import { faceTiles, tileCoverage } from '../../lib/faceTiles'
 import { mediaUrl } from '../../lib/media'
 import { C } from '../tokens'
 
@@ -21,22 +22,14 @@ export function GroupCard({ group, onConfirm, onDismiss, onInspect, onOpenPhoto,
   const [excluded, setExcluded] = useState(() => new Set())
   const [expanded, setExpanded] = useState(false)
 
-  // One thumbnail per cluster, so every cluster gets looked at — a singleton
-  // is weak evidence and hiding it behind a sibling's face defeats the review.
-  const faces = group.clusters
-    .map(c => ({
-      cluster_id: c.cluster_id,
-      n_faces: c.n_faces,
-      // Each cluster hands back a list of samples; one per cluster is the
-      // point, so take the first and let the rest wait for the inspector.
-      crop_url: c.samples?.[0]?.crop_url,
-      photo_path: c.samples?.[0]?.photo_path,
-    }))
-    .slice(0, expanded ? undefined : PREVIEW)
+  // Every cluster gets a tile, then the leftover room goes on second and
+  // third crops — see lib/faceTiles. Showing one per cluster put "Confirm 4"
+  // under two thumbnails.
+  const { tiles: faces, hidden } = faceTiles(group.clusters, expanded ? null : PREVIEW)
 
   const keeping = group.clusters.filter(c => !excluded.has(c.cluster_id))
   const facesKept = keeping.reduce((sum, c) => sum + c.n_faces, 0)
-  const hidden = group.clusters.length - faces.length
+  const coverage = expanded && !hidden ? tileCoverage(faces.length, group.n_faces) : null
 
   const toggle = id => setExcluded(prev => {
     const next = new Set(prev)
@@ -79,6 +72,12 @@ export function GroupCard({ group, onConfirm, onDismiss, onInspect, onOpenPhoto,
         <button type="button" onClick={() => setExpanded(true)} style={link}>
           Show {hidden.toLocaleString()} more
         </button>
+      )}
+
+      {/* Only once there is nothing left to expand, so it reads as the real
+          ceiling rather than something another click would fix. */}
+      {coverage && (
+        <div style={{ fontSize: 11.5, color: C.muted, paddingTop: 8 }}>{coverage}</div>
       )}
 
       <footer style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>

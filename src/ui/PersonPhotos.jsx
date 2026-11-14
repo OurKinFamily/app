@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckSquare } from 'lucide-react'
 import { MediaGrid } from './MediaGrid'
+import { UndatedSection } from './UndatedSection'
 import { MediaDetail } from './MediaDetail'
 import { LoadingDots } from './LoadingDots'
 import { AlbumPicker } from './AlbumPicker'
 import { SelectionBar } from './SelectionBar'
 import { useMediaActions } from '../lib/useMediaActions'
+import { nextAfterRemoval } from '../lib/nextAfterRemoval'
 import { useFavorites } from '../lib/useFavorites'
 import { C } from './tokens'
 
@@ -102,6 +104,19 @@ export function PersonPhotos({ personId }) {
     ...patched[it.path],
   })), [items, patched])
 
+  // A date nobody believes is not a date. Roughly twenty thousand items in
+  // the archive carry the moment they were copied in rather than taken — a
+  // photograph downloaded from Facebook has no EXIF date, so the importer
+  // fell back to the file's modify time. Left in the timeline they claimed a
+  // month they never happened in: thirty-six pictures of Guillaume at about
+  // twenty-five filed under January 2026. Out of the run, into their own
+  // section, where they read as the to-do list they are.
+  const [timeline, undatedish] = useMemo(() => {
+    const keep = [], aside = []
+    for (const it of shown) (it.confidence === 'low' ? aside : keep).push(it)
+    return [keep, aside]
+  }, [shown])
+
   const open = openPath ? shown.find(m => m.path === openPath) || null : null
   const index = open ? shown.findIndex(m => m.path === open.path) : -1
 
@@ -118,6 +133,11 @@ export function PersonPhotos({ personId }) {
       setItems(cur => (cur || []).filter(i => i.path !== path))
       setTotal(t => Math.max(0, t - 1))
     }, []),
+    advance: useCallback(path => {
+      const next = nextAfterRemoval(shown, path)
+      if (next) setOpenPath(next.path)
+      return !!next
+    }, [shown]),
   })
 
   if (items === null) return <LoadingDots />
@@ -163,8 +183,21 @@ export function PersonPhotos({ personId }) {
         />
       )}
 
+      <UndatedSection
+        label="Date unknown"
+        items={undatedish}
+        selected={selected}
+        onSelectionChange={setSelected}
+        selectionMode={selectionMode}
+        onRequestSelectionMode={() => setSelectionMode(true)}
+        favourites={favorites}
+        onToggleFavourite={toggleFavorite}
+        onOpen={item => setOpenPath(item.path)}
+        versions={versions}
+      />
+
       <MediaGrid
-        items={shown}
+        items={timeline}
         selected={selected}
         onSelectionChange={setSelected}
         selectionMode={selectionMode}
@@ -199,6 +232,7 @@ export function PersonPhotos({ personId }) {
           onCreatePerson={actions.createPerson}
           onDismissFace={actions.dismissFace}
           onUnassignFace={actions.unassignFace}
+          onRejectGuess={actions.rejectGuess}
           onRotate={actions.rotate}
           onCrop={actions.crop}
           onTone={actions.tone}

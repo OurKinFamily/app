@@ -122,6 +122,11 @@ export function useFaceReview() {
     threshold, setThreshold, minClusterSize, setMinClusterSize,
     data, leftover, remaining, loading, busy, error, hidden,
     reload: load, moreLeftover, hide,
+    // Just the headline count, not a rescore. Naming one face from the
+    // lightbox changes how many are left but not which suggestions stand, and
+    // a twenty-five second pass over the archive is not the right answer to
+    // one click.
+    recount: countRemaining,
 
     // ── the five answers ─────────────────────────────────────────────────────
 

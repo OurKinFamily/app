@@ -56,7 +56,8 @@ function useMediaDetail(path, version, revision) {
 export function InfoPanel({
   item, wide, onClose, detail: supplied,
   onDetail, hoveredFace, onHoverFace,
-  onRedate, onRelocate, onAssignFace, onCreatePerson, onDismissFace, onUnassignFace, onDescribe,
+  onRedate, onRelocate, onAssignFace, onCreatePerson, onDismissFace, onUnassignFace,
+  onRejectGuess, onDescribe,
   naming, onNaming, revision,
 }) {
   // Editing is owner-only, the same gate v1 puts on tagging people. Family can
@@ -145,6 +146,7 @@ export function InfoPanel({
         onCreatePerson={onCreatePerson}
         onDismissFace={onDismissFace}
         onUnassignFace={onUnassignFace}
+        onRejectGuess={onRejectGuess}
         naming={naming}
         onNaming={onNaming}
       />

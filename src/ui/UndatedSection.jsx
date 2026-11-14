@@ -4,14 +4,20 @@ import { MediaGrid } from './MediaGrid'
 import { C } from './tokens'
 
 /**
- * Media with no date, collapsed to a heading.
+ * Media with no usable date, collapsed to a heading.
  *
  * It has no honest place in a timeline — a photograph without a date sitting
  * between 2019 and 2020 is a claim about when it happened. But hidden entirely
  * it never gets fixed, so it sits at the top as a to-do list: a count, and a
  * way in when you feel like doing something about it.
+ *
+ * `label` because there are two kinds. Some media genuinely has no date at
+ * all. Other media has one that nobody believes: about twenty thousand items
+ * carry the moment they were copied in rather than taken, which is why a
+ * person's page showed thirty-six Facebook photographs under "January 2026".
+ * Both belong out of the timeline; only one of them is honestly "undated".
  */
-export function UndatedSection({ items, ...gridProps }) {
+export function UndatedSection({ items, label = 'Undated', ...gridProps }) {
   const [open, setOpen] = useState(false)
   if (!items?.length) return null
 
@@ -28,7 +34,7 @@ export function UndatedSection({ items, ...gridProps }) {
         }}
       >
         {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        Undated
+        {label}
         <span style={{ fontSize: 12, color: C.muted, fontWeight: 400 }}>
           {items.length}
         </span>
