@@ -6,7 +6,7 @@ import { ScrapbookItems } from '../ui/ScrapbookItems'
 import { LoadingDots } from '../ui/LoadingDots'
 import { MediaDetail } from '../ui/MediaDetail'
 import { collectionCount, matches, useScrapbook } from '../lib/useScrapbook'
-import { mediaUrl } from '../lib/media'
+import { mediaUrl, mediumUrl } from '../lib/media'
 import { useIsAdmin } from '../contexts/MeContext'
 import { C } from '../ui/tokens'
 
@@ -140,7 +140,11 @@ function Card({ collection: c, canEdit, onOpen }) {
       title={c.name}
       subtitle={collectionCount(c)}
       description={c.description}
-      cover={c.cover_path ? mediaUrl(c.cover_path) : null}
+      // mediumUrl, not mediaUrl. The raw original is the wrong thing twice
+      // over: a video cover is a .mov, which an <img> renders as nothing at
+      // all, and a photograph cover is the full-resolution file — a scrapbook
+      // of twenty collections was pulling down the originals to draw thumbnails.
+      cover={c.cover_path ? mediumUrl(c.cover_path) : null}
       coverAlt=""
       icon={priv ? Lock : BookOpen}
       // Sub-collections make this a container of containers; a single box of
