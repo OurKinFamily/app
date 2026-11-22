@@ -19,6 +19,7 @@ import { DetailToolbar } from './DetailToolbar'
 import { useElementRect } from '../lib/useElementRect'
 import { useIsWide } from '../lib/useIsWide'
 import { useVideoCaptions } from '../lib/useVideoCaptions'
+import { DetailVideo } from './DetailVideo'
 
 /**
  * One photograph, full size. Placeholder — the photo, a way out, nothing else.
@@ -202,16 +203,11 @@ export function MediaDetail({
       />
 
       {item.is_video ? (
-        <video
+        <DetailVideo
           src={bust(item.url, item.version)}
           poster={bust(item.thumbnail_url, item.version)}
-          controls
-          // min-height 0 so the grid item is allowed to shrink; without it a
-          // tall video overflows instead of fitting.
-          style={{ maxWidth: '100%', maxHeight: '100%', minHeight: 0, minWidth: 0 }}
-        >
-          {captions && <track default {...captions} />}
-        </video>
+          captions={captions}
+        />
       ) : (
         <img
           ref={imgRef}

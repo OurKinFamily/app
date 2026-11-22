@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMatch, useNavigate } from 'react-router-dom'
-import { CheckSquare } from 'lucide-react'
+import { CheckSquare, SlidersHorizontal } from 'lucide-react'
 import { TimelineGrid } from '../ui/TimelineGrid'
-import { UndatedSection } from '../ui/UndatedSection'
 import { LoadingDots } from '../ui/LoadingDots'
 import { MediaDetail } from '../ui/MediaDetail'
 import { AlbumPicker } from '../ui/AlbumPicker'
@@ -12,6 +11,8 @@ import { useMediaActions } from '../lib/useMediaActions'
 import { nextAfterRemoval } from '../lib/nextAfterRemoval'
 import { mediaUrl, thumbUrl } from '../lib/media'
 import { C } from '../ui/tokens'
+import { GalleryFilterPanel } from '../ui/GalleryFilterPanel'
+import { NO_FILTERS, activeCount, toQuery } from '../ui/galleryFilters'
 
 /**
  * The gallery. The real one — live data, live actions.
@@ -28,28 +29,37 @@ import { C } from '../ui/tokens'
 // Filters are part of the identity of a view: the counts that shape the
 // timeline must be fetched with the same ones as the items, or the layout
 // reserves space that never fills.
-const PARAMS = 'min_confidence=high'
+//
+// Empty, deliberately. This used to be `min_confidence=high`, which hid 26,900
+// photographs -- 14.7% of the archive -- because their date was recorded at
+// medium or low confidence. They were in the graph and on disk the whole time
+// and simply never appeared. Confidence is now something you opt into from the
+// filter panel, not something the page decides for you.
+const PARAMS = ''
 
 /**
  * @param title    what the heading says.
  * @param params   the query string every fetch carries — the identity of the
  *                 view. Favourites is this page with one more filter.
- * @param showUndated  the undated section belongs to the whole archive; a
- *                 filtered view has no use for it.
  * @param emptyMessage  shown when the filter matches nothing, which the whole
  *                 archive never does but a filtered view easily can.
  */
 export function GalleryPage({
   title = 'Gallery',
   params = PARAMS,
-  showUndated = true,
   emptyMessage,
   // Where this view lives, so the open photograph can have an address.
   basePath = '/',
 }) {
+  // The panel's state lives here because the query string built from it is
+  // the identity of the view: counts, items and the scrubber all have to be
+  // fetched with the same one or the grid reserves space that never fills.
+  const [filters, setFilters] = useState(() => ({ ...NO_FILTERS }))
+  const [showFilters, setShowFilters] = useState(false)
+  const query = useMemo(() => toQuery(filters, params), [filters, params])
+
   const [buckets, setBuckets] = useState(null)
-  const [undated, setUndated] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [total, setTotal] = useState(null)
 
   const [selected, setSelected] = useState(() => new Set())
   const [selectionMode, setSelectionMode] = useState(false)
@@ -101,26 +111,26 @@ export function GalleryPage({
 
   const { favs: favorites, toggle: toggleFavorite } = useFavorites()
 
+  // Keyed on the query rather than set from inside the effect: changing a
+  // filter must show the spinner on the same render that starts the fetch,
+  // not one render later.
+  const [loadedQuery, setLoadedQuery] = useState(null)
+  const loading = loadedQuery !== query
+
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/gallery/counts?bucket=month&${params}`)
-        .then(r => (r.ok ? r.json() : { buckets: [] })),
-      showUndated
-        ? fetch('/api/gallery?undated=true&limit=60')
-            .then(r => (r.ok ? r.json() : { media: [] }))
-        : Promise.resolve({ media: [] }),
-    ])
-      .then(([counts, un]) => {
+    fetch(`/api/gallery/counts?bucket=month&${query}`)
+      .then(r => (r.ok ? r.json() : { buckets: [] }))
+      .then(counts => {
         setBuckets((counts.buckets || []).map(b => ({
           ...b,
           label: new Date(b.bucket + '-01T00:00:00')
             .toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
         })))
-        setUndated(un.media || [])
+        setTotal((counts.buckets || []).reduce((a, b) => a + (b.count || 0), 0))
       })
       .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [params, showUndated])
+      .finally(() => setLoadedQuery(query))
+  }, [query])
 
   const clearSelection = useCallback(() => {
     setSelected(new Set())
@@ -153,6 +163,7 @@ export function GalleryPage({
   // Where the open photograph sits in what has loaded, so the arrows know
   // whether there is anywhere to go.
   const index = open ? ordered.findIndex(m => m.path === open.path) : -1
+  const activeFilters = activeCount(filters)
   const step = useCallback(delta => {
     const next = ordered[index + delta]
     if (next) setOpen(next, { replace: true })
@@ -164,18 +175,38 @@ export function GalleryPage({
         <h1 style={{ fontSize: 22, fontWeight: 400, margin: 0 }}>{title}</h1>
         <div style={{ flex: 1 }} />
         {!selectionMode && selected.size === 0 && (
-          <button
-            type="button"
-            onClick={() => setSelectionMode(true)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              height: 34, padding: '0 14px', borderRadius: 17,
-              border: `1px solid ${C.border}`, background: 'transparent',
-              color: C.text, fontSize: 13, cursor: 'pointer',
-            }}
-          >
-            <CheckSquare size={15} /> Select
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setShowFilters(v => !v)}
+              aria-pressed={showFilters}
+              aria-label="Filters"
+              title="Filters"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                height: 34, padding: activeFilters ? '0 12px' : '0 10px',
+                borderRadius: 17, cursor: 'pointer', fontSize: 13,
+                border: `1px solid ${showFilters || activeFilters ? C.activeText : C.border}`,
+                background: showFilters || activeFilters ? C.activeBg : 'transparent',
+                color: showFilters || activeFilters ? C.activeText : C.text,
+              }}
+            >
+              <SlidersHorizontal size={15} />
+              {activeFilters > 0 && activeFilters}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectionMode(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                height: 34, padding: '0 14px', borderRadius: 17,
+                border: `1px solid ${C.border}`, background: 'transparent',
+                color: C.text, fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              <CheckSquare size={15} /> Select
+            </button>
+          </>
         )}
       </div>
 
@@ -188,27 +219,31 @@ export function GalleryPage({
         />
       )}
 
+      {/* A drawer over the page, not a column beside it: pushing the grid
+          sideways reflowed every row and lost your place in a scroll of
+          180,000 photographs. It is always mounted so it can animate. */}
+      <GalleryFilterPanel
+        open={showFilters}
+        filters={filters}
+        onChange={setFilters}
+        onClose={() => setShowFilters(false)}
+        total={total}
+      />
+
       {loading
         ? <LoadingDots />
-        : buckets?.length === 0 && undated.length === 0
+        : buckets?.length === 0
         ? (
           <p style={{ color: C.muted, fontSize: 14, padding: '48px 0', textAlign: 'center' }}>
-            {emptyMessage || 'Nothing here yet.'}
+            {activeFilters > 0
+              ? 'Nothing matches those filters.'
+              : emptyMessage || 'Nothing here yet.'}
           </p>
         )
         : (
-          <>
-          {showUndated && undated.length > 0 && (
-            <UndatedSection
-              items={undated}
-              favourites={favorites}
-              onToggleFavourite={toggleFavorite}
-              onOpen={setOpen}
-            />
-          )}
           <TimelineGrid
             buckets={buckets}
-            params={params}
+            params={query}
             selected={selected}
             onSelectionChange={setSelected}
             selectionMode={selectionMode}
@@ -220,7 +255,6 @@ export function GalleryPage({
             onOrderedChange={setOrdered}
             onOpen={setOpen}
           />
-          </>
         )}
 
       {albumFor && (

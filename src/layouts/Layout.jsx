@@ -141,9 +141,14 @@ export function Layout() {
           }}
         >
           <Search size={20} color={C.muted} />
+          {/* Disabled for now. It still reads as the centrepiece of the
+              header, which is the look we want, but it does not pretend to
+              take a question it cannot yet answer well. Re-enable by removing
+              `disabled` and restoring the Enter handler below. */}
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
+            disabled
             // Enter goes to the results. Searching as you type would fire a
             // query against 151,000 photographs on every keystroke, and the
             // question here is usually a whole phrase — a name, a place, a
@@ -153,9 +158,10 @@ export function Layout() {
               navigate(`/search?q=${encodeURIComponent(query.trim())}`)
             }}
             placeholder="Search your archive"
+            title="Search is not available yet"
             style={{
               flex: 1, border: 0, outline: 0, background: 'transparent',
-              fontSize: 16, color: C.text,
+              fontSize: 16, color: C.muted, cursor: 'not-allowed',
             }}
           />
         </div>

@@ -11,7 +11,7 @@ import { AlbumPicker } from '../ui/AlbumPicker'
 import { useMediaActions } from '../lib/useMediaActions'
 import { nextAfterRemoval } from '../lib/nextAfterRemoval'
 import { useFavorites } from '../lib/useFavorites'
-import { mediaUrl, thumbUrl } from '../lib/media'
+import { isVideo, mediaUrl, thumbUrl } from '../lib/media'
 import { C } from '../ui/tokens'
 
 /**
@@ -63,10 +63,14 @@ export function AlbumPage() {
     ...patched[it.path],
   })), [album, patched])
 
+  // The fallback is for a deep link to an item outside the loaded page. It
+  // has to carry is_video too: without it the detail view renders an <img>
+  // pointing at a .mov, which draws nothing and reports nothing.
   const open = openPath ? items.find(m => m.path === openPath) || {
     path: openPath,
     url: mediaUrl(openPath),
     thumbnail_url: thumbUrl(openPath),
+    is_video: isVideo(openPath),
     filename: openPath.split('/').pop(),
   } : null
 
