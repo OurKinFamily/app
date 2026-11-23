@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /**
  * A video in the lightbox, and a sentence when it will not play.
@@ -26,6 +26,25 @@ export function DetailVideo({ src, poster, captions }) {
   // the previous file's failure against a video that plays perfectly well.
   const [failedSrc, setFailedSrc] = useState(null)
   const failed = failedSrc === src
+  const ref = useRef(null)
+
+  // Start it, with sound, and settle for silence rather than nothing.
+  //
+  // Opening the lightbox is a click, so the gesture usually carries and the
+  // sound is allowed. When it is not -- a deep link opened in a fresh tab,
+  // Safari, a browser where this site has no media-engagement history --
+  // play() rejects with NotAllowedError and does so quietly. Muting and
+  // trying once more is the difference between a silent video and a video
+  // that never started, and the controls are right there to unmute.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.muted = false
+    el.play().catch(() => {
+      el.muted = true
+      el.play().catch(() => {})
+    })
+  }, [src])
 
   // A fragment, not a wrapper div, and that is the whole shape of this
   // component. A wrapper is a grid item of the detail pane with no height of
@@ -45,6 +64,15 @@ export function DetailVideo({ src, poster, captions }) {
         src={src}
         poster={poster}
         controls
+        ref={ref}
+        // Opening a clip in the lightbox is a request to watch it, so it
+        // starts on its own -- with sound. `playsInline` stops iOS taking the
+        // video fullscreen the moment it begins.
+        //
+        // No `muted` and no `autoPlay` attribute: both are handled in the
+        // effect below, because a browser that refuses to autoplay with sound
+        // refuses silently, and the attribute gives nothing to catch.
+        playsInline
         onError={() => setFailedSrc(src)}
         // min-height 0 so the grid item is allowed to shrink; without it a
         // tall video overflows instead of fitting. objectFit matches the <img>

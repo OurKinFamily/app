@@ -7,7 +7,10 @@ const RUNS = [{ id: 'r1', job_id: 'faces-index', status: 'running', started_at: 
 
 // One place that answers every jobs URL, so tests vary the data not the wiring.
 function server(over = {}) {
-  const data = { jobs: JOBS, runs: RUNS, log: { text: '', offset: 0 }, run: RUNS[0], ...over }
+  // `content` is what /jobs/runs/{id}/log actually returns. This fixture
+  // said `text` for as long as the hook read `text`, so the suite agreed
+  // with the bug and the log viewer showed nothing for every run.
+  const data = { jobs: JOBS, runs: RUNS, log: { content: '', offset: 0 }, run: RUNS[0], ...over }
   global.fetch = vi.fn((url, init) => {
     const ok = body => Promise.resolve({ ok: true, json: () => Promise.resolve(body) })
     if (init?.method === 'POST') return data.startResponse || ok({ id: 'r2' })
@@ -218,6 +221,34 @@ describe('useRunLog', () => {
   beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }) })
   afterEach(() => { vi.useRealTimers() })
 
+  it('reads the field the endpoint actually sends', async () => {
+    // regression(2026-11-22): the hook read `logRes.text`, but
+    // /jobs/runs/{id}/log returns {content, offset, done}. `text` was always
+    // undefined, so the append never ran and every log — including finished
+    // runs with output sitting on disk — read "Waiting for output…" forever.
+    // The fixture said `text` too, which is why the suite stayed green.
+    server({ log: { content: 'real output\n', offset: 12 }, run: { id: 'r1', status: 'finished' } })
+    const { result } = renderHook(() => useRunLog('r1'))
+    await waitFor(() => expect(result.current.text).toBe('real output\n'))
+  })
+
+  it('ignores a `text` field, which the endpoint does not send', async () => {
+    // Guards the other direction: were the hook changed back to `text`, this
+    // fixture would make it pass while the real endpoint showed nothing.
+    server({ log: { text: 'wrong key\n', offset: 10 }, run: { id: 'r1', status: 'finished' } })
+    const { result } = renderHook(() => useRunLog('r1'))
+    await waitFor(() => expect(result.current.done).toBe(true))
+    expect(result.current.text).toBe('')
+  })
+
+  it('stops following a finished run the log endpoint reports as done', async () => {
+    // A run that produced no output at all still has to stop saying
+    // "following…" — previously only the run endpoint could end it.
+    server({ log: { content: '', offset: 0, done: true }, run: { id: 'r1', status: 'running' } })
+    const { result } = renderHook(() => useRunLog('r1'))
+    await waitFor(() => expect(result.current.done).toBe(true))
+  })
+
   it('shows nothing until a run is chosen', async () => {
     server()
     const { result } = renderHook(() => useRunLog(null))
@@ -226,7 +257,7 @@ describe('useRunLog', () => {
   })
 
   it('reads the log from the start', async () => {
-    server({ log: { text: 'loading model\n', offset: 14 } })
+    server({ log: { content: 'loading model\n', offset: 14 } })
     const { result } = renderHook(() => useRunLog('r1'))
     await waitFor(() => expect(result.current.text).toBe('loading model\n'))
     expect(global.fetch.mock.calls[0][0]).toContain('offset=0')
@@ -235,31 +266,31 @@ describe('useRunLog', () => {
   // These logs reach hundreds of megabytes on a full archive pass; re-fetching
   // from the top every two seconds would be its own outage.
   it('asks only for what it has not read yet', async () => {
-    const data = server({ log: { text: 'first\n', offset: 6 } })
+    const data = server({ log: { content: 'first\n', offset: 6 } })
     renderHook(() => useRunLog('r1'))
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
 
-    data.log = { text: 'second\n', offset: 13 }
+    data.log = { content: 'second\n', offset: 13 }
     await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
     const logCalls = global.fetch.mock.calls.filter(c => String(c[0]).includes('/log'))
     expect(logCalls.at(-1)[0]).toContain('offset=6')
   })
 
   it('adds each piece to what came before', async () => {
-    const data = server({ log: { text: 'one\n', offset: 4 } })
+    const data = server({ log: { content: 'one\n', offset: 4 } })
     const { result } = renderHook(() => useRunLog('r1'))
     await waitFor(() => expect(result.current.text).toBe('one\n'))
 
-    data.log = { text: 'two\n', offset: 8 }
+    data.log = { content: 'two\n', offset: 8 }
     await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
     await waitFor(() => expect(result.current.text).toBe('one\ntwo\n'))
   })
 
   it('counts the characters itself when the server does not say where it got to', async () => {
-    const data = server({ log: { text: 'abc' } })
+    const data = server({ log: { content: 'abc' } })
     renderHook(() => useRunLog('r1'))
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
-    data.log = { text: 'de' }
+    data.log = { content: 'de' }
     await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
     const logCalls = global.fetch.mock.calls.filter(c => String(c[0]).includes('/log'))
     expect(logCalls.at(-1)[0]).toContain('offset=3')
@@ -272,13 +303,13 @@ describe('useRunLog', () => {
   })
 
   it('starts afresh when a different run is opened', async () => {
-    const data = server({ log: { text: 'first run\n', offset: 10 } })
+    const data = server({ log: { content: 'first run\n', offset: 10 } })
     const { result, rerender } = renderHook(({ id }) => useRunLog(id), {
       initialProps: { id: 'r1' },
     })
     await waitFor(() => expect(result.current.text).toBe('first run\n'))
 
-    data.log = { text: 'second run\n', offset: 11 }
+    data.log = { content: 'second run\n', offset: 11 }
     rerender({ id: 'r2' })
     await waitFor(() => expect(result.current.text).toBe('second run\n'))
   })
@@ -289,7 +320,7 @@ describe('useRunLog', () => {
     const { result, unmount } = renderHook(() => useRunLog('r1'))
     unmount()
     await act(async () => {
-      answers.forEach(a => a({ ok: true, json: () => Promise.resolve({ text: 'late\n', offset: 5 }) }))
+      answers.forEach(a => a({ ok: true, json: () => Promise.resolve({ content: 'late\n', offset: 5 }) }))
       for (let i = 0; i < 5; i++) await Promise.resolve()
     })
     expect(result.current.text).toBe('')

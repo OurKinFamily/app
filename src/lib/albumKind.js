@@ -5,6 +5,9 @@ const KINDS = {
   journey:  { label: 'Journey',  fg: '#2f4f7a', bg: '#e9f0fa' },
   birthday: { label: 'Birthday', fg: '#8a3d59', bg: '#fdf0f4' },
   big_day:  { label: 'Big day',  fg: '#5b4a7a', bg: '#f1edf8' },
+  // Teal, the one hue the other six leave free — a badge has to be
+  // distinguishable at a glance in a grid of album cards.
+  sporting_event: { label: 'Sporting event', fg: '#1f5f66', bg: '#e6f4f5' },
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',

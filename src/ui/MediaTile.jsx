@@ -125,6 +125,9 @@ function MediaTileBase({
   alt,
   color = '#e8e8e8',
   isVideo = false,
+  // The clip, played in place once the tile is most of the way on screen.
+  // Absent for photographs and for callers that only have a thumbnail.
+  videoSrc = null,
   // Set by the grid for tiles that are above the fold on first paint. Those
   // must NOT be lazy: a lazy image is only requested once layout says it's
   // visible, which puts a whole round trip after layout and delays the largest
@@ -236,6 +239,33 @@ function MediaTileBase({
                 display: 'block',
                 opacity: loaded ? 1 : 0,
                 transition: reduceMotion ? 'none' : 'opacity 200ms ease',
+              }}
+            />
+          )}
+
+          {/* Previews on hover, which is both the cheaper and the more
+              honest trigger. Playing everything that scrolled into view
+              streamed video nobody had asked for, and needed a cap and a
+              visibility threshold to stay sane; hovering is someone pointing
+              at one clip and asking what it is.
+
+              Over the poster rather than instead of it: the still is already
+              decoded and showing, so swapping would flash. No <video> exists
+              until the pointer arrives, so an idle tile costs one image. */}
+          {hovered && videoSrc && !reduceMotion && (
+            <video
+              src={videoSrc}
+              muted
+              loop
+              autoPlay
+              playsInline
+              preload="none"
+              aria-hidden="true"
+              tabIndex={-1}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 1,
+                width: '100%', height: '100%', objectFit: 'cover',
+                display: 'block', pointerEvents: 'none',
               }}
             />
           )}
