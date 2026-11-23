@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DetailVideo } from '../../../src/ui/DetailVideo'
 
 /**
@@ -19,6 +19,13 @@ const setup = (props = {}) =>
   )
 
 const videoEl = () => document.querySelector('video')
+
+// jsdom has no media stack and its own play() throws "Not implemented", which
+// the component would hit on every mount. One stub for the file; the tests
+// that care about the outcome replace it with their own.
+const realPlay = HTMLMediaElement.prototype.play
+beforeEach(() => { HTMLMediaElement.prototype.play = vi.fn(() => Promise.resolve()) })
+afterEach(() => { HTMLMediaElement.prototype.play = realPlay })
 
 /**
  * The second regression: a tall video was clipped at top and bottom.
@@ -84,6 +91,50 @@ describe('DetailVideo', () => {
 
       rerender(<DetailVideo src="/api/media/archive/2025/08/other.mov?v=1" poster="p.jpg" />)
       expect(screen.queryByRole('alert')).toBeNull()
+    })
+  })
+
+  describe('when it opens', () => {
+    // jsdom has no media stack, so play() has to be stubbed. What is under
+    // test is the decision — sound first, silence rather than nothing — not
+    // whether a browser can decode h264.
+    const withPlay = impl => {
+      HTMLMediaElement.prototype.play = vi.fn(impl)
+      return setup()
+    }
+
+    it('starts playing on its own', async () => {
+      withPlay(() => Promise.resolve())
+      await waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalled())
+    })
+
+    it('starts with sound', async () => {
+      withPlay(() => Promise.resolve())
+      await waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalled())
+      expect(videoEl().muted).toBe(false)
+    })
+
+    it('falls back to muted when the browser refuses sound', async () => {
+      // A browser that blocks autoplay-with-sound rejects quietly. Without the
+      // retry the clip simply never starts, which reads as a broken video.
+      let first = true
+      withPlay(() => {
+        if (first) { first = false; return Promise.reject(new Error('NotAllowedError')) }
+        return Promise.resolve()
+      })
+      await waitFor(() => expect(videoEl().muted).toBe(true))
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2)
+    })
+
+    it('gives up quietly if even muted playback is refused', async () => {
+      withPlay(() => Promise.reject(new Error('nope')))
+      await waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2))
+      expect(screen.queryByRole('alert')).toBeNull()
+    })
+
+    it('plays in place rather than going fullscreen on iOS', () => {
+      setup()
+      expect(videoEl()).toHaveAttribute('playsinline')
     })
   })
 

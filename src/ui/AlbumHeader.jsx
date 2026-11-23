@@ -3,6 +3,7 @@ import { Image, Lock, Pencil, Trash2, Users, X } from 'lucide-react'
 import { ConfirmPopover } from './ConfirmPopover'
 import { C } from './tokens'
 import { AlbumPeople } from './AlbumPeople'
+import { AlbumKindPicker } from './AlbumKindPicker'
 
 /**
  * The top of an album: what it is called, what it is for, and who can see it.
@@ -17,7 +18,7 @@ import { AlbumPeople } from './AlbumPeople'
  */
 export function AlbumHeader({
   album, selectedCount, onEdit, onDelete, onRemoveSelected,
-  onClearSelection, onSetCover,
+  onClearSelection, onSetCover, onSetKind,
 }) {
   const [confirming, setConfirming] = useState(false)
   const count = album.total ?? album.items?.length ?? 0
@@ -46,6 +47,15 @@ export function AlbumHeader({
             display: 'flex', alignItems: 'center', gap: 10,
             fontSize: 12.5, color: C.muted, marginTop: 8,
           }}>
+            {/* First, because what kind of album this is frames everything
+                else on the page — and because it is the one fact here you can
+                change by clicking it. */}
+            <AlbumKindPicker
+              kind={album.kind}
+              canEdit={!!onSetKind}
+              onChange={onSetKind}
+            />
+            <span aria-hidden="true">·</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               {album.is_private ? <Lock size={13} /> : <Users size={13} />}
               {album.is_private ? 'Private' : 'Shared'}

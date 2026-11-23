@@ -19,6 +19,9 @@ export function mediaTileProps(item, version) {
     alt: describeMedia(item),
     color: item.dominant_color || undefined,
     isVideo: !!item.is_video,
+    // The clip itself, so a tile can play it once it is properly on screen.
+    // The api serves a web-playable proxy from this same URL when one exists.
+    videoSrc: item.is_video ? bust(item.url, version) : null,
   }
 }
 

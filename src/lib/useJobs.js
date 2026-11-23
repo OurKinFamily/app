@@ -103,11 +103,19 @@ export function useRunLog(runId) {
       ])
       if (!alive) return
       if (first) { setText(''); setDone(false); first = false }
-      if (logRes?.text) {
-        offset.current = logRes.offset ?? offset.current + logRes.text.length
-        setText(prev => prev + logRes.text)
+      // `content`, not `text`. The endpoint has always returned
+      // {content, offset, done}; this read `logRes.text`, which is undefined,
+      // so the append never ran and every log read "Waiting for output…"
+      // forever -- including finished runs whose output was sitting right
+      // there. Valid JavaScript, no error, nothing on screen.
+      if (logRes?.content) {
+        offset.current = logRes.offset ?? offset.current + logRes.content.length
+        setText(prev => prev + logRes.content)
       }
-      if (runRes && runRes.status !== 'running') setDone(true)
+      // The run endpoint says whether it is still going; the log endpoint
+      // says so too, and a finished run that produced nothing still has to
+      // stop saying "following…".
+      if (logRes?.done || (runRes && runRes.status !== 'running')) setDone(true)
     }
 
     tick()

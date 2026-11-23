@@ -128,6 +128,15 @@ export function AlbumPage() {
     load()
   }
 
+  async function setKind(kind) {
+    await fetch(`/api/albums/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind }),
+    })
+    load()
+  }
+
   async function removeAlbum() {
     await fetch(`/api/albums/${id}`, { method: 'DELETE' })
     navigate('/albums')
@@ -160,6 +169,7 @@ export function AlbumPage() {
         onRemoveSelected={removeSelected}
         onClearSelection={() => { setSelected(new Set()); setSelectionMode(false) }}
         onSetCover={selected.size === 1 ? () => setCover([...selected][0]) : null}
+        onSetKind={setKind}
       />
 
       {(selectionMode || selected.size > 0) && (
