@@ -136,7 +136,12 @@ export function MediaDetail({
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 100,
+        // Above page content and anything Leaflet puts on a map (its controls
+        // sit at 1000), below the dialogs this very component opens —
+        // AlbumPicker at 1300, ToneEditor and RestorePreview at 1400. It was
+        // 100 for a long time, which only worked because nothing else was on
+        // screen when a lightbox opened; on the map it lost to the tiles.
+        position: 'fixed', inset: 0, zIndex: 1100,
         background: C.bg, color: C.text,
         // Wide: photograph and facts side by side. Narrow: the photograph
         // fills the screen and the facts are below it, reached by scrolling —

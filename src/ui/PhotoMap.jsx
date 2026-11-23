@@ -1,9 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { MapContainer, TileLayer } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { ClusterLayer } from './ClusterLayer'
-import { PhotoViewer } from '../components/PhotoViewer'
+import { MediaDetail } from './MediaDetail'
 import { isVideo, mediaUrl, thumbUrl } from '../lib/media'
+import { useFavorites } from '../lib/useFavorites'
+import { useMediaActions } from '../lib/useMediaActions'
 import { C } from './tokens'
 
 /**
@@ -30,7 +32,10 @@ function PhotoPanel({ paths, onOpenViewer, onClose }) {
     <div
       style={{
         position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 1500, width: 'min(640px, 92vw)',
+        // Above Leaflet's own controls (1000), below the lightbox it opens
+        // (1100). It was 1500, which put map chrome over every dialog in the
+        // app — including the photograph you had just clicked.
+        zIndex: 1050, width: 'min(640px, 92vw)',
         background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14,
         boxShadow: '0 8px 40px rgba(0,0,0,.2)', overflow: 'hidden',
       }}
@@ -111,16 +116,47 @@ function PhotoPanel({ paths, onOpenViewer, onClose }) {
 
 export function PhotoMap({ points, loading, height, badge }) {
   const [panel, setPanel] = useState(null)
+  // The cluster being looked through, and where in it. The map only ever has
+  // paths, so the item MediaDetail wants is built here; it fetches the rest.
   const [viewer, setViewer] = useState(null)
+  const [versions, setVersions] = useState(() => new Map())
+  const { favs, toggle: toggleFavourite } = useFavorites()
 
   const selectPhoto = useCallback(path => setPanel({ paths: [path] }), [])
   const selectCluster = useCallback(paths => setPanel({ paths }), [])
-  const openViewer = useCallback((paths, index) => {
-    setViewer({
-      photos: paths.map(p => ({ path: p, url: mediaUrl(p), is_video: isVideo(p) })),
-      index,
-    })
-  }, [])
+  const openViewer = useCallback((paths, index) => setViewer({ paths, index }), [])
+
+  const path = viewer ? viewer.paths[viewer.index] : null
+  const item = useMemo(() => path && {
+    path,
+    url: mediaUrl(path),
+    thumbnail_url: thumbUrl(path),
+    is_video: isVideo(path),
+    version: versions.get(path),
+  }, [path, versions])
+
+  const step = useCallback(d => setViewer(v => v && ({ ...v, index: v.index + d })), [])
+
+  const actions = useMediaActions({
+    openPath: path,
+    close: useCallback(() => setViewer(null), []),
+    // Rotate and crop keep the URL and change the bytes, so the picture only
+    // reloads if the address gains the file's new mtime.
+    onVersion: useCallback((p, patch) => {
+      setVersions(cur => new Map(cur).set(p, patch.version))
+    }, []),
+    // The deleted photograph is gone from the cluster, but `points` belongs to
+    // the page above — its pin stays until the page refetches.
+    onRemoved: useCallback(p => {
+      setViewer(v => {
+        if (!v) return v
+        const paths = v.paths.filter(x => x !== p)
+        return paths.length ? { paths, index: Math.min(v.index, paths.length - 1) } : null
+      })
+      setPanel(pl => pl && ({ ...pl, paths: pl.paths.filter(x => x !== p) }))
+    }, []),
+    advance: useCallback(() => true, []),
+  })
 
   return (
     <div style={{ position: 'relative', height, borderRadius: 12, overflow: 'hidden' }}>
@@ -174,13 +210,32 @@ export function PhotoMap({ points, loading, height, badge }) {
         />
       )}
 
-      {viewer && (
-        <PhotoViewer
-          photos={viewer.photos}
-          initialIndex={viewer.index}
+      {item && (
+        <MediaDetail
+          item={item}
           onClose={() => setViewer(null)}
-          onNeedMore={() => {}}
-          onNavigate={() => {}}
+          favourited={favs?.has(item.path)}
+          onToggleFavourite={toggleFavourite}
+          onRedate={actions.redate}
+          onRelocate={actions.relocate}
+          onAssignFace={actions.assignFace}
+          onCreatePerson={actions.createPerson}
+          onDismissFace={actions.dismissFace}
+          onUnassignFace={actions.unassignFace}
+          onRejectGuess={actions.rejectGuess}
+          onRotate={actions.rotate}
+          onCrop={actions.crop}
+          onTone={actions.tone}
+          onRestorePreview={actions.restorePreview}
+          onRestoreDiscard={actions.restoreDiscard}
+          onRestoreApply={actions.restoreApply}
+          onDescribe={actions.describe}
+          onDownload={actions.download}
+          onDelete={actions.remove}
+          hasPrev={viewer.index > 0}
+          hasNext={viewer.index < viewer.paths.length - 1}
+          onPrev={() => step(-1)}
+          onNext={() => step(1)}
         />
       )}
     </div>
