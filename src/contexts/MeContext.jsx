@@ -3,20 +3,11 @@ import { createContext, useContext, useEffect, useState } from 'react'
 
 const MeContext = createContext({
   isAdmin: false, me: null, loading: true,
-  previewPersonId: null, setPreviewPersonId: () => {},
 })
-
-const PREVIEW_KEY = 'ourkin_preview_person_id'
 
 export function MeProvider({ children }) {
   const [me, setMe] = useState(null)
   const [loading, setLoading] = useState(true)
-  // "View as <family member>" is not rendered at the moment — the badge that
-  // sets and clears it is unmounted in App.jsx. The machinery stays, but a
-  // stored value is deliberately ignored while there is no control to turn it
-  // off with: honouring one would leave an admin looking at the archive as
-  // somebody else with no way back except clearing site data.
-  const [previewPersonId, setPreviewPersonIdState] = useState(null)
 
   useEffect(() => {
     fetch('/api/admin/me')
@@ -25,33 +16,12 @@ export function MeProvider({ children }) {
       .catch(() => setLoading(false))
   }, [])
 
-  // While "View as <family member>" is active, tag every /api request so the
-  // server treats it as a non-admin family view — locked collections/bios then
-  // actually hide, giving an accurate preview. Restores fetch when preview ends.
-  useEffect(() => {
-    if (!previewPersonId) return
-    const orig = window.fetch
-    window.fetch = (input, init = {}) => {
-      const url = typeof input === 'string' ? input : (input?.url || '')
-      if (url.startsWith('/api')) {
-        init = { ...init, headers: { ...(init.headers || {}), 'X-Preview-As-Viewer': '1' } }
-      }
-      return orig(input, init)
-    }
-    return () => { window.fetch = orig }
-  }, [previewPersonId])
 
-  function setPreviewPersonId(id) {
-    if (id) localStorage.setItem(PREVIEW_KEY, id)
-    else localStorage.removeItem(PREVIEW_KEY)
-    setPreviewPersonIdState(id || null)
-  }
 
-  const previewAsViewer = previewPersonId !== null
-  const isAdmin = !previewAsViewer && (me?.is_admin ?? false)
-  // Whose perspective relationship lines are computed from: an admin's chosen
-  // "preview as" person, otherwise the logged-in family member's own node.
-  const viewerPersonId = previewPersonId || me?.person?.id || null
+  const isAdmin = me?.is_admin ?? false
+  // Whose perspective relationship lines are computed from — the logged-in
+  // family member's own node.
+  const viewerPersonId = me?.person?.id || null
   // Whether the archive can be changed from here at all. The deployed
   // containers mount /photos read-only — on purpose, it is what stands between
   // a bug and 150,000 files that exist nowhere else — so rotate, crop, tone
@@ -61,7 +31,7 @@ export function MeProvider({ children }) {
   const canEditMedia = isAdmin && (me?.can_edit_media ?? false)
 
   return (
-    <MeContext.Provider value={{ isAdmin, canEditMedia, me, loading, previewPersonId, previewAsViewer, viewerPersonId, setPreviewPersonId }}>
+    <MeContext.Provider value={{ isAdmin, canEditMedia, me, loading, viewerPersonId }}>
       {children}
     </MeContext.Provider>
   )
