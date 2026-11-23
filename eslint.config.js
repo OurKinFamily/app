@@ -22,9 +22,14 @@ export default defineConfig([
     },
   },
   {
-    // The last three files written for the old app. PhotoViewer is 454 lines
-    // and reads refs during render; PhotoMap and Toast have their own history.
-    // They survived the v1 deletion because the current app still uses them.
+    // The last two files written for the old app. PhotoViewer is 505 lines
+    // and reads refs during render; Toast has its own history. They survived
+    // the v1 deletion because the current app still uses them — PhotoViewer
+    // only from the map, which is the last thing holding it here.
+    //
+    // PhotoMap left this list on 2026-11-22: most of it was a superseded copy
+    // of src/ui/PhotoMap.jsx, and the one live piece (ClusterLayer) moved to
+    // src/ui/ClusterLayer.jsx, which meets the rules rather than dodging them.
     //
     // Named one by one on purpose. This used to be a blanket exemption for
     // `src/pages/*.jsx`, which was harmless while that folder held only legacy
@@ -32,7 +37,6 @@ export default defineConfig([
     // off everything. A list that has to be edited to grow is the point.
     files: [
       'src/components/PhotoViewer.jsx',
-      'src/components/PhotoMap.jsx',
       'src/components/Toast.jsx',
     ],
     rules: {

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { MapContainer, TileLayer } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { ClusterLayer } from '../components/PhotoMap'
+import { ClusterLayer } from './ClusterLayer'
 import { PhotoViewer } from '../components/PhotoViewer'
 import { isVideo, mediaUrl, thumbUrl } from '../lib/media'
 import { C } from './tokens'
