@@ -4,7 +4,6 @@ import { ArrowLeft } from 'lucide-react'
 import { PersonHero } from '../ui/PersonHero'
 import { LoadingDots } from '../ui/LoadingDots'
 import { AvatarPicker } from '../components/AvatarPicker'
-import { CoverPicker } from '../components/CoverPicker'
 import { getPerson, getPhotos, getRelatives } from '../lib/api'
 import { useIsAdmin } from '../contexts/MeContext'
 import { C } from '../ui/tokens'
@@ -16,6 +15,11 @@ import { C } from '../ui/tokens'
  * setPerson, relatives, reloadRelatives, editing, setEditing — which is what
  * lets all eight work here from the first day, reskinned or not. Ported tabs
  * come out of the legacy panel one at a time without this file changing.
+ *
+ * The hero renders here rather than in any tab, so moving between tabs swaps
+ * only what is below it. The mosaic it draws is keyed on the person id alone:
+ * a tab editing a fact calls setPerson, and if that were a dependency the
+ * photographs would be refetched and the hero would visibly reshuffle.
  */
 
 const TABS = [
@@ -28,16 +32,17 @@ const TABS = [
   { to: 'travel', label: 'Travel' },
 ]
 
+const IMAGE = /\.(jpe?g|png|heic|heif|webp)$/i
+
 export function PersonPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
   const [person, setPerson] = useState(null)
   const [relatives, setRelatives] = useState(null)
-  const [hero, setHero] = useState(null)
+  const [photoSet, setPhotoSet] = useState({ forId: null, paths: [] })
   const [editing, setEditing] = useState(false)
   const [avatarPicker, setAvatarPicker] = useState(false)
-  const [coverPicker, setCoverPicker] = useState(false)
 
   const reloadRelatives = useCallback(() => {
     getRelatives(id).then(setRelatives).catch(() => {})
@@ -54,26 +59,18 @@ export function PersonPage() {
     return () => { alive = false }
   }, [id, navigate])
 
-  // No cover set: borrow one of their photographs, which is better than a grey
-  // rectangle on a page that is meant to be about a person.
+  // The hero mosaic. Fetched once per person — never on a tab change, and
+  // never when a tab saves an edit.
   useEffect(() => {
-    if (!person) return
     let alive = true
-    if (person.cover_image) {
-      // Deferred rather than set outright: assigning state straight from an
-      // effect body starts another render before this one has painted.
-      queueMicrotask(() => { if (alive) setHero(person.cover_image) })
-      return () => { alive = false }
-    }
     getPhotos(id, 100, 0)
       .then(d => {
         if (!alive) return
-        const images = (d?.paths || []).filter(p => /\.(jpe?g|png|heic|heif|webp)$/i.test(p))
-        setHero(images.length ? images[Math.floor(Math.random() * images.length)] : null)
+        setPhotoSet({ forId: id, paths: (d?.paths || []).filter(p => IMAGE.test(p)) })
       })
       .catch(() => {})
     return () => { alive = false }
-  }, [id, person])
+  }, [id])
 
   if (!person) return <LoadingDots />
 
@@ -85,10 +82,9 @@ export function PersonPage() {
 
       <PersonHero
         person={person}
-        hero={hero}
+        photos={photoSet.forId === id ? photoSet.paths : []}
         isAdmin={isAdmin}
         onPickAvatar={() => setAvatarPicker(true)}
-        onPickCover={() => setCoverPicker(true)}
       />
 
       <nav
@@ -122,13 +118,6 @@ export function PersonPage() {
           person={person}
           onClose={() => setAvatarPicker(false)}
           onSaved={crop => setPerson(p => ({ ...p, avatar: crop }))}
-        />
-      )}
-      {isAdmin && coverPicker && (
-        <CoverPicker
-          person={person}
-          onClose={() => setCoverPicker(false)}
-          onSaved={patch => setPerson(p => ({ ...p, ...patch }))}
         />
       )}
     </div>

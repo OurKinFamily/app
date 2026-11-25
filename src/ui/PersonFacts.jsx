@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { C } from './tokens'
 import { formatDate } from '../lib/formatDate'
+import { FACT_FIELDS } from '../lib/personFacts'
 
 /**
  * What is known about a person, and the form for changing it.
@@ -12,20 +13,19 @@ import { formatDate } from '../lib/formatDate'
  *
  * Empty fields are omitted rather than shown blank. A page of "—" reads as a
  * form nobody filled in; what is there should look deliberate.
+ *
+ * How somebody is related to you is NOT here: the hero says it above the name,
+ * on every tab, so repeating it at the top of this block said it twice on the
+ * one tab where both were visible.
+ *
+ * This lives at the top of the Biography tab, not Overview. For most people
+ * every one of these fields is empty, and a block that is usually absent does
+ * not belong above the photographs. `hasFacts` lets the caller skip it
+ * entirely rather than render a heading over nothing.
  */
 
-const FIELDS = [
-  ['death_date', 'Passed', true],
-  ['death_place', 'Last home'],
-  ['burial_place', 'Laid to rest'],
-  ['immigration_date', 'Arrived', 'year'],
-  ['immigration_place', 'From / via'],
-  ['naturalization_date', 'Became citizen', 'year'],
-  ['naturalization_place', 'Took citizenship in'],
-]
-
-export function PersonFacts({ person, relationship, canEdit, onEdit }) {
-  const shown = FIELDS
+export function PersonFacts({ person, canEdit, onEdit }) {
+  const shown = FACT_FIELDS
     .map(([key, label, date]) => [label, date ? formatDate(person[key], date === 'year' ? 'year' : person.death_date_precision) : person[key]])
     .filter(([, value]) => value)
 
@@ -35,15 +35,6 @@ export function PersonFacts({ person, relationship, canEdit, onEdit }) {
     <section style={{ marginBottom: 28 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
         <div style={{ flex: 1, minWidth: 0, maxWidth: '62ch' }}>
-          {relationship && (
-            <p style={{
-              fontSize: 14, color: C.text, margin: '0 0 10px',
-              textTransform: 'capitalize',
-            }}>
-              {relationship}
-            </p>
-          )}
-
           {alsoKnown && (
             <p style={{ fontSize: 12.5, color: C.muted, margin: '0 0 10px' }}>
               Also known as {alsoKnown}
@@ -73,14 +64,9 @@ export function PersonFacts({ person, relationship, canEdit, onEdit }) {
             </p>
           )}
 
-          {!relationship && !shown.length && !person.notes && (
-            <p style={{ fontSize: 13.5, color: C.muted, margin: 0 }}>
-              Nothing recorded about {person.known_as || person.name} yet.
-            </p>
-          )}
         </div>
 
-        {canEdit && (
+        {canEdit && onEdit && (
           <button type="button" onClick={onEdit} style={pill}>
             <Pencil size={14} /> Edit
           </button>

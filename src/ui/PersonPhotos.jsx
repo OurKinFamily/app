@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckSquare } from 'lucide-react'
+import { CheckSquare, UserSearch } from 'lucide-react'
 import { MediaGrid } from './MediaGrid'
 import { UndatedSection } from './UndatedSection'
 import { MediaDetail } from './MediaDetail'
@@ -145,31 +145,32 @@ export function PersonPhotos({ personId }) {
 
   return (
     <section style={{ marginTop: 8 }}>
+      {/* Centre-aligned, not baseline: the controls carry icons, and a
+          baseline row hangs them a pixel or two below the heading. Both are
+          the same bordered pill so they read as a pair of actions rather than
+          one button and one link that happen to sit together. */}
       <div style={{
-        display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8,
+        display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10,
       }}>
-        <h2 style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>Photographs</h2>
-        <span style={{ fontSize: 12.5, color: C.muted }}>{total.toLocaleString()}</span>
+        <h2 style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>Gallery</h2>
+        <span style={{
+          fontSize: 12, color: C.muted, fontVariantNumeric: 'tabular-nums',
+          background: C.hover, borderRadius: 999, padding: '2px 8px',
+        }}>
+          {total.toLocaleString()}
+        </span>
         <div style={{ flex: 1 }} />
         {!selectionMode && selected.size === 0 && (
-          <button
-            type="button"
-            onClick={() => setSelectionMode(true)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              border: 0, background: 'transparent', color: C.activeText,
-              fontSize: 12.5, cursor: 'pointer',
-            }}
-          >
-            <CheckSquare size={14} /> Select
+          <button type="button" onClick={() => setSelectionMode(true)} style={action}>
+            <CheckSquare size={13} /> Select
           </button>
         )}
         <Link
           to={`/faces/similar?person_id=${personId}`}
           title="Look for more of them across the archive"
-          style={{ fontSize: 12.5, color: C.activeText, textDecoration: 'none' }}
+          style={action}
         >
-          Find more →
+          <UserSearch size={13} /> Find more
         </Link>
       </div>
 
@@ -250,4 +251,11 @@ export function PersonPhotos({ personId }) {
       )}
     </section>
   )
+}
+
+const action = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, height: 30,
+  padding: '0 12px', borderRadius: 15, fontSize: 12.5, whiteSpace: 'nowrap',
+  border: `1px solid ${C.border}`, background: 'transparent',
+  color: C.muted, cursor: 'pointer', textDecoration: 'none',
 }
