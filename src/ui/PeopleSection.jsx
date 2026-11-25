@@ -21,6 +21,9 @@ export function PeopleSection({
   onAssignFace, onCreatePerson, onDismissFace, onRejectGuess, naming, onNaming,
 }) {
   const [dismissing, setDismissing] = useState(null)
+  // Dismissed faces are folded away, not gone. Opening the fold is how
+  // somebody who was skipped by mistake gets their name back.
+  const [showDismissed, setShowDismissed] = useState(false)
   // Badges appear on the face you are pointing at, not on every face at once —
   // a row of crops each wearing two buttons is a control panel, not a set of
   // faces. Focus counts too, or a keyboard user never sees them.
@@ -181,6 +184,53 @@ export function PeopleSection({
               )}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Faces dismissed in an earlier pass. Folded away by default — the
+          point of dismissing a stranger is not to see them again — but
+          reachable, because a dismissal is also written for every face left
+          un-ticked while assigning somebody else. On a person-specific sweep
+          that means "not David" rather than "nobody", and it buried real
+          people in photographs they are plainly in. */}
+      {d.dismissed?.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <button
+            type="button"
+            onClick={() => setShowDismissed(v => !v)}
+            style={{
+              border: 0, background: 'transparent', padding: 0,
+              color: C.muted, fontSize: 11.5, cursor: 'pointer',
+            }}
+          >
+            {showDismissed ? 'Hide' : 'Show'} {d.dismissed.length} dismissed
+            {d.dismissed.length === 1 ? ' face' : ' faces'}
+          </button>
+          {showDismissed && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, opacity: 0.6 }}>
+              {d.dismissed.map(f => (
+                <button
+                  key={f.face_index}
+                  type="button"
+                  disabled={!canEdit}
+                  onClick={() => { setDismissing(null); onNaming?.(f) }}
+                  onMouseEnter={() => onHover?.(f.face_index)}
+                  onMouseLeave={() => onHover?.(null)}
+                  aria-label="Name this dismissed face"
+                  title="Dismissed earlier — click to name them anyway"
+                  style={{
+                    border: 0, padding: 0, background: 'transparent',
+                    cursor: canEdit ? 'pointer' : 'default',
+                    position: 'relative', borderRadius: 6,
+                    outline: hovered === f.face_index ? '2px solid rgba(0,0,0,.35)' : 'none',
+                    outlineOffset: 2,
+                  }}
+                >
+                  <Face src={f.crop_url} dim />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
