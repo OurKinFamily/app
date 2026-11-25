@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { SyncPanel } from '../ui/admin/SyncPanel'
 import { Section, StatGrid, StatTile, BarBuckets } from '../ui/admin/Stats'
 import { InspectBucket } from '../ui/admin/InspectBucket'
+import { SidecarCoverage } from '../ui/admin/SidecarCoverage'
 import { LoadingDots } from '../ui/LoadingDots'
 import { useDiskReport, READINESS, TONES } from '../lib/useDiskReport'
 import { fmt, bytes, relTime } from '../components/admin/format'
@@ -98,6 +99,16 @@ export function HealthPage() {
           </div>
         </Section>
       )}
+
+      {['archive', 'heritage'].filter(r => summary.dirs[r]?.sidecars).map(root => (
+        <Section
+          key={root}
+          title={`How far processing has got — ${root}`}
+          aside={`${fmt(summary.dirs[root].media_total)} files · measured against what each pass applies to`}
+        >
+          <SidecarCoverage sidecars={summary.dirs[root].sidecars} />
+        </Section>
+      ))}
 
       <Section title="What lives under /photos">
         <StatGrid>
