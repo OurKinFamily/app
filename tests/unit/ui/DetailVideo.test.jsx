@@ -64,6 +64,27 @@ describe('DetailVideo', () => {
     expect(videoEl()).toHaveAttribute('controls')
   })
 
+  describe('when it starts on its own', () => {
+    it('comes in at half volume', () => {
+      // These clips run from a 1990 camcorder to a phone held a foot from
+      // somebody's face, so opening one at full volume is a gamble on which.
+      setup()
+      expect(videoEl().volume).toBe(0.5)
+    })
+
+    it('sets the volume on the way to a different clip too', () => {
+      const { rerender } = setup()
+      videoEl().volume = 1
+      rerender(<DetailVideo src="/api/media/archive/2025/08/other.mov?v=1" />)
+      expect(videoEl().volume).toBe(0.5)
+    })
+
+    it('does not start muted when sound is allowed', () => {
+      setup()
+      expect(videoEl().muted).toBe(false)
+    })
+  })
+
   describe('when the browser can play the file', () => {
     it('says nothing', () => {
       setup()

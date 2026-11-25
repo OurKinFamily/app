@@ -23,8 +23,15 @@ export function CandidateCard({
   const [name, setName] = useState('')
   const [expanded, setExpanded] = useState(false)
 
-  const faces = (candidate.samples || []).slice(0, expanded ? undefined : 24)
-  const hidden = (candidate.samples || []).length - faces.length
+  // A candidate is several clusters that resemble each other, and the api
+  // puts the crops on each cluster rather than on the candidate. Reading
+  // `candidate.samples` — which is never sent — left this whole section
+  // showing counts and no faces, so the one question it asks ("who is this?")
+  // had nothing to look at.
+  const allFaces = candidate.samples
+    ?? (candidate.clusters || []).flatMap(c => c.samples || [])
+  const faces = allFaces.slice(0, expanded ? undefined : 24)
+  const hidden = allFaces.length - faces.length
 
   return (
     <article style={card}>
