@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Lock, Pencil, Unlock } from 'lucide-react'
 import { BiographyProse } from '../ui/BiographyProse'
+import { PersonFacts, PersonFactsForm } from '../ui/PersonFacts'
+import { hasFacts } from '../lib/personFacts'
 import { useIsAdmin } from '../contexts/MeContext'
 import { C } from '../ui/tokens'
 
@@ -12,11 +14,20 @@ import { C } from '../ui/tokens'
  * text is the archive's most valuable and least reproducible content, and a
  * rich-text editor would silently reshape it. Markdown in a textarea comes
  * back out exactly as it went in, and can be read in fifty years by anything.
+ *
+ * The life details — also-known-as, Passed, Last home, the notes — sit above
+ * the prose here rather than on Overview. They are empty for most people, so
+ * the block is skipped entirely when there is nothing in it, and the control
+ * that edits it lives in the toolbar instead of inside the block. Otherwise
+ * hiding the block would hide the only way to fill it in.
+ *
+ * Two different edits on one tab, deliberately kept apart: `writing` is the
+ * markdown textarea, `editing` (from the outlet) is the details form.
  */
 export function PersonBiography() {
-  const { person, setPerson } = useOutletContext()
+  const { person, setPerson, editing, setEditing } = useOutletContext()
   const isAdmin = useIsAdmin()
-  const [editing, setEditing] = useState(false)
+  const [writing, setWriting] = useState(false)
   const [draft, setDraft] = useState(person.biography || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -32,7 +43,7 @@ export function PersonBiography() {
       })
       if (!res.ok) throw new Error(`${res.status}`)
       setPerson(p => ({ ...p, biography: draft }))
-      setEditing(false)
+      setWriting(false)
     } catch {
       // Never close on a failure: somebody may have just written six
       // paragraphs, and the textarea is the only copy.
@@ -52,7 +63,7 @@ export function PersonBiography() {
     if (res.ok) setPerson(p => ({ ...p, bio_private: next }))
   }
 
-  if (editing) {
+  if (writing) {
     return (
       <div>
         <p style={{ fontSize: 12.5, color: C.muted, margin: '0 0 8px' }}>
@@ -78,7 +89,7 @@ export function PersonBiography() {
           <button
             type="button"
             disabled={saving}
-            onClick={() => { setDraft(person.biography || ''); setEditing(false) }}
+            onClick={() => { setDraft(person.biography || ''); setWriting(false) }}
             style={pill}
           >
             Cancel
@@ -88,6 +99,16 @@ export function PersonBiography() {
           </button>
         </div>
       </div>
+    )
+  }
+
+  if (editing) {
+    return (
+      <PersonFactsForm
+        person={person}
+        onSaved={updated => { setPerson(updated); setEditing(false) }}
+        onCancel={() => setEditing(false)}
+      />
     )
   }
 
@@ -110,6 +131,14 @@ export function PersonBiography() {
           <div style={{ flex: 1 }} />
           <button
             type="button"
+            onClick={() => setEditing(true)}
+            title="Dates, places, other names"
+            style={labelled}
+          >
+            <Pencil size={13} /> Details
+          </button>
+          <button
+            type="button"
             onClick={togglePrivate}
             title={person.bio_private
               ? 'Only you can read this. Click to let family read it.'
@@ -121,7 +150,7 @@ export function PersonBiography() {
           </button>
           <button
             type="button"
-            onClick={() => { setDraft(person.biography || ''); setEditing(true) }}
+            onClick={() => { setDraft(person.biography || ''); setWriting(true) }}
             aria-label="Edit biography"
             style={ghost}
           >
@@ -129,6 +158,8 @@ export function PersonBiography() {
           </button>
         </div>
       )}
+
+      {hasFacts(person) && <PersonFacts person={person} />}
 
       {person.biography
         ? <BiographyProse markdown={person.biography} />
@@ -145,6 +176,12 @@ export function PersonBiography() {
 const code = {
   background: C.hover, borderRadius: 4, padding: '1px 5px',
   fontFamily: 'ui-monospace, monospace', fontSize: 11.5,
+}
+const labelled = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, height: 30,
+  padding: '0 12px', borderRadius: 15, fontSize: 12.5,
+  border: `1px solid ${C.border}`, background: 'transparent',
+  color: C.muted, cursor: 'pointer',
 }
 const ghost = {
   display: 'grid', placeItems: 'center', width: 32, height: 32,
