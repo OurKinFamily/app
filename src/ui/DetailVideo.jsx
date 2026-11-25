@@ -36,9 +36,14 @@ export function DetailVideo({ src, poster, captions }) {
   // play() rejects with NotAllowedError and does so quietly. Muting and
   // trying once more is the difference between a silent video and a video
   // that never started, and the controls are right there to unmute.
+  // Half volume to start. These clips were captured on everything from a 1990
+  // camcorder to a phone held a foot from somebody's face, so full volume is a
+  // gamble on which one you opened. Set before play() rather than after, or
+  // the first moment comes out at whatever the element defaulted to.
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    el.volume = 0.5
     el.muted = false
     el.play().catch(() => {
       el.muted = true

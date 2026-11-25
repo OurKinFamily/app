@@ -24,8 +24,6 @@ import { C } from '../ui/tokens'
  * takes an afternoon to unpick.
  */
 
-const PAGE = 120
-
 export function SimilarFaces() {
   const [params, setParams] = useSearchParams()
   const personId = params.get('person_id')
@@ -40,7 +38,6 @@ export function SimilarFaces() {
   const [minSimilarity, setMinSimilarity] = useState(0.5)
   const [results, setResults] = useState(null)
   const [facesUsed, setFacesUsed] = useState(null)
-  const [shown, setShown] = useState(PAGE)
   const [selected, setSelected] = useState(() => new Set())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -79,7 +76,6 @@ export function SimilarFaces() {
       const data = await res.json()
       setResults(data.results || [])
       setFacesUsed(data.faces_used ?? null)
-      setShown(PAGE)
       setSelected(new Set())
     } catch (e) {
       // An aborted request is this component tidying up after itself, not a
@@ -108,7 +104,11 @@ export function SimilarFaces() {
     return next
   })
 
-  const visible = (results || []).slice(0, shown)
+  // Every result, not a page of them. The sweep is capped at 500 by the
+  // request, and judging it means scanning the whole set for the face that is
+  // obviously somebody else — paging through that in 120s hid the tail, and
+  // "Select these" only ever selected the page you could see.
+  const visible = results || []
   const allPicked = visible.length > 0 && visible.every((_, i) => selected.has(i))
 
   async function assign() {
@@ -254,11 +254,6 @@ export function SimilarFaces() {
                 ))}
               </div>
 
-              {shown < results.length && (
-                <button type="button" onClick={() => setShown(s => s + PAGE)} style={more}>
-                  Show more — {(results.length - shown).toLocaleString()} left
-                </button>
-              )}
             </>
           )}
         </>
@@ -292,9 +287,4 @@ const linkish = {
 const primary = {
   height: 32, padding: '0 14px', borderRadius: 16, fontSize: 12.5,
   border: 0, background: C.activeText, color: '#fff', cursor: 'pointer',
-}
-const more = {
-  width: '100%', height: 32, borderRadius: 16, fontSize: 12.5, marginTop: 10,
-  border: `1px solid ${C.border}`, background: 'transparent',
-  color: C.text, cursor: 'pointer',
 }
